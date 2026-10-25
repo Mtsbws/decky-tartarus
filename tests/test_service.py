@@ -206,6 +206,23 @@ class ServiceTest(unittest.TestCase):
 
         self.run_async(go())
 
+    def test_connect_waits_for_all_nodes(self):
+        # On a replug the kernel creates the event nodes one by one; a scan can see only some.
+        async def go():
+            rig = Rig(self.path)
+            scans = []
+            find = rig.service._find
+            rig.service._find = lambda: scans.append(1) or find()
+            await rig.service.start()
+            rig.nodes = TartarusNodes(event=["/dev/input/event11"], hidraw=None)
+            await until(lambda: len(scans) >= 1)
+            rig.nodes = TWO_NODES
+            await until(lambda: rig.service.state()["connected"])
+            self.assertEqual([d.path for d in rig.devices if not d.closed], TWO_NODES.event)
+            await rig.service.stop()
+
+        self.run_async(go())
+
     def test_grab_ebusy_retries(self):
         async def go():
             rig = Rig(self.path, grab_error=errno.EBUSY)

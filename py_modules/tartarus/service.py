@@ -68,6 +68,7 @@ class TartarusService:
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._supervisor: Optional[asyncio.Task] = None
         self._resume = ResumeDetector()
+        self._last_seen: Optional[TartarusNodes] = None  # nodes from the previous scan
         self._pending: Set[asyncio.Task] = set()
         self._capture: Optional[RecordCapture] = None
         self._record_devices: List[Any] = []
@@ -116,8 +117,10 @@ class TartarusService:
             if not self._devices and now >= next_poll:
                 next_poll = now + self.POLL_INTERVAL
                 nodes = self._find()
-                if nodes is not None:
+                # A replug creates the nodes one by one: connect once two scans agree.
+                if nodes is not None and nodes == self._last_seen:
                     self._connect(nodes)
+                self._last_seen = nodes
             await asyncio.sleep(min(self.POLL_INTERVAL, self.RESUME_INTERVAL) / 2)
 
     # --- devices ---
@@ -158,6 +161,7 @@ class TartarusService:
                 pass  # already gone
             dev.close()
         self._devices = []
+        self._last_seen = None
         self._log.info("keypad disconnected")
         if notify:
             self._notify()
