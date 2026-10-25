@@ -14,7 +14,7 @@ from .codes import name_for
 from .devmap import ALL_CONTROLS, FACTORY_CODES, FACTORY_OUTPUT
 from .engine import RemapEngine
 from .lighting import EFFECTS, effect_reports
-from .linux.discovery import TartarusNodes, find_tartarus, list_keyboards
+from .linux.discovery import PRODUCT, VENDOR, TartarusNodes, find_tartarus, list_keyboards
 from .linux.evdev import EV_KEY, EV_REL, REL_WHEEL, InputDevice
 from .linux.hidraw import send_feature
 from .linux.uinput import UinputEmitter
@@ -319,6 +319,13 @@ class TartarusService:
     def _profile(self):
         return active_profile(self._config)
 
+    def _device_name(self) -> Optional[str]:
+        if not self._devices:
+            return None
+        # The kernel joins vendor and product strings: "Razer Razer Tartarus Pro".
+        words = self._devices[0].name.split()
+        return " ".join(w for i, w in enumerate(words) if i == 0 or w != words[i - 1]) or None
+
     def state(self) -> dict:
         profile = self._profile()
         lighting = self._config.lighting
@@ -329,6 +336,8 @@ class TartarusService:
                                  "factory": FACTORY_OUTPUT[control]}
         return {
             "connected": bool(self._devices),
+            "device": self._device_name(),
+            "device_id": f"{VENDOR}:{PRODUCT}" if self._devices else None,
             "dpad_mode": profile.dpad_mode,
             "steam_mode": STEAM_ACTION_MODE,
             "bindings": bindings,

@@ -13,6 +13,8 @@ export type LightingState = { effect: string; color: string; brightness: number 
 
 export type State = {
   connected: boolean;
+  device: string | null;
+  device_id: string | null;
   dpad_mode: "4way" | "8way";
   steam_mode: string;
   bindings: Record<string, ControlState>;

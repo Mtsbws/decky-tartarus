@@ -150,8 +150,10 @@ class ServiceTest(unittest.TestCase):
     def test_state_shape(self):
         rig = Rig(self.path)
         state = rig.service.state()
-        self.assertEqual(set(state), {"connected", "dpad_mode", "steam_mode", "bindings", "lighting", "effects"})
+        self.assertEqual(set(state), {"connected", "device", "device_id", "dpad_mode", "steam_mode", "bindings", "lighting", "effects"})
         self.assertFalse(state["connected"])
+        self.assertIsNone(state["device"])
+        self.assertIsNone(state["device_id"])
         self.assertEqual(state["dpad_mode"], "4way")
         self.assertEqual(state["steam_mode"], "api")
         self.assertEqual(list(state["bindings"]), list(ALL_CONTROLS))
@@ -188,6 +190,8 @@ class ServiceTest(unittest.TestCase):
             rig.nodes = TWO_NODES
             await until(lambda: rig.service.state()["connected"])
             self.assertTrue(all(d.grabbed for d in rig.devices))
+            self.assertEqual(rig.service.state()["device"], "Razer Tartarus Pro")
+            self.assertEqual(rig.service.state()["device_id"], "1532:0244")
             self.assertIn(("state_changed", rig.service.state()), rig.events)
 
             kbd, mouse = rig.devices
