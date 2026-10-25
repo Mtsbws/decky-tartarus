@@ -49,6 +49,17 @@ class ConfigTest(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
 
+    def test_save_does_not_follow_planted_tmp_symlink(self):
+        # The folder is the deck user's and the backend is root: a symlink planted
+        # where the temp file goes must not make root write through it.
+        victim = self.dir / "victim"
+        victim.write_text("untouched")
+        (self.dir / "settings.tmp").symlink_to(victim)
+        save_config(self.path, default_config())
+        self.assertEqual(victim.read_text(), "untouched")
+        self.assertEqual(load_config(self.path), default_config())
+        self.assertEqual(oct(self.path.stat().st_mode & 0o777), oct(0o644))
+
     def _write(self, data):
         self.path.write_text(data if isinstance(data, str) else json.dumps(data))
 

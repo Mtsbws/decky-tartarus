@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -77,12 +78,19 @@ def load_config(path: Path) -> Config:
 def save_config(path: Path, c: Config) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
-    with open(tmp, "w") as f:
-        json.dump(_dump(c), f, indent=2)
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp, path)
+    # A fresh, exclusively created temp file: the folder belongs to the deck user
+    # and the backend runs as root, so never write through a name someone planted.
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.stem}.", suffix=".tmp")
+    try:
+        os.fchmod(fd, 0o644)
+        with os.fdopen(fd, "w") as f:
+            json.dump(_dump(c), f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        os.unlink(tmp)
+        raise
 
 
 def _dump(c: Config) -> dict:
