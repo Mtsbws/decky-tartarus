@@ -15,4 +15,6 @@ rsync -a --delete --exclude '__pycache__' \
 
 echo
 echo "Staged on $host. Now run:"
-echo "  ssh -t $host 'sudo mkdir -p /home/deck/homebrew/plugins/decky-tartarus && sudo cp -r /home/deck/$stage/. /home/deck/homebrew/plugins/decky-tartarus/'"
+# plugin.json goes first: Decky ignores main.py/index.js changes in a folder that has none yet.
+dest=/home/deck/homebrew/plugins/decky-tartarus
+echo "  ssh -t $host 'sudo mkdir -p $dest && sudo cp /home/deck/$stage/plugin.json $dest/ && sudo cp -r /home/deck/$stage/. $dest/'"
