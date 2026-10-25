@@ -45,3 +45,9 @@ class Plugin:
     async def set_dpad_mode(self, mode: str) -> dict:
         self.service.set_dpad_mode(mode)
         return self.service.state()
+
+    async def record_start(self) -> None:
+        self.service.record_start()
+
+    async def record_cancel(self) -> None:
+        self.service.record_cancel()

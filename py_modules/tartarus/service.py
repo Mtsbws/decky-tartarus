@@ -10,11 +10,13 @@ from typing import Any, Awaitable, Callable, List, Optional, Set
 
 from .bindings import Binding, binding_label, binding_to_dict
 from .config import DPAD_MODES, active_profile, load_config, save_config
-from .devmap import ALL_CONTROLS
+from .codes import name_for
+from .devmap import ALL_CONTROLS, FACTORY_CODES, FACTORY_OUTPUT
 from .engine import RemapEngine
-from .linux.discovery import TartarusNodes, find_tartarus
+from .linux.discovery import TartarusNodes, find_tartarus, list_keyboards
 from .linux.evdev import EV_KEY, EV_REL, REL_WHEEL, InputDevice
 from .linux.uinput import UinputEmitter
+from .record import RecordCapture
 
 STEAM_ACTION_MODE = "api"  # S3: Navigation API with a toggle; "keys" goes nowhere under Moonlight
 
@@ -45,17 +47,20 @@ class ResumeDetector:
 class TartarusService:
     POLL_INTERVAL = 2.0  # seconds between sysfs scans while the keypad is absent
     RESUME_INTERVAL = 5.0  # seconds between suspend checks
+    RECORD_TIMEOUT = 10.0  # seconds before Record gives up with a null result
 
     def __init__(self, settings_path: Path, emit: Emit, log: Optional[logging.Logger] = None, *,
                  find: Callable[[], Optional[TartarusNodes]] = find_tartarus,
                  open_device: Callable[[str], Any] = InputDevice,
-                 make_emitter: Callable[[Callable[[str], None]], Any] = UinputEmitter) -> None:
+                 make_emitter: Callable[[Callable[[str], None]], Any] = UinputEmitter,
+                 list_keyboards: Callable[[], List[str]] = list_keyboards) -> None:
         self._path = Path(settings_path)
         self._emit = emit
         self._log = log or logging.getLogger("tartarus")
         self._find = find
         self._open_device = open_device
         self._make_emitter = make_emitter
+        self._list_keyboards = list_keyboards
         self._config = load_config(self._path)
         self._emitter: Any = None
         self._engine: Optional[RemapEngine] = None
@@ -64,6 +69,9 @@ class TartarusService:
         self._supervisor: Optional[asyncio.Task] = None
         self._resume = ResumeDetector()
         self._pending: Set[asyncio.Task] = set()
+        self._capture: Optional[RecordCapture] = None
+        self._record_devices: List[Any] = []
+        self._record_timer: Optional[asyncio.TimerHandle] = None
 
     # --- lifecycle ---
 
@@ -84,6 +92,7 @@ class TartarusService:
             except Exception:
                 self._log.exception("supervisor failed")
             self._supervisor = None
+        self._record_stop()
         self._disconnect(notify=False)
         if self._emitter is not None:
             try:
@@ -165,12 +174,83 @@ class TartarusService:
             return
         for type_, code, value in events:
             if type_ == EV_KEY:
+                if self._capture is not None and value != 2:
+                    control = FACTORY_CODES.get(code)
+                    if control is not None:
+                        self._record_feed(FACTORY_OUTPUT[control], value == 1)
                 engine.handle_key(code, value)
             elif type_ == EV_REL and code == REL_WHEEL:
                 engine.handle_wheel(value)
 
     def _on_steam(self, action: str) -> None:
-        self._log.info("steam action %s", action)
+        self._send("steam_action", action)
+
+    # --- record ---
+
+    def record_start(self) -> None:
+        """Capture the next key or shortcut, from the keypad (as its factory key) or any keyboard."""
+        self._record_stop()
+        self._capture = RecordCapture()
+        if self._engine is not None:
+            self._engine.passthrough = True
+        if self._loop is None:
+            self._loop = asyncio.get_running_loop()
+        for path in self._list_keyboards():
+            try:
+                dev = self._open_device(path)  # read-only, not grabbed: it keeps typing as usual
+            except OSError as e:
+                self._log.info("can't read %s for recording (%s)", path, e)
+                continue
+            self._record_devices.append(dev)
+            self._loop.add_reader(dev.fd, self._on_record_readable, dev)
+        self._record_timer = self._loop.call_later(self.RECORD_TIMEOUT, self._record_timeout)
+
+    def record_cancel(self) -> None:
+        self._record_stop()
+
+    def _record_feed(self, name: str, down: bool) -> None:
+        if self._capture is None:
+            return
+        b = self._capture.feed(name, down)
+        if b is not None:
+            self._record_stop()
+            self._send("record_result", binding_to_dict(b))
+
+    def _record_timeout(self) -> None:
+        self._record_timer = None
+        if self._capture is not None:
+            self._record_stop()
+            self._send("record_result", None)
+
+    def _on_record_readable(self, dev: Any) -> None:
+        try:
+            events = dev.read_events()
+        except OSError:
+            self._record_close(dev)
+            return
+        for type_, code, value in events:
+            if type_ == EV_KEY and value != 2:
+                name = name_for(code)
+                if name is not None:
+                    self._record_feed(name, value == 1)
+
+    def _record_close(self, dev: Any) -> None:
+        if dev in self._record_devices:
+            self._record_devices.remove(dev)
+            if self._loop is not None:
+                self._loop.remove_reader(dev.fd)
+            dev.close()
+
+    def _record_stop(self) -> None:
+        if self._record_timer is not None:
+            self._record_timer.cancel()
+            self._record_timer = None
+        for dev in list(self._record_devices):
+            self._record_close(dev)
+        if self._capture is not None:
+            self._capture = None
+            if self._engine is not None:
+                self._engine.passthrough = False
 
     # --- events to the frontend ---
 
