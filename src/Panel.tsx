@@ -84,7 +84,10 @@ export function Panel() {
       <PanelSection title="Keypad">
         <PanelSectionRow>
           <div style={{ color: state?.connected ? "#5ba32b" : "#b8bcbf" }}>
-            {state === null ? "Loading…" : state.connected ? "Connected" : "Not connected"}
+            {state === null ? "Loading…" : state.connected ? `${state.device ?? "Keypad"} connected` : "Not connected"}
+            {state?.connected && state.device_id && (
+              <div style={{ color: "#b8bcbf", fontSize: "12px" }}>USB ID {state.device_id}</div>
+            )}
           </div>
         </PanelSectionRow>
         <PanelSectionRow>
