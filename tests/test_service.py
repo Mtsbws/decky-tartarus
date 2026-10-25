@@ -155,7 +155,11 @@ class ServiceTest(unittest.TestCase):
         self.assertEqual(state["dpad_mode"], "4way")
         self.assertEqual(state["steam_mode"], "api")
         self.assertEqual(list(state["bindings"]), list(ALL_CONTROLS))
-        self.assertEqual(state["bindings"]["k01"], {"binding": {"type": "key", "keys": ["1"]}, "label": "1"})
+        self.assertEqual(state["bindings"]["k01"],
+                         {"binding": {"type": "key", "keys": ["1"]}, "label": "1", "factory": "1"})
+        self.assertEqual(state["bindings"]["dpad_up_right"]["factory"], "hold:Up+Right")
+        for control in ALL_CONTROLS:
+            self.assertTrue(state["bindings"][control]["factory"])
 
     def test_set_binding_persists(self):
         rig = Rig(self.path)

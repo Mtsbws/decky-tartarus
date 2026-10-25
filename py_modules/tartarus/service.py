@@ -325,7 +325,8 @@ class TartarusService:
         bindings = {}
         for control in ALL_CONTROLS:
             b = profile.bindings[control]
-            bindings[control] = {"binding": binding_to_dict(b), "label": binding_label(b)}
+            bindings[control] = {"binding": binding_to_dict(b), "label": binding_label(b),
+                                 "factory": FACTORY_OUTPUT[control]}
         return {
             "connected": bool(self._devices),
             "dpad_mode": profile.dpad_mode,

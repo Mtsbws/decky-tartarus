@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { EV_STATE, getState, setDpadMode, State } from "../api";
 import { errorText } from "../Panel";
+import { BindingPicker } from "./BindingPicker";
 import { controlName, Keypad } from "./Keypad";
 
 export function Editor() {
@@ -43,7 +44,7 @@ export function Editor() {
         <h3 style={{ margin: "0 0 8px" }}>
           Key {controlName(selected)}: {state.bindings[selected]?.label}
         </h3>
-        <div style={{ opacity: 0.7 }}>Binding picker comes next.</div>
+        <BindingPicker control={selected} state={state} onChanged={setState} />
       </div>
     </div>
   );

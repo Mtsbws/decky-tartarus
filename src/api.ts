@@ -7,7 +7,7 @@ export type BindingDict = {
   action?: string;
 };
 
-export type ControlState = { binding: BindingDict; label: string };
+export type ControlState = { binding: BindingDict; label: string; factory: string };
 
 export type LightingState = { effect: string; color: string; brightness: number };
 
