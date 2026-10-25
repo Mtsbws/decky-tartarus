@@ -1,6 +1,6 @@
-import { ButtonItem, DropdownItem, Navigation, PanelSection, PanelSectionRow, SliderField, TextField } from "@decky/ui";
+import { ButtonItem, DropdownItem, Focusable, Navigation, PanelSection, PanelSectionRow, SliderField } from "@decky/ui";
 import { addEventListener, removeEventListener } from "@decky/api";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { EV_STATE, getState, LightingState, setLighting, State } from "./api";
 
@@ -9,6 +9,9 @@ export const EDITOR_ROUTE = "/decky-tartarus/editor";
 // Effects that send no colour to the keypad (spike findings: spectrum and wave).
 const COLOURLESS = new Set(["spectrum", "wave"]);
 const DEBOUNCE_MS = 250;
+const SWATCHES = [
+  "#ff0000", "#ff6000", "#ffff00", "#00ff00", "#00ffff", "#0000ff", "#8000ff", "#ff00ff", "#ffffff",
+];
 
 // The backend raises ValueError on bad input; the callable rejects with its message.
 export function errorText(e: unknown): string {
@@ -16,38 +19,60 @@ export function errorText(e: unknown): string {
   return text.replace(/^[\s\S]*ValueError:\s*/, "").trim() || "Rejected";
 }
 
+// Steam remounts the whole panel each time a dropdown menu opens, and the pick
+// arrives in the old instance. The lighting draft lives out here so the mounted
+// panel sees it.
+let lighting: LightingState | null = null;
+let lightingError: string | null = null;
+let timer: number | undefined;
+let writing = 0;
+const listeners = new Set<() => void>();
+
+function publish() {
+  listeners.forEach((l) => l());
+}
+
+function changeLighting(patch: Partial<LightingState>) {
+  if (!lighting) return;
+  const next = { ...lighting, ...patch };
+  lighting = next;
+  publish();
+  window.clearTimeout(timer);
+  timer = window.setTimeout(() => {
+    timer = undefined;
+    writing++;
+    setLighting(next.effect, next.color, next.brightness)
+      .then(() => (lightingError = null))
+      .catch((e) => (lightingError = errorText(e)))
+      .finally(() => {
+        writing--;
+        publish();
+      });
+  }, DEBOUNCE_MS);
+}
+
 export function Panel() {
   const [state, setState] = useState<State | null>(null);
-  const [draft, setDraft] = useState<LightingState | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const timer = useRef<number | undefined>(undefined);
+  const [, rerender] = useState(0);
 
   useEffect(() => {
+    const listener = () => rerender((n) => n + 1);
+    listeners.add(listener);
     getState().then((s) => {
       setState(s);
-      setDraft(s.lighting);
+      if (timer === undefined && writing === 0) lighting = s.lighting; // a pending edit is newer
+      publish();
     });
-    const listener = addEventListener<[State]>(EV_STATE, setState);
+    const stateListener = addEventListener<[State]>(EV_STATE, setState);
     return () => {
-      removeEventListener(EV_STATE, listener);
-      window.clearTimeout(timer.current);
+      listeners.delete(listener);
+      removeEventListener(EV_STATE, stateListener);
     };
   }, []);
 
-  function change(patch: Partial<LightingState>) {
-    if (!draft) return;
-    const next = { ...draft, ...patch };
-    setDraft(next);
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => {
-      setLighting(next.effect, next.color, next.brightness)
-        .then((s) => {
-          setState(s);
-          setError(null);
-        })
-        .catch((e) => setError(errorText(e)));
-    }, DEBOUNCE_MS);
-  }
+  const draft = lighting;
+  const error = lightingError;
+  const change = changeLighting;
 
   function openEditor() {
     Navigation.Navigate(EDITOR_ROUTE);
@@ -80,11 +105,26 @@ export function Panel() {
           </PanelSectionRow>
           {!COLOURLESS.has(draft.effect) && (
             <PanelSectionRow>
-              <TextField
-                label="Colour (#rrggbb)"
-                value={draft.color}
-                onChange={(e) => change({ color: e.target.value })}
-              />
+              <Focusable flow-children="horizontal" style={{ display: "flex", justifyContent: "space-between" }}>
+                {SWATCHES.map((c) => (
+                  <Focusable
+                    key={c}
+                    onActivate={() => change({ color: c })}
+                    onClick={() => change({ color: c })}
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 4,
+                      background: c,
+                      cursor: "pointer",
+                      outline: draft.color.toLowerCase() === c ? "2px solid #dfe3e6" : "none",
+                      outlineOffset: 2,
+                    }}
+                  >
+                    {null}
+                  </Focusable>
+                ))}
+              </Focusable>
             </PanelSectionRow>
           )}
           <PanelSectionRow>
