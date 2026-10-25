@@ -1,0 +1,17 @@
+{
+  "name": "Decky Tartarus",
+  "author": "Matisse Bauwens",
+  "flags": [
+    "root"
+  ],
+  "api_version": 1,
+  "publish": {
+    "tags": [
+      "keyboard",
+      "remap",
+      "root"
+    ],
+    "description": "Remap a Razer Tartarus Pro, open the Steam menus from it and set its lighting.",
+    "image": "https://opengraph.githubassets.com/1/SteamDeckHomebrew/PluginLoader"
+  }
+}
