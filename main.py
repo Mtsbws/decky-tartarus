@@ -46,6 +46,10 @@ class Plugin:
         self.service.set_dpad_mode(mode)
         return self.service.state()
 
+    async def set_lighting(self, effect: str, color: str, brightness: int) -> dict:
+        self.service.set_lighting(effect, color, brightness)
+        return self.service.state()
+
     async def record_start(self) -> None:
         self.service.record_start()
 

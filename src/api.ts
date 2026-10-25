@@ -9,7 +9,6 @@ export type BindingDict = {
 
 export type ControlState = { binding: BindingDict; label: string };
 
-// Filled in by M3 (lighting); optional until then.
 export type LightingState = { effect: string; color: string; brightness: number };
 
 export type State = {
@@ -17,8 +16,8 @@ export type State = {
   dpad_mode: "4way" | "8way";
   steam_mode: string;
   bindings: Record<string, ControlState>;
-  lighting?: LightingState;
-  effects?: string[];
+  lighting: LightingState;
+  effects: string[];
 };
 
 export type SetTextResult = { ok: boolean; error: string | null; state: State };
@@ -27,6 +26,7 @@ export const getState = callable<[], State>("get_state");
 export const setBinding = callable<[control: string, binding: BindingDict], State>("set_binding");
 export const setBindingText = callable<[control: string, text: string], SetTextResult>("set_binding_text");
 export const setDpadMode = callable<[mode: "4way" | "8way"], State>("set_dpad_mode");
+export const setLighting = callable<[effect: string, color: string, brightness: number], State>("set_lighting");
 export const recordStart = callable<[], void>("record_start");
 export const recordCancel = callable<[], void>("record_cancel");
 

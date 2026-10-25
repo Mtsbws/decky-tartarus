@@ -9,12 +9,14 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, List, Optional, Set
 
 from .bindings import Binding, binding_label, binding_to_dict
-from .config import DPAD_MODES, active_profile, load_config, save_config
+from .config import DPAD_MODES, Lighting, active_profile, load_config, save_config
 from .codes import name_for
 from .devmap import ALL_CONTROLS, FACTORY_CODES, FACTORY_OUTPUT
 from .engine import RemapEngine
+from .lighting import EFFECTS, effect_reports
 from .linux.discovery import TartarusNodes, find_tartarus, list_keyboards
 from .linux.evdev import EV_KEY, EV_REL, REL_WHEEL, InputDevice
+from .linux.hidraw import send_feature
 from .linux.uinput import UinputEmitter
 from .record import RecordCapture
 
@@ -53,7 +55,8 @@ class TartarusService:
                  find: Callable[[], Optional[TartarusNodes]] = find_tartarus,
                  open_device: Callable[[str], Any] = InputDevice,
                  make_emitter: Callable[[Callable[[str], None]], Any] = UinputEmitter,
-                 list_keyboards: Callable[[], List[str]] = list_keyboards) -> None:
+                 list_keyboards: Callable[[], List[str]] = list_keyboards,
+                 send_feature: Callable[[str, bytes], int] = send_feature) -> None:
         self._path = Path(settings_path)
         self._emit = emit
         self._log = log or logging.getLogger("tartarus")
@@ -61,10 +64,17 @@ class TartarusService:
         self._open_device = open_device
         self._make_emitter = make_emitter
         self._list_keyboards = list_keyboards
+        self._send_feature = send_feature
         self._config = load_config(self._path)
+        try:
+            self._lighting_reports()
+        except ValueError as e:  # config.py doesn't know the effect names; a stored one may be stale
+            self._log.warning("stored lighting is invalid (%s); using the default", e)
+            self._config.lighting = Lighting()
         self._emitter: Any = None
         self._engine: Optional[RemapEngine] = None
         self._devices: List[Any] = []
+        self._hidraw: Optional[str] = None
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._supervisor: Optional[asyncio.Task] = None
         self._resume = ResumeDetector()
@@ -144,7 +154,9 @@ class TartarusService:
         for dev in opened:
             self._loop.add_reader(dev.fd, self._on_readable, dev)
         self._devices = opened
+        self._hidraw = nodes.hidraw
         self._log.info("keypad connected: %s", ", ".join(nodes.event))
+        self._apply_lighting()
         self._notify()
 
     def _disconnect(self, notify: bool = True) -> None:
@@ -161,6 +173,7 @@ class TartarusService:
                 pass  # already gone
             dev.close()
         self._devices = []
+        self._hidraw = None
         self._last_seen = None
         self._log.info("keypad disconnected")
         if notify:
@@ -185,6 +198,33 @@ class TartarusService:
                 engine.handle_key(code, value)
             elif type_ == EV_REL and code == REL_WHEEL:
                 engine.handle_wheel(value)
+
+    # --- lighting ---
+
+    def _lighting_reports(self) -> List[bytes]:
+        lighting = self._config.lighting
+        return effect_reports(lighting.effect, lighting.color, lighting.brightness)
+
+    def _apply_lighting(self) -> None:
+        """Send the stored lighting to the keypad; failures are logged, never raised."""
+        if not self._devices:
+            return
+        if self._hidraw is None:
+            self._log.warning("no lighting interface found; lighting not applied")
+            return
+        for report in self._lighting_reports():
+            try:
+                status = self._send_feature(self._hidraw, report)
+            except OSError as e:
+                self._log.warning("lighting command failed on %s (%s)", self._hidraw, e)
+                return
+            if status != 0x02:
+                self._log.warning("lighting command %02x/%02x returned status 0x%02x",
+                                  report[6], report[7], status)
+                return
+        lighting = self._config.lighting
+        self._log.info("lighting applied: %s %s %d%% (status 0x02)",
+                       lighting.effect, lighting.color, lighting.brightness)
 
     def _on_steam(self, action: str) -> None:
         self._send("steam_action", action)
@@ -281,6 +321,7 @@ class TartarusService:
 
     def state(self) -> dict:
         profile = self._profile()
+        lighting = self._config.lighting
         bindings = {}
         for control in ALL_CONTROLS:
             b = profile.bindings[control]
@@ -290,6 +331,8 @@ class TartarusService:
             "dpad_mode": profile.dpad_mode,
             "steam_mode": STEAM_ACTION_MODE,
             "bindings": bindings,
+            "lighting": {"effect": lighting.effect, "color": lighting.color, "brightness": lighting.brightness},
+            "effects": list(EFFECTS),
         }
 
     def set_binding(self, control: str, b: Binding) -> None:
@@ -303,6 +346,12 @@ class TartarusService:
             raise ValueError(f"unknown d-pad mode {mode!r}")
         self._profile().dpad_mode = mode
         self._save()
+
+    def set_lighting(self, effect: str, color: str, brightness: int) -> None:
+        effect_reports(effect, color, brightness)  # raises ValueError before anything changes
+        self._config.lighting = Lighting(effect=effect, color=color, brightness=brightness)
+        save_config(self._path, self._config)
+        self._apply_lighting()
 
     def _save(self) -> None:
         save_config(self._path, self._config)

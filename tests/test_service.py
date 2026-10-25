@@ -87,7 +87,7 @@ class FakeDevice:
 class Rig:
     """A service wired to fakes: nodes come and go by setting rig.nodes."""
 
-    def __init__(self, settings_path, grab_error=None, emitter_error=None):
+    def __init__(self, settings_path, grab_error=None, emitter_error=None, **service_kwargs):
         self.nodes = None
         self.devices = []
         self.events = []
@@ -107,8 +107,10 @@ class Rig:
                 raise emitter_error
             return self.emitter
 
+        service_kwargs.setdefault("send_feature", lambda path, report: 0x02)  # never touch real hidraw
         self.service = TartarusService(settings_path, emit, find=lambda: self.nodes,
-                                       open_device=open_device, make_emitter=make_emitter)
+                                       open_device=open_device, make_emitter=make_emitter,
+                                       **service_kwargs)
         self.service.POLL_INTERVAL = 0.01
         self.service.RESUME_INTERVAL = 0.01
 
@@ -148,7 +150,7 @@ class ServiceTest(unittest.TestCase):
     def test_state_shape(self):
         rig = Rig(self.path)
         state = rig.service.state()
-        self.assertEqual(set(state), {"connected", "dpad_mode", "steam_mode", "bindings"})
+        self.assertEqual(set(state), {"connected", "dpad_mode", "steam_mode", "bindings", "lighting", "effects"})
         self.assertFalse(state["connected"])
         self.assertEqual(state["dpad_mode"], "4way")
         self.assertEqual(state["steam_mode"], "api")
