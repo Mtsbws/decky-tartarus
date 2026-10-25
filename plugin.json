@@ -2,8 +2,7 @@
   "name": "Decky Tartarus",
   "author": "Matisse Bauwens",
   "flags": [
-    "root",
-    "debug"
+    "root"
   ],
   "api_version": 1,
   "publish": {
