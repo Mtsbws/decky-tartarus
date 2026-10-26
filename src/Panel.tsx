@@ -2,7 +2,7 @@ import { ButtonItem, DropdownItem, Focusable, Navigation, PanelSection, PanelSec
 import { addEventListener, removeEventListener } from "@decky/api";
 import { useEffect, useState } from "react";
 
-import { EV_STATE, getState, LightingState, setLighting, State } from "./api";
+import { activeProfile, assignRunningGame, EV_STATE, getState, LightingState, setLighting, State } from "./api";
 
 export const EDITOR_ROUTE = "/decky-tartarus/editor";
 
@@ -24,6 +24,7 @@ export function errorText(e: unknown): string {
 // panel sees it.
 let lighting: LightingState | null = null;
 let lightingError: string | null = null;
+let assignError: string | null = null;
 let timer: number | undefined;
 let writing = 0;
 const listeners = new Set<() => void>();
@@ -51,6 +52,13 @@ function changeLighting(patch: Partial<LightingState>) {
   }, DEBOUNCE_MS);
 }
 
+function assignGame(profileId: string) {
+  assignRunningGame(profileId)
+    .then(() => (assignError = null))
+    .catch((e) => (assignError = errorText(e)))
+    .finally(publish);
+}
+
 export function Panel() {
   const [state, setState] = useState<State | null>(null);
   const [, rerender] = useState(0);
@@ -73,6 +81,7 @@ export function Panel() {
   const draft = lighting;
   const error = lightingError;
   const change = changeLighting;
+  const profile = state ? activeProfile(state) : null;
 
   function openEditor() {
     Navigation.Navigate(EDITOR_ROUTE);
@@ -90,6 +99,25 @@ export function Panel() {
             )}
           </div>
         </PanelSectionRow>
+        {state && profile && (
+          <PanelSectionRow>
+            <div>Layout: {profile.name}</div>
+          </PanelSectionRow>
+        )}
+        {state?.running_app && (
+          <PanelSectionRow>
+            <DropdownItem
+              label={`${state.running_app.name} uses:`}
+              rgOptions={state.profiles.map((p) => ({
+                data: p.id,
+                label: p.is_default ? `${p.name} (default)` : p.name,
+              }))}
+              selectedOption={state.active_profile}
+              onChange={(o) => assignGame(o.data)}
+            />
+            {assignError && <div style={{ color: "#e05050" }}>{assignError}</div>}
+          </PanelSectionRow>
+        )}
         <PanelSectionRow>
           <ButtonItem layout="below" onClick={openEditor}>
             Edit keys
