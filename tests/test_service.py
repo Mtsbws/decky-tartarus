@@ -304,6 +304,39 @@ class PluginTest(unittest.TestCase):
         plugin = load_main(decky).Plugin()
         asyncio.run(plugin._unload())  # _main never ran: no service attribute
 
+    def test_plugin_profile_callables(self):
+        import logging
+        with tempfile.TemporaryDirectory() as tmp:
+            async def emit(*args):
+                pass
+
+            decky = types.SimpleNamespace(logger=logging.getLogger("tartarus.test"),
+                                          DECKY_PLUGIN_SETTINGS_DIR=tmp, emit=emit)
+            main = load_main(decky)
+            plugin = main.Plugin()
+            plugin.service = main.TartarusService(Path(tmp) / "settings.json", emit)
+
+            async def go():
+                state = await plugin.create_profile("MMO", "default")
+                self.assertEqual(state["profiles"][1]["name"], "MMO")
+                p2 = state["profiles"][1]["id"]
+                ok = await plugin.set_binding_text(p2, "k01", "Esc")
+                self.assertTrue(ok["ok"])
+                profiles = ok["state"]["profiles"]
+                self.assertEqual(profiles[1]["bindings"]["k01"]["label"], "Esc")
+                self.assertEqual(profiles[0]["bindings"]["k01"]["label"], "1")
+                await plugin.set_running_app(1343400, "RuneScape")
+                state = await plugin.assign_running_game(p2)
+                self.assertEqual(state["active_profile"], p2)
+                self.assertEqual(state["running_app"], {"app_id": 1343400, "name": "RuneScape"})
+                state = await plugin.rename_profile(p2, "Runescape")
+                self.assertEqual(state["profiles"][1]["name"], "Runescape")
+                state = await plugin.delete_profile(p2)
+                self.assertEqual(len(state["profiles"]), 1)
+                self.assertEqual(state["active_profile"], "default")
+
+            asyncio.run(go())
+
     def test_plugin_set_binding_text(self):
         import logging
         with tempfile.TemporaryDirectory() as tmp:

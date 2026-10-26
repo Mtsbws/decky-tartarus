@@ -1,3 +1,4 @@
+from typing import Optional
 from pathlib import Path
 
 import decky
@@ -44,6 +45,26 @@ class Plugin:
 
     async def set_dpad_mode(self, profile_id: str, mode: str) -> dict:
         self.service.set_dpad_mode(profile_id, mode)
+        return self.service.state()
+
+    async def set_running_app(self, app_id: Optional[int], name: Optional[str]) -> dict:
+        self.service.set_running_app(app_id, name)
+        return self.service.state()
+
+    async def assign_running_game(self, profile_id: str) -> dict:
+        self.service.assign_running_game(profile_id)
+        return self.service.state()
+
+    async def create_profile(self, name: str, copy_from_id: str) -> dict:
+        self.service.create_profile(name, copy_from_id)
+        return self.service.state()
+
+    async def rename_profile(self, profile_id: str, name: str) -> dict:
+        self.service.rename_profile(profile_id, name)
+        return self.service.state()
+
+    async def delete_profile(self, profile_id: str) -> dict:
+        self.service.delete_profile(profile_id)
         return self.service.state()
 
     async def set_lighting(self, effect: str, color: str, brightness: int) -> dict:
