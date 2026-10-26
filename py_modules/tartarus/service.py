@@ -6,10 +6,11 @@ import errno
 import logging
 import time
 from pathlib import Path
-from typing import Any, Awaitable, Callable, List, Optional, Set
+from typing import Any, Awaitable, Callable, List, Optional, Set, Tuple
 
 from .bindings import Binding, binding_label, binding_to_dict
-from .config import DPAD_MODES, Lighting, default_profile, load_config, save_config
+from .config import (DPAD_MODES, Game, Lighting, Profile, default_profile, find_profile, load_config,
+                     profile_for_app, save_config)
 from .codes import name_for
 from .devmap import ALL_CONTROLS, FACTORY_CODES, FACTORY_OUTPUT
 from .engine import RemapEngine
@@ -20,6 +21,8 @@ from .linux.hidraw import send_feature
 from .linux.uinput import UinputEmitter
 from .record import RecordCapture
 
+MAX_PROFILES = 8
+MAX_APP_ID = 2**32 - 1
 STEAM_ACTION_MODE = "api"  # S3: Navigation API with a toggle; "keys" goes nowhere under Moonlight
 
 Emit = Callable[..., Awaitable[None]]
@@ -71,6 +74,7 @@ class TartarusService:
         except ValueError as e:  # config.py doesn't know the effect names; a stored one may be stale
             self._log.warning("stored lighting is invalid (%s); using the default", e)
             self._config.lighting = Lighting()
+        self._running: Optional[Tuple[int, str]] = None  # (app id, name); never persisted
         self._emitter: Any = None
         self._engine: Optional[RemapEngine] = None
         self._devices: List[Any] = []
@@ -156,6 +160,8 @@ class TartarusService:
         self._devices = opened
         self._hidraw = nodes.hidraw
         self._log.info("keypad connected: %s", ", ".join(nodes.event))
+        if self._engine is not None:
+            self._engine.set_profile(self._profile())
         self._apply_lighting()
         self._notify()
 
@@ -316,8 +322,42 @@ class TartarusService:
 
     # --- settings ---
 
-    def _profile(self):
-        return default_profile(self._config)
+    def _profile(self) -> Profile:
+        return profile_for_app(self._config, self._running[0] if self._running else None)
+
+    def _switch(self, before_id: str) -> None:
+        """Follow a change of the derived active profile: drop a Record capture, then swap the engine."""
+        active = self._profile()
+        if active.id == before_id:
+            return
+        if self._capture is not None:
+            self._record_stop()
+            self._send("record_result", None)
+        if self._engine is not None:
+            self._engine.set_profile(active)
+
+    def set_running_app(self, app_id: Optional[int], name: Optional[str]) -> None:
+        """The frontend reports the foreground game; None or 0 means none."""
+        if app_id is not None and (isinstance(app_id, bool) or not isinstance(app_id, int)
+                                   or not 0 <= app_id <= MAX_APP_ID):
+            raise ValueError(f"invalid app id {app_id!r}")
+        if not app_id:
+            running = None
+        else:
+            clean = name.strip() if isinstance(name, str) else ""
+            running = (app_id, clean or str(app_id))
+        if running == self._running:
+            return
+        before_id = self._profile().id
+        self._running = running
+        if running is not None:
+            game = self._config.games.get(str(running[0]))
+            # A blank name must not overwrite a good stored one with the bare id.
+            if game is not None and running[1] != str(running[0]) and game.name != running[1]:
+                self._config.games[str(running[0])] = Game(name=running[1], profile=game.profile)
+                self._save()
+        self._switch(before_id)
+        self._notify()
 
     def _device_name(self) -> Optional[str]:
         if not self._devices:
@@ -327,35 +367,54 @@ class TartarusService:
         return " ".join(w for i, w in enumerate(words) if i == 0 or w != words[i - 1]) or None
 
     def state(self) -> dict:
-        profile = self._profile()
         lighting = self._config.lighting
-        bindings = {}
-        for control in ALL_CONTROLS:
-            b = profile.bindings[control]
-            bindings[control] = {"binding": binding_to_dict(b), "label": binding_label(b),
-                                 "factory": FACTORY_OUTPUT[control]}
+        profiles = []
+        for p in self._config.profiles:
+            bindings = {}
+            for control in ALL_CONTROLS:
+                b = p.bindings[control]
+                bindings[control] = {"binding": binding_to_dict(b), "label": binding_label(b),
+                                     "factory": FACTORY_OUTPUT[control]}
+            games = sorted((g.name for g in self._config.games.values() if g.profile == p.id), key=str.lower)
+            profiles.append({"id": p.id, "name": p.name, "is_default": p is self._config.profiles[0],
+                             "games": games, "dpad_mode": p.dpad_mode, "bindings": bindings})
         return {
             "connected": bool(self._devices),
             "device": self._device_name(),
             "device_id": f"{VENDOR}:{PRODUCT}" if self._devices else None,
-            "dpad_mode": profile.dpad_mode,
             "steam_mode": STEAM_ACTION_MODE,
-            "bindings": bindings,
             "lighting": {"effect": lighting.effect, "color": lighting.color, "brightness": lighting.brightness},
             "effects": list(EFFECTS),
+            "active_profile": self._profile().id,
+            "running_app": {"app_id": self._running[0], "name": self._running[1]} if self._running else None,
+            "max_profiles": MAX_PROFILES,
+            "profiles": profiles,
         }
 
-    def set_binding(self, control: str, b: Binding) -> None:
+    def _edit_target(self, profile_id: str) -> Profile:
+        profile = find_profile(self._config, profile_id)
+        if profile is None:
+            raise ValueError(f"unknown profile {profile_id!r}")
+        return profile
+
+    def _edited(self, profile: Profile) -> None:
+        self._save()
+        if self._engine is not None and profile.id == self._profile().id:
+            self._engine.set_profile(profile)
+
+    def set_binding(self, profile_id: str, control: str, b: Binding) -> None:
+        profile = self._edit_target(profile_id)
         if control not in ALL_CONTROLS:
             raise ValueError(f"unknown control {control!r}")
-        self._profile().bindings[control] = b
-        self._save()
+        profile.bindings[control] = b
+        self._edited(profile)
 
-    def set_dpad_mode(self, mode: str) -> None:
+    def set_dpad_mode(self, profile_id: str, mode: str) -> None:
+        profile = self._edit_target(profile_id)
         if mode not in DPAD_MODES:
             raise ValueError(f"unknown d-pad mode {mode!r}")
-        self._profile().dpad_mode = mode
-        self._save()
+        profile.dpad_mode = mode
+        self._edited(profile)
 
     def set_lighting(self, effect: str, color: str, brightness: int) -> None:
         effect_reports(effect, color, brightness)  # raises ValueError before anything changes
@@ -364,6 +423,5 @@ class TartarusService:
         self._apply_lighting()
 
     def _save(self) -> None:
+        """Persist only. Never touches the engine: set_profile releases keys the user may be holding."""
         save_config(self._path, self._config)
-        if self._engine is not None:
-            self._engine.set_profile(self._profile())
