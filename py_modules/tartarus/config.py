@@ -113,10 +113,10 @@ def next_leds(c: Config) -> Tuple[bool, bool, bool]:
 def clean_name(c: Config, name: str, exclude_id: Optional[str] = None) -> str:
     name = name.strip()
     if not name or len(name) > NAME_MAX:
-        raise ValueError(f"a profile name needs 1 to {NAME_MAX} characters")
+        raise ValueError(f"A profile name needs 1 to {NAME_MAX} characters")
     for p in c.profiles:
         if p.id != exclude_id and p.name.casefold() == name.casefold():
-            raise ValueError(f"there is already a profile called {p.name!r}")
+            raise ValueError(f"There is already a profile called {p.name!r}")
     return name
 
 
