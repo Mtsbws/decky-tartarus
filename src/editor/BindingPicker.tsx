@@ -17,7 +17,7 @@ export function BindingPicker(props: { control: string; state: State; profile: P
   const [error, setError] = useState<string | null>(null);
   const [moreKeys, setMoreKeys] = useState(false);
 
-  // A new control starts clean; a recording for the previous one is cancelled.
+  // A new control or profile starts clean; a recording for the previous one is cancelled.
   useEffect(() => {
     setRecord("idle");
     setText("");
@@ -25,7 +25,7 @@ export function BindingPicker(props: { control: string; state: State; profile: P
     return () => {
       recordCancel().catch(() => undefined);
     };
-  }, [control]);
+  }, [control, profile.id]);
 
   useEffect(() => {
     if (record !== "recording") return;
@@ -45,7 +45,7 @@ export function BindingPicker(props: { control: string; state: State; profile: P
     return () => {
       removeEventListener(EV_RECORD, listener);
     };
-  }, [record, control]);
+  }, [record, control, profile.id]);
 
   function applyText(value: string) {
     setBindingText(profile.id, control, value)

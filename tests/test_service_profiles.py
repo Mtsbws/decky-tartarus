@@ -2,6 +2,7 @@ import asyncio
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tartarus.bindings import parse_binding_text
 from tartarus.config import Config, Game, Profile, default_config, factory_bindings, load_config, save_config
@@ -48,6 +49,16 @@ class ProfileSwitchTest(unittest.TestCase):
             state = rig.service.state()
             self.assertEqual(state["active_profile"], "default")
             self.assertIsNone(state["running_app"])
+            await rig.service.stop()
+
+        self.run_async(go())
+
+    def test_failed_name_save_still_switches(self):
+        async def go():
+            rig = await self.connected()
+            with mock.patch("tartarus.service.save_config", side_effect=OSError("disk full")):
+                rig.service.set_running_app(RUNESCAPE, "RuneScape Renamed")
+            self.assertEqual(rig.service.state()["active_profile"], "p2")
             await rig.service.stop()
 
         self.run_async(go())

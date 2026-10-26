@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, List, Optional, Set, Tuple
 
 from .bindings import Binding, binding_label, binding_to_dict
-from .config import (DEFAULT_ID, DPAD_MODES, Game, Lighting, Profile, clean_name, default_profile, find_profile,
-                     load_config, new_profile_id, next_leds, profile_for_app, save_config)
+from .config import (DEFAULT_ID, DPAD_MODES, MAX_APP_ID, MAX_PROFILES, Game, Lighting, Profile, clean_name,
+                     default_profile, find_profile, load_config, new_profile_id, next_leds, profile_for_app, save_config)
 from .codes import name_for
 from .devmap import ALL_CONTROLS, FACTORY_CODES, FACTORY_OUTPUT
 from .engine import RemapEngine
@@ -21,8 +21,6 @@ from .linux.hidraw import send_feature
 from .linux.uinput import UinputEmitter
 from .record import RecordCapture
 
-MAX_PROFILES = 8
-MAX_APP_ID = 2**32 - 1
 STEAM_ACTION_MODE = "api"  # S3: Navigation API with a toggle; "keys" goes nowhere under Moonlight
 
 Emit = Callable[..., Awaitable[None]]
@@ -355,7 +353,11 @@ class TartarusService:
             # A blank name must not overwrite a good stored one with the bare id.
             if game is not None and running[1] != str(running[0]) and game.name != running[1]:
                 self._config.games[str(running[0])] = Game(name=running[1], profile=game.profile)
-                self._save()
+                try:
+                    self._save()
+                except OSError as e:
+                    # A failed name refresh must never block the profile switch.
+                    self._log.warning("saving the game name failed (%s); switching anyway", e)
         self._switch(before_id)
         self._notify()
 
