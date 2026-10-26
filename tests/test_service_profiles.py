@@ -186,3 +186,187 @@ class ProfileSwitchTest(unittest.TestCase):
             await rig.service.stop()
 
         self.run_async(go())
+
+
+    def keys(self, rig):
+        return [e for e in rig.emitter.out if e[0] == "key"]
+
+    def unassign_file(self):
+        c = load_config(self.path)
+        c.games = {}
+        save_config(self.path, c)
+
+    def test_assign_running_game(self):
+        async def go():
+            self.unassign_file()
+            rig = await self.connected()
+            rig.service.set_running_app(RUNESCAPE, "RuneScape")
+            self.assertEqual(rig.service.state()["active_profile"], "default")
+            rig.devices[0].push((EV_KEY, KEY_1, 1), (EV_SYN, 0, 0))
+            await until(lambda: ("key", KEY_1, True) in rig.emitter.out)
+            rig.service.assign_running_game("p2")
+            self.assertEqual(self.keys(rig)[-1], ("key", KEY_1, False))
+            self.assertEqual(rig.service.state()["active_profile"], "p2")
+            self.assertEqual(load_config(self.path).games[str(RUNESCAPE)], Game(name="RuneScape", profile="p2"))
+            rig.service.assign_running_game("default")
+            self.assertEqual(rig.service.state()["active_profile"], "default")
+            self.assertNotIn(str(RUNESCAPE), load_config(self.path).games)
+            with self.assertRaises(ValueError):
+                rig.service.assign_running_game("nope")
+            rig.service.set_running_app(None, None)
+            before = self.path.read_bytes()
+            rig.service.assign_running_game("p2")
+            self.assertEqual(self.path.read_bytes(), before)
+            await rig.service.stop()
+
+        self.run_async(go())
+
+    def test_create_profile_copies_and_caps(self):
+        async def go():
+            rig = Rig(self.path)
+            await rig.service.start()
+            svc = rig.service
+            new_id = svc.create_profile(" FPS ", "p2")
+            c = load_config(self.path)
+            fps, mmo = c.profiles[-1], c.profiles[1]
+            self.assertEqual(fps.id, new_id)
+            self.assertEqual(fps.name, "FPS")
+            self.assertEqual(fps.bindings, mmo.bindings)
+            self.assertEqual(fps.dpad_mode, mmo.dpad_mode)
+            self.assertEqual(fps.leds, (False, True, False))
+            svc.set_binding(new_id, "k01", parse_binding_text("F5"))
+            self.assertEqual(load_config(self.path).profiles[1].bindings["k01"], parse_binding_text("Esc"))
+            for i in range(8 - len(load_config(self.path).profiles)):
+                svc.create_profile(f"P{i}", "default")
+            before = self.path.read_bytes()
+            for args in (("Extra", "default"), ("mmo", "default"), ("", "default"), ("x" * 25, "default")):
+                with self.assertRaises(ValueError):
+                    svc.create_profile(*args)
+            self.assertEqual(self.path.read_bytes(), before)
+            await rig.service.stop()
+
+        self.run_async(go())
+
+    def test_create_clash_and_unknown_source(self):
+        async def go():
+            rig = Rig(self.path)
+            await rig.service.start()
+            before = self.path.read_bytes()
+            with self.assertRaises(ValueError):
+                rig.service.create_profile("mmo", "default")
+            with self.assertRaises(ValueError):
+                rig.service.create_profile("Fine", "nope")
+            self.assertEqual(self.path.read_bytes(), before)
+            await rig.service.stop()
+
+        self.run_async(go())
+
+    def test_led_reuse_after_delete(self):
+        async def go():
+            rig = Rig(self.path)
+            await rig.service.start()
+            svc = rig.service
+            svc._config.profiles.clear()
+            svc._config.profiles.extend(default_config().profiles)
+            svc._config.games.clear()
+            a = svc.create_profile("A", "default")
+            b = svc.create_profile("B", "default")
+            c = svc.create_profile("C", "default")
+            self.assertEqual([p.leds for p in svc._config.profiles[1:]],
+                             [(True, False, False), (False, True, False), (False, False, True)])
+            svc.delete_profile(b)
+            d = svc.create_profile("D", "default")
+            self.assertEqual(svc._config.profiles[-1].leds, (False, True, False))
+            await rig.service.stop()
+
+        self.run_async(go())
+
+    def test_rename_profile(self):
+        async def go():
+            rig = Rig(self.path)
+            await rig.service.start()
+            svc = rig.service
+            svc.rename_profile("p2", "Raid")
+            c = load_config(self.path)
+            self.assertEqual(c.profiles[1].name, "Raid")
+            self.assertEqual(c.games[str(RUNESCAPE)].profile, "p2")
+            svc.rename_profile("default", "Base")
+            self.assertEqual(load_config(self.path).profiles[0].name, "Base")
+            self.assertEqual(svc.state()["active_profile"], "default")
+            svc.rename_profile("p2", "RAID")
+            self.assertEqual(load_config(self.path).profiles[1].name, "RAID")
+            with self.assertRaises(ValueError):
+                svc.rename_profile("p2", "base")
+            with self.assertRaises(ValueError):
+                svc.rename_profile("nope", "X")
+            await rig.service.stop()
+
+        self.run_async(go())
+
+    def test_rename_does_not_touch_engine(self):
+        async def go():
+            rig = await self.connected()
+            rig.service.set_running_app(RUNESCAPE, "RuneScape")
+            rig.devices[0].push((EV_KEY, KEY_1, 1), (EV_SYN, 0, 0))
+            await until(lambda: ("key", KEY_ESC, True) in rig.emitter.out)
+            calls = self.count_set_profile(rig)
+            rig.service.rename_profile("p2", "Raid")
+            rig.service.create_profile("New", "p2")
+            self.assertEqual(calls, [])
+            self.assertEqual(self.keys(rig)[-1], ("key", KEY_ESC, True))
+            await rig.service.stop()
+
+        self.run_async(go())
+
+    def test_delete_profile(self):
+        async def go():
+            rig = await self.connected()
+            rig.service.set_running_app(RUNESCAPE, "RuneScape")
+            rig.devices[0].push((EV_KEY, KEY_1, 1), (EV_SYN, 0, 0))
+            await until(lambda: ("key", KEY_ESC, True) in rig.emitter.out)
+            rig.service.delete_profile("p2")
+            self.assertEqual(self.keys(rig)[-1], ("key", KEY_ESC, False))
+            self.assertEqual(rig.service.state()["active_profile"], "default")
+            c = load_config(self.path)
+            self.assertEqual([p.id for p in c.profiles], ["default"])
+            self.assertNotIn(str(RUNESCAPE), c.games)
+            with self.assertRaises(ValueError):
+                rig.service.delete_profile("default")
+            with self.assertRaises(ValueError):
+                rig.service.delete_profile("nope")
+            await rig.service.stop()
+
+        self.run_async(go())
+
+    def test_reassign_via_delete_other_keeps_active(self):
+        async def go():
+            rig = await self.connected()
+            rig.service.create_profile("Other", "default")
+            rig.service.set_running_app(RUNESCAPE, "RuneScape")
+            rig.devices[0].push((EV_KEY, KEY_1, 1), (EV_SYN, 0, 0))
+            await until(lambda: ("key", KEY_ESC, True) in rig.emitter.out)
+            calls = self.count_set_profile(rig)
+            rig.service.delete_profile("p3")
+            self.assertEqual(calls, [])
+            self.assertEqual(self.keys(rig)[-1], ("key", KEY_ESC, True))
+            await rig.service.stop()
+
+        self.run_async(go())
+
+    def test_profile_ops_emit_state(self):
+        async def go():
+            self.unassign_file()
+            rig = await self.connected()
+            rig.service.set_running_app(RUNESCAPE, "RuneScape")
+            ops = [lambda: rig.service.assign_running_game("p2"),
+                   lambda: rig.service.create_profile("New", "default"),
+                   lambda: rig.service.rename_profile("p3", "Newer"),
+                   lambda: rig.service.delete_profile("p3")]
+            for op in ops:
+                await asyncio.sleep(0.01)
+                n = len([e for e in rig.events if e[0] == "state_changed"])
+                op()
+                await until(lambda: len([e for e in rig.events if e[0] == "state_changed"]) > n)
+            await rig.service.stop()
+
+        self.run_async(go())

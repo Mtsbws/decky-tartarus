@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, List, Optional, Set, Tuple
 
 from .bindings import Binding, binding_label, binding_to_dict
-from .config import (DPAD_MODES, Game, Lighting, Profile, default_profile, find_profile, load_config,
-                     profile_for_app, save_config)
+from .config import (DEFAULT_ID, DPAD_MODES, Game, Lighting, Profile, clean_name, default_profile, find_profile,
+                     load_config, new_profile_id, next_leds, profile_for_app, save_config)
 from .codes import name_for
 from .devmap import ALL_CONTROLS, FACTORY_CODES, FACTORY_OUTPUT
 from .engine import RemapEngine
@@ -415,6 +415,55 @@ class TartarusService:
             raise ValueError(f"unknown d-pad mode {mode!r}")
         profile.dpad_mode = mode
         self._edited(profile)
+
+    def _mutate(self, change: Callable[[], None]) -> None:
+        """Apply an already-validated config change, persist it, follow any change of the active profile."""
+        before_id = self._profile().id
+        change()
+        self._save()
+        self._switch(before_id)
+        self._notify()
+
+    def assign_running_game(self, profile_id: str) -> None:
+        self._edit_target(profile_id)
+        if self._running is None:
+            return
+        app_id, name = str(self._running[0]), self._running[1]
+
+        def change() -> None:
+            if profile_id == DEFAULT_ID:
+                self._config.games.pop(app_id, None)
+            else:
+                self._config.games[app_id] = Game(name=name, profile=profile_id)
+
+        self._mutate(change)
+
+    def create_profile(self, name: str, copy_from_id: str) -> str:
+        source = self._edit_target(copy_from_id)
+        if len(self._config.profiles) >= MAX_PROFILES:
+            raise ValueError(f"At most {MAX_PROFILES} profiles")
+        name = clean_name(self._config, name)
+        profile = Profile(id=new_profile_id(self._config), name=name, dpad_mode=source.dpad_mode,
+                          bindings=dict(source.bindings), leds=next_leds(self._config))
+        self._mutate(lambda: self._config.profiles.append(profile))
+        return profile.id
+
+    def rename_profile(self, profile_id: str, name: str) -> None:
+        profile = self._edit_target(profile_id)
+        name = clean_name(self._config, name, exclude_id=profile_id)
+        self._mutate(lambda: setattr(profile, "name", name))
+
+    def delete_profile(self, profile_id: str) -> None:
+        profile = self._edit_target(profile_id)
+        if profile_id == DEFAULT_ID:
+            raise ValueError("Default can't be deleted")
+
+        def change() -> None:
+            self._config.profiles.remove(profile)
+            for key in [k for k, g in self._config.games.items() if g.profile == profile_id]:
+                del self._config.games[key]
+
+        self._mutate(change)
 
     def set_lighting(self, effect: str, color: str, brightness: int) -> None:
         effect_reports(effect, color, brightness)  # raises ValueError before anything changes
