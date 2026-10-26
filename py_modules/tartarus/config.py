@@ -133,7 +133,11 @@ def load_config(path: Path) -> Config:
     if not path.exists():
         return default_config()
     try:
-        return _parse(json.loads(path.read_text()))
+        text = path.read_text()
+        data = json.loads(text)
+        if isinstance(data, dict) and data.get("version") == 1:
+            return _migrate_v1_file(path, text, data)
+        return _parse(data)
     except (ValueError, _Corrupt) as e:  # json.JSONDecodeError is a ValueError
         backup = path.with_name(f"{path.name}.corrupt-{int(time.time())}")
         log.warning("settings file unusable (%s); moved to %s, using defaults", e, backup.name)
@@ -141,8 +145,39 @@ def load_config(path: Path) -> Config:
         return default_config()
 
 
+def _migrate_v1_file(path: Path, text: str, data: dict) -> Config:
+    c = _migrate_v1(data)
+    # Keep the v1 bytes next to the new file; a failed write only means the next start retries.
+    try:
+        _write_atomic(path.with_name(path.name + ".v1-backup"), text)
+        save_config(path, c)
+        log.info("migrated settings to version %d", SCHEMA_VERSION)
+    except OSError as e:
+        log.warning("could not write the migrated settings (%s); will retry on the next start", e)
+    return c
+
+
+def _migrate_v1(data: dict) -> Config:
+    raw_profiles = data.get("profiles")
+    if not isinstance(raw_profiles, list) or not raw_profiles:
+        raise _Corrupt("version 1 file without profiles")
+    chosen = next((r for r in raw_profiles if isinstance(r, dict) and r.get("id") == data.get("active_profile")),
+                  raw_profiles[0])
+    if not isinstance(chosen, dict):
+        raise _Corrupt("version 1 profile is not an object")
+    for raw in raw_profiles:
+        if raw is not chosen:
+            log.warning("dropping extra version 1 profile %r", raw.get("id") if isinstance(raw, dict) else raw)
+    default = _parse_profile(chosen, DEFAULT_ID)
+    default.name = "Default"
+    return Config(version=SCHEMA_VERSION, profiles=[default], games={}, lighting=_parse_lighting(data.get("lighting")))
+
+
 def save_config(path: Path, c: Config) -> None:
-    path = Path(path)
+    _write_atomic(Path(path), json.dumps(_dump(c), indent=2))
+
+
+def _write_atomic(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     # A fresh, exclusively created temp file: the folder belongs to the deck user
     # and the backend runs as root, so never write through a name someone planted.
@@ -150,7 +185,7 @@ def save_config(path: Path, c: Config) -> None:
     try:
         os.fchmod(fd, 0o644)
         with os.fdopen(fd, "w") as f:
-            json.dump(_dump(c), f, indent=2)
+            f.write(text)
             f.flush()
             os.fsync(f.fileno())
         os.replace(tmp, path)
@@ -182,7 +217,7 @@ def _parse(data) -> Config:
         raise _Corrupt("not a JSON object")
     version = data.get("version")
     if version == 1:
-        raise _Corrupt("version 1 (migration not available yet)")  # replaced by the v1 migration
+        raise _Corrupt("version 1 reached _parse")  # load_config migrates it first
     if version != SCHEMA_VERSION:
         raise _Corrupt(f"version {version!r}, expected {SCHEMA_VERSION}")
     raw_profiles = data.get("profiles")

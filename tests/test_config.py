@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tartarus.bindings import Binding, binding_to_dict, parse_binding_text
 from tartarus.config import (
@@ -137,13 +138,75 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(len(self._backups()), 1)
         self.assertFalse(self.path.exists())
 
-    def test_version_1_is_corrupt_for_now(self):
-        data = _stored({})
-        data["version"] = 1
-        self._write(data)
+    def _v1(self, profiles=None, active="b"):
+        if profiles is None:
+            profiles = [
+                {"id": "a", "name": "A", "dpad_mode": "4way", "bindings": {"k01": {"type": "key", "keys": ["Esc"]}}},
+                {"id": "b", "name": "B", "dpad_mode": "8way", "bindings": {"k01": {"type": "key", "keys": ["F1"]}}},
+            ]
+        return {"version": 1, "active_profile": active, "profiles": profiles,
+                "lighting": {"effect": "static", "color": "#ff0000", "brightness": 40}}
+
+    def test_migrates_v1_active_profile(self):
+        self._write(self._v1())
+        with self.assertLogs("tartarus", "INFO") as logs:
+            c = load_config(self.path)
+        bindings = factory_bindings()
+        bindings["k01"] = Binding("key", ("F1",))
+        self.assertEqual(c.profiles, [Profile("default", "Default", "8way", bindings, NO_LEDS)])
+        self.assertEqual(c.games, {})
+        self.assertEqual((c.lighting.effect, c.lighting.color, c.lighting.brightness), ("static", "#ff0000", 40))
+        self.assertTrue(any("'a'" in line and "WARNING" in line for line in logs.output))
+
+    def test_migrates_v1_missing_active_uses_first(self):
+        self._write(self._v1(active="zzz"))
+        with self.assertLogs("tartarus", "INFO"):
+            c = load_config(self.path)
+        self.assertEqual(default_profile(c).bindings["k01"], Binding("key", ("Esc",)))
+        self.assertEqual(default_profile(c).dpad_mode, "4way")
+
+    def test_migration_writes_backup_and_v2_file(self):
+        self._write(json.dumps(self._v1(), indent=1))
+        original = self.path.read_text()
+        backup = self.dir / "settings.json.v1-backup"
+        with self.assertLogs("tartarus", "INFO"):
+            first = load_config(self.path)
+        self.assertEqual(backup.read_text(), original)
+        stored = json.loads(self.path.read_text())
+        self.assertEqual(stored["version"], 2)
+        self.assertNotIn("active_profile", stored)
+        self.assertEqual(load_config(self.path), first)
+        self.assertEqual(backup.read_text(), original)
+        self.assertEqual(self._backups(), [])
+
+    def test_migration_backup_does_not_follow_symlink(self):
+        victim = self.dir / "victim"
+        victim.write_text("untouched")
+        backup = self.dir / "settings.json.v1-backup"
+        backup.symlink_to(victim)
+        self._write(self._v1())
+        original = self.path.read_text()
+        with self.assertLogs("tartarus", "INFO"):
+            load_config(self.path)
+        self.assertEqual(victim.read_text(), "untouched")
+        self.assertFalse(backup.is_symlink())
+        self.assertEqual(backup.read_text(), original)
+
+    def test_migration_survives_write_failure(self):
+        self._write(self._v1())
+        with mock.patch("tartarus.config._write_atomic", side_effect=OSError("disk full")):
+            with self.assertLogs("tartarus", "WARNING") as logs:
+                c = load_config(self.path)
+        self.assertEqual(default_profile(c).dpad_mode, "8way")
+        self.assertEqual(json.loads(self.path.read_text())["version"], 1)
+        self.assertTrue(any("disk full" in line for line in logs.output))
+
+    def test_v1_without_profiles_is_corrupt(self):
+        self._write(self._v1(profiles=[]))
         with self.assertLogs("tartarus", "WARNING"):
             self.assertEqual(load_config(self.path), default_config())
         self.assertEqual(len(self._backups()), 1)
+        self.assertFalse(self.path.exists())
 
     def test_v2_round_trip(self):
         c = default_config()
