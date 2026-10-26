@@ -68,24 +68,26 @@ export function ProfileBar({ state, viewing, onView, onChanged }: Props) {
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "0 0 8px" }}>
-      <div style={{ minWidth: 220 }}>
-        <Dropdown
-          rgOptions={state.profiles.map((p) => ({ data: p.id, label: p.name }))}
-          selectedOption={profile.id}
-          onChange={(o) => onView(o.data)}
-        />
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        <div style={{ minWidth: 220 }}>
+          <Dropdown
+            rgOptions={state.profiles.map((p) => ({ data: p.id, label: p.name }))}
+            selectedOption={profile.id}
+            onChange={(o) => onView(o.data)}
+          />
+        </div>
+        <DialogButton style={{ width: "auto", minWidth: 0 }} disabled={state.profiles.length >= state.max_profiles} onClick={create}>New</DialogButton>
+        <DialogButton style={{ width: "auto", minWidth: 0 }} onClick={rename}>Rename</DialogButton>
+        <DialogButton style={{ width: "auto", minWidth: 0 }} disabled={profile.is_default} onClick={remove}>Delete</DialogButton>
       </div>
-      <DialogButton style={{ width: "auto", minWidth: 0 }} disabled={state.profiles.length >= state.max_profiles} onClick={create}>New</DialogButton>
-      <DialogButton style={{ width: "auto", minWidth: 0 }} onClick={rename}>Rename</DialogButton>
-      <DialogButton style={{ width: "auto", minWidth: 0 }} disabled={profile.is_default} onClick={remove}>Delete</DialogButton>
-      <div style={{ minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         {error && <div style={{ color: "#e05050" }}>{error}</div>}
         <div>
           {profile.id === active.id
             ? `Editing ${profile.name}. The keypad is using it now.`
             : `Editing ${profile.name}. The keypad is using ${active.name} right now.`}
         </div>
-        <div style={{ opacity: 0.7 }}>{usedBy}</div>
+        <div style={{ opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{usedBy}</div>
       </div>
     </div>
   );

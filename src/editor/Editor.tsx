@@ -50,19 +50,21 @@ export function Editor() {
   const profile = viewedProfile(state);
 
   return (
-    <div style={{ marginTop: 40, height: "calc(100% - 40px)", display: "flex", gap: 16, padding: "8px 16px", boxSizing: "border-box" }}>
-      <div style={{ flex: 3, minWidth: 0 }}>
-        <ProfileBar state={state} viewing={profile.id} onView={switchView} onChanged={setState} />
-        <Keypad profile={profile} selected={selected} onSelect={setSelected} />
-        <ToggleField label="8-way D-pad" checked={profile.dpad_mode === "8way"} onChange={toggleDpad} />
-        {error && <div style={{ color: "#e05050" }}>{error}</div>}
-        {!state.connected && <div style={{ opacity: 0.7 }}>Keypad not connected: changes are saved and apply when it's plugged in.</div>}
-      </div>
-      <div style={{ flex: 2, minWidth: 0, overflowY: "auto" }}>
-        <h3 style={{ margin: "0 0 8px" }}>
-          Key {controlName(selected)}: {profile.bindings[selected]?.label}
-        </h3>
-        <BindingPicker control={selected} state={state} profile={profile} onChanged={setState} />
+    <div style={{ marginTop: 40, height: "calc(100% - 40px)", display: "flex", flexDirection: "column", padding: "8px 16px", boxSizing: "border-box" }}>
+      <ProfileBar state={state} viewing={profile.id} onView={switchView} onChanged={setState} />
+      <div style={{ flex: 1, minHeight: 0, display: "flex", gap: 16 }}>
+        <div style={{ flex: 3, minWidth: 0, overflowY: "auto" }}>
+          <Keypad profile={profile} selected={selected} onSelect={setSelected} />
+          <ToggleField label="8-way D-pad" checked={profile.dpad_mode === "8way"} onChange={toggleDpad} />
+          {error && <div style={{ color: "#e05050" }}>{error}</div>}
+          {!state.connected && <div style={{ opacity: 0.7 }}>Keypad not connected: changes are saved and apply when it's plugged in.</div>}
+        </div>
+        <div style={{ flex: 2, minWidth: 0, overflowY: "auto" }}>
+          <h3 style={{ margin: "0 0 8px" }}>
+            Key {controlName(selected)}: {profile.bindings[selected]?.label}
+          </h3>
+          <BindingPicker control={selected} state={state} profile={profile} onChanged={setState} />
+        </div>
       </div>
     </div>
   );
