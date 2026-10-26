@@ -226,14 +226,20 @@ def _parse_profiles(raw_profiles: list) -> List[Profile]:
             profile.name = name
             profiles.append(profile)
             stored_leds[pid] = _parse_leds(raw.get("leds"))
-    # LED patterns: keep a valid, unused one; reassign anything else.
+    # LED patterns: valid, first-seen stored ones stay; bad or duplicate ones get the next free pattern.
+    used = set()
     for profile in profiles[1:]:
         leds = stored_leds[profile.id]
-        if leds is None or any(p.leds == leds for p in profiles):
-            profile.leds = next_leds(Config(SCHEMA_VERSION, profiles))
-            log.warning("profile %r: bad or duplicate LED pattern; using %s", profile.id, list(profile.leds))
-        else:
+        if leds is not None and leds not in used:
+            used.add(leds)
             profile.leds = leds
+        else:
+            profile.leds = None
+    for profile in profiles[1:]:
+        if profile.leds is None:
+            profile.leds = next(leds for leds in LED_ORDER if leds not in used)
+            used.add(profile.leds)
+            log.warning("profile %r: bad or duplicate LED pattern; using %s", profile.id, list(profile.leds))
     return profiles
 
 
@@ -259,7 +265,8 @@ def _parse_games(raw, profiles: List[Profile]) -> Dict[str, Game]:
     assignable = {p.id for p in profiles[1:]}
     for key, entry in raw.items():
         valid_key = key.isascii() and key.isdigit() and key == str(int(key)) and 0 < int(key) <= MAX_APP_ID
-        if not valid_key or not isinstance(entry, dict) or entry.get("profile") not in assignable:
+        if not valid_key or not isinstance(entry, dict) or not isinstance(entry.get("profile"), str) \
+                or entry["profile"] not in assignable:
             log.warning("dropping game assignment %r", key)
             continue
         name = entry.get("name")

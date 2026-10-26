@@ -223,6 +223,26 @@ class ConfigTest(unittest.TestCase):
             c = load_config(self.path)
         self.assertEqual(c.games, {"1343400": Game("RS", "p2")})
 
+    def test_unhashable_assignment_profile_dropped(self):
+        self._write(_stored(
+            [_entry("default", "Default"), _entry("p2", "MMO", [True, False, False])],
+            {"1": {"name": "A", "profile": ["p2"]}, "2": {"name": "B", "profile": {"x": 1}},
+             "3": {"name": "C", "profile": "p2"}},
+        ))
+        with self.assertLogs("tartarus", "WARNING"):
+            c = load_config(self.path)
+        self.assertEqual(c.games, {"3": Game("C", "p2")})
+
+    def test_bad_leds_before_valid_do_not_steal_pattern(self):
+        self._write(_stored([
+            _entry("default", "Default"),
+            _entry("p2", "A", "x"),
+            _entry("p3", "B", [True, False, False]),
+        ]))
+        with self.assertLogs("tartarus", "WARNING"):
+            c = load_config(self.path)
+        self.assertEqual([p.leds for p in c.profiles], [NO_LEDS, (False, True, False), (True, False, False)])
+
     def test_non_string_game_name_falls_back_to_key(self):
         self._write(_stored(
             [_entry("default", "Default"), _entry("p2", "MMO", [True, False, False])],
