@@ -1,7 +1,7 @@
 import { Focusable } from "@decky/ui";
 import type { CSSProperties } from "react";
 
-import { State } from "../api";
+import { ProfileState } from "../api";
 
 // Our own drawing of the Tartarus Pro (no Razer images), traced from a
 // top-down photo: five key columns with the pinky column dropped half a key,
@@ -215,10 +215,10 @@ function Picture() {
   );
 }
 
-export function Keypad(props: { state: State; selected: string | null; onSelect(control: string): void }) {
-  const { state, selected, onSelect } = props;
+export function Keypad(props: { profile: ProfileState; selected: string | null; onSelect(control: string): void }) {
+  const { profile, selected, onSelect } = props;
   const controls = Object.keys(LAYOUT).filter(
-    (c) => c in state.bindings && (state.dpad_mode === "8way" || !DIAGONALS.has(c)),
+    (c) => c in profile.bindings && (profile.dpad_mode === "8way" || !DIAGONALS.has(c)),
   );
 
   return (
@@ -271,7 +271,7 @@ export function Keypad(props: { state: State; selected: string | null; onSelect(
                   textAlign: "center",
                 }}
               >
-                {state.bindings[c].label}
+                {profile.bindings[c].label}
               </div>
             </Focusable>
           );

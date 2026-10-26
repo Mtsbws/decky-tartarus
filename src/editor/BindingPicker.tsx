@@ -2,7 +2,7 @@ import { DialogButton, Focusable, TextField } from "@decky/ui";
 import { addEventListener, removeEventListener } from "@decky/api";
 import { CSSProperties, useEffect, useState } from "react";
 
-import { BindingDict, EV_RECORD, recordCancel, recordStart, setBinding, setBindingText, State } from "../api";
+import { BindingDict, EV_RECORD, recordCancel, ProfileState, recordStart, setBinding, setBindingText, State } from "../api";
 import { errorText } from "../Panel";
 import { isMoreKey, isSteamPick, QUICK_PICKS } from "./quickPicks";
 
@@ -10,8 +10,8 @@ type RecordStatus = "idle" | "recording" | "nothing";
 
 const pickStyle: CSSProperties = { minWidth: 0, width: "auto", padding: "6px 10px", margin: 0, fontSize: 13 };
 
-export function BindingPicker(props: { control: string; state: State; onChanged(s: State): void }) {
-  const { control, state, onChanged } = props;
+export function BindingPicker(props: { control: string; state: State; profile: ProfileState; onChanged(s: State): void }) {
+  const { control, state, profile, onChanged } = props;
   const [record, setRecord] = useState<RecordStatus>("idle");
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +35,7 @@ export function BindingPicker(props: { control: string; state: State; onChanged(
         return;
       }
       setRecord("idle");
-      setBinding(control, binding)
+      setBinding(profile.id, control, binding)
         .then((s) => {
           setError(null);
           onChanged(s);
@@ -48,7 +48,7 @@ export function BindingPicker(props: { control: string; state: State; onChanged(
   }, [record, control]);
 
   function applyText(value: string) {
-    setBindingText(control, value)
+    setBindingText(profile.id, control, value)
       .then((r) => {
         setError(r.ok ? null : r.error);
         onChanged(r.state);
@@ -73,7 +73,7 @@ export function BindingPicker(props: { control: string; state: State; onChanged(
 
   const steamOff = state.steam_mode === "disabled";
   const picks = QUICK_PICKS.filter((p) => !(steamOff && isSteamPick(p)) && (moreKeys || !isMoreKey(p)));
-  const factory = state.bindings[control]?.factory;
+  const factory = profile.bindings[control]?.factory;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
