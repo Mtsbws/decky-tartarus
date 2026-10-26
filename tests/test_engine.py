@@ -4,7 +4,7 @@ import unittest
 
 from tartarus.bindings import parse_binding_text
 from tartarus.codes import code_for
-from tartarus.config import active_profile, default_config
+from tartarus.config import default_profile, default_config
 from tartarus.engine import RemapEngine
 
 KEY_1 = 2  # factory code of k01
@@ -37,7 +37,7 @@ class FakeEmitter:
 
 
 def profile(dpad_mode="4way", **texts):
-    base = active_profile(default_config())
+    base = default_profile(default_config())
     bindings = dict(base.bindings)
     bindings.update({control: parse_binding_text(text) for control, text in texts.items()})
     return dataclasses.replace(base, dpad_mode=dpad_mode, bindings=bindings)

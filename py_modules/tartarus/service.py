@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, List, Optional, Set
 
 from .bindings import Binding, binding_label, binding_to_dict
-from .config import DPAD_MODES, Lighting, active_profile, load_config, save_config
+from .config import DPAD_MODES, Lighting, default_profile, load_config, save_config
 from .codes import name_for
 from .devmap import ALL_CONTROLS, FACTORY_CODES, FACTORY_OUTPUT
 from .engine import RemapEngine
@@ -317,7 +317,7 @@ class TartarusService:
     # --- settings ---
 
     def _profile(self):
-        return active_profile(self._config)
+        return default_profile(self._config)
 
     def _device_name(self) -> Optional[str]:
         if not self._devices:

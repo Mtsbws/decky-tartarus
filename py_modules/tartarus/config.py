@@ -1,4 +1,4 @@
-"""The settings file: profiles, bindings and lighting, with defaults and recovery."""
+"""The settings file: profiles, bindings, game assignments and lighting, with defaults and recovery."""
 from __future__ import annotations
 
 import json
@@ -8,13 +8,29 @@ import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 
 from .bindings import Binding, BindingError, binding_from_dict, binding_to_dict, parse_binding_text
 from .devmap import ALL_CONTROLS, FACTORY_OUTPUT
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 DPAD_MODES = ("4way", "8way")
+MAX_PROFILES = 8
+DEFAULT_ID = "default"
+NAME_MAX = 24
+MAX_APP_ID = 2**32 - 1
+
+NO_LEDS = (False, False, False)
+# The lit patterns, in the order new profiles get them; Default is always NO_LEDS.
+LED_ORDER: Tuple[Tuple[bool, bool, bool], ...] = (
+    (True, False, False),
+    (False, True, False),
+    (False, False, True),
+    (True, True, False),
+    (True, False, True),
+    (False, True, True),
+    (True, True, True),
+)
 
 log = logging.getLogger("tartarus")
 
@@ -32,13 +48,20 @@ class Profile:
     name: str
     dpad_mode: str  # "4way" | "8way"
     bindings: Dict[str, Binding]
+    leds: Tuple[bool, bool, bool] = NO_LEDS
+
+
+@dataclass
+class Game:
+    name: str  # for display only
+    profile: str
 
 
 @dataclass
 class Config:
     version: int
-    active_profile: str
-    profiles: List[Profile]
+    profiles: List[Profile]  # Default is always first
+    games: Dict[str, Game] = field(default_factory=dict)  # 32-bit app ID as a decimal string
     lighting: Lighting = field(default_factory=Lighting)
 
 
@@ -51,15 +74,58 @@ def factory_bindings() -> Dict[str, Binding]:
 
 
 def default_config() -> Config:
-    profile = Profile(id="default", name="Default", dpad_mode="4way", bindings=factory_bindings())
-    return Config(version=SCHEMA_VERSION, active_profile="default", profiles=[profile], lighting=Lighting())
+    return Config(version=SCHEMA_VERSION, profiles=[_factory_default()], games={}, lighting=Lighting())
 
 
-def active_profile(c: Config) -> Profile:
-    for profile in c.profiles:
-        if profile.id == c.active_profile:
-            return profile
+def _factory_default() -> Profile:
+    return Profile(id=DEFAULT_ID, name="Default", dpad_mode="4way", bindings=factory_bindings(), leds=NO_LEDS)
+
+
+def default_profile(c: Config) -> Profile:
     return c.profiles[0]
+
+
+def find_profile(c: Config, profile_id: str) -> Optional[Profile]:
+    for profile in c.profiles:
+        if profile.id == profile_id:
+            return profile
+    return None
+
+
+def profile_for_app(c: Config, app_id: Optional[int]) -> Profile:
+    if app_id is not None:
+        game = c.games.get(str(app_id))
+        if game is not None:
+            profile = find_profile(c, game.profile)
+            if profile is not None:
+                return profile
+    return default_profile(c)
+
+
+def next_leds(c: Config) -> Tuple[bool, bool, bool]:
+    used = {p.leds for p in c.profiles}
+    for leds in LED_ORDER:
+        if leds not in used:
+            return leds
+    raise ValueError("no free LED pattern")
+
+
+def clean_name(c: Config, name: str, exclude_id: Optional[str] = None) -> str:
+    name = name.strip()
+    if not name or len(name) > NAME_MAX:
+        raise ValueError(f"a profile name needs 1 to {NAME_MAX} characters")
+    for p in c.profiles:
+        if p.id != exclude_id and p.name.casefold() == name.casefold():
+            raise ValueError(f"there is already a profile called {p.name!r}")
+    return name
+
+
+def new_profile_id(c: Config) -> str:
+    used = {p.id for p in c.profiles}
+    n = 2
+    while f"p{n}" in used:
+        n += 1
+    return f"p{n}"
 
 
 def load_config(path: Path) -> Config:
@@ -96,16 +162,17 @@ def save_config(path: Path, c: Config) -> None:
 def _dump(c: Config) -> dict:
     return {
         "version": c.version,
-        "active_profile": c.active_profile,
         "profiles": [
             {
                 "id": p.id,
                 "name": p.name,
+                "leds": list(p.leds),
                 "dpad_mode": p.dpad_mode,
                 "bindings": {control: binding_to_dict(b) for control, b in p.bindings.items()},
             }
             for p in c.profiles
         ],
+        "games": {key: {"name": g.name, "profile": g.profile} for key, g in c.games.items()},
         "lighting": {"effect": c.lighting.effect, "color": c.lighting.color, "brightness": c.lighting.brightness},
     }
 
@@ -113,27 +180,98 @@ def _dump(c: Config) -> dict:
 def _parse(data) -> Config:
     if not isinstance(data, dict):
         raise _Corrupt("not a JSON object")
-    if data.get("version") != SCHEMA_VERSION:
-        raise _Corrupt(f"version {data.get('version')!r}, expected {SCHEMA_VERSION}")
+    version = data.get("version")
+    if version == 1:
+        raise _Corrupt("version 1 (migration not available yet)")  # replaced by the v1 migration
+    if version != SCHEMA_VERSION:
+        raise _Corrupt(f"version {version!r}, expected {SCHEMA_VERSION}")
     raw_profiles = data.get("profiles")
-    if not isinstance(raw_profiles, list) or not raw_profiles:
+    if not isinstance(raw_profiles, list):
         raise _Corrupt("no profiles")
-    profiles = [_parse_profile(p) for p in raw_profiles]
-    active = data.get("active_profile")
-    if active not in {p.id for p in profiles}:
-        active = profiles[0].id
-    return Config(version=SCHEMA_VERSION, active_profile=active, profiles=profiles,
+    profiles = _parse_profiles(raw_profiles)
+    return Config(version=SCHEMA_VERSION, profiles=profiles, games=_parse_games(data.get("games"), profiles),
                   lighting=_parse_lighting(data.get("lighting")))
 
 
-def _parse_profile(raw) -> Profile:
-    if not isinstance(raw, dict) or not isinstance(raw.get("id"), str):
-        raise _Corrupt("profile without an id")
-    stored = raw.get("bindings")
-    if not isinstance(stored, dict):
-        stored = {}
+def _parse_profiles(raw_profiles: list) -> List[Profile]:
+    # Default first, wherever the file lists it; the rest in file order.
+    raw_default = next((r for r in raw_profiles if isinstance(r, dict) and r.get("id") == DEFAULT_ID), None)
+    if raw_default is None:
+        log.warning("no default profile; recreating it from the factory keys")
+        default = _factory_default()
+    else:
+        default = _parse_profile(raw_default, DEFAULT_ID)
+        default.name = _trim_name(raw_default.get("name")) or "Default"
+    profiles = [default]
+    stored_leds = {DEFAULT_ID: NO_LEDS}
+    for raw in raw_profiles:
+        if raw is raw_default:
+            continue
+        if len(profiles) >= MAX_PROFILES:
+            log.warning("more than %d profiles; skipping the rest", MAX_PROFILES)
+            break
+        if not isinstance(raw, dict) or not isinstance(raw.get("id"), str):
+            log.warning("skipping a profile without an id")
+            continue
+        pid = raw["id"]
+        name = _trim_name(raw.get("name"))
+        if name is None:
+            log.warning("skipping profile %r: bad name", pid)
+        elif any(p.id == pid for p in profiles):
+            log.warning("skipping profile %r: duplicate id", pid)
+        elif any(p.name.casefold() == name.casefold() for p in profiles):
+            log.warning("skipping profile %r: duplicate name %r", pid, name)
+        else:
+            profile = _parse_profile(raw, pid)
+            profile.name = name
+            profiles.append(profile)
+            stored_leds[pid] = _parse_leds(raw.get("leds"))
+    # LED patterns: keep a valid, unused one; reassign anything else.
+    for profile in profiles[1:]:
+        leds = stored_leds[profile.id]
+        if leds is None or any(p.leds == leds for p in profiles):
+            profile.leds = next_leds(Config(SCHEMA_VERSION, profiles))
+            log.warning("profile %r: bad or duplicate LED pattern; using %s", profile.id, list(profile.leds))
+        else:
+            profile.leds = leds
+    return profiles
+
+
+def _trim_name(raw) -> Optional[str]:
+    if not isinstance(raw, str):
+        return None
+    name = raw.strip()
+    return name if 0 < len(name) <= NAME_MAX else None
+
+
+def _parse_leds(raw) -> Optional[Tuple[bool, bool, bool]]:
+    if isinstance(raw, list) and len(raw) == 3 and all(isinstance(v, bool) for v in raw):
+        leds = tuple(raw)
+        if leds in LED_ORDER:
+            return leds
+    return None
+
+
+def _parse_games(raw, profiles: List[Profile]) -> Dict[str, Game]:
+    games: Dict[str, Game] = {}
+    if not isinstance(raw, dict):
+        return games
+    assignable = {p.id for p in profiles[1:]}
+    for key, entry in raw.items():
+        valid_key = key.isascii() and key.isdigit() and key == str(int(key)) and 0 < int(key) <= MAX_APP_ID
+        if not valid_key or not isinstance(entry, dict) or entry.get("profile") not in assignable:
+            log.warning("dropping game assignment %r", key)
+            continue
+        name = entry.get("name")
+        games[key] = Game(name=name if isinstance(name, str) else key, profile=entry["profile"])
+    return games
+
+
+def _parse_bindings(raw) -> Dict[str, Binding]:
     bindings = factory_bindings()
-    for control, value in stored.items():
+    if not isinstance(raw, dict):
+        return bindings
+    for control, value in raw.items():
         if control not in bindings:
             log.warning("dropping binding for unknown control %r", control)
             continue
@@ -141,13 +279,13 @@ def _parse_profile(raw) -> Profile:
             bindings[control] = binding_from_dict(value)
         except BindingError as e:
             log.warning("bad binding for %s (%s); using the factory binding", control, e)
+    return bindings
+
+
+def _parse_profile(raw: dict, pid: str) -> Profile:
     mode = raw.get("dpad_mode")
-    return Profile(
-        id=raw["id"],
-        name=raw.get("name") if isinstance(raw.get("name"), str) else raw["id"],
-        dpad_mode=mode if mode in DPAD_MODES else "4way",
-        bindings=bindings,
-    )
+    return Profile(id=pid, name=pid, dpad_mode=mode if mode in DPAD_MODES else "4way",
+                   bindings=_parse_bindings(raw.get("bindings")))
 
 
 def _parse_lighting(raw) -> Lighting:

@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 from tartarus.bindings import parse_binding_text
-from tartarus.config import active_profile, load_config
+from tartarus.config import default_profile, load_config
 from tartarus.devmap import ALL_CONTROLS
 from tartarus.linux.discovery import TartarusNodes
 from tartarus.linux.evdev import EV_KEY, EV_REL, EV_SYN, REL_WHEEL, REL_WHEEL_HI_RES
@@ -166,13 +166,13 @@ class ServiceTest(unittest.TestCase):
     def test_set_binding_persists(self):
         rig = Rig(self.path)
         rig.service.set_binding("k01", parse_binding_text("Esc"))
-        self.assertEqual(active_profile(load_config(self.path)).bindings["k01"], parse_binding_text("Esc"))
+        self.assertEqual(default_profile(load_config(self.path)).bindings["k01"], parse_binding_text("Esc"))
         self.assertEqual(rig.service.state()["bindings"]["k01"]["label"], "Esc")
 
     def test_set_dpad_mode_persists(self):
         rig = Rig(self.path)
         rig.service.set_dpad_mode("8way")
-        self.assertEqual(active_profile(load_config(self.path)).dpad_mode, "8way")
+        self.assertEqual(default_profile(load_config(self.path)).dpad_mode, "8way")
 
     def test_unknown_control_or_mode_rejected(self):
         rig = Rig(self.path)
