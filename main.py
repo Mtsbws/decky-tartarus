@@ -1,3 +1,4 @@
+from typing import Optional
 from pathlib import Path
 
 import decky
@@ -31,19 +32,39 @@ class Plugin:
     async def get_state(self) -> dict:
         return self.service.state()
 
-    async def set_binding(self, control: str, binding: dict) -> dict:
-        self.service.set_binding(control, binding_from_dict(binding))
+    async def set_binding(self, profile_id: str, control: str, binding: dict) -> dict:
+        self.service.set_binding(profile_id, control, binding_from_dict(binding))
         return self.service.state()
 
-    async def set_binding_text(self, control: str, text: str) -> dict:
+    async def set_binding_text(self, profile_id: str, control: str, text: str) -> dict:
         try:
-            self.service.set_binding(control, parse_binding_text(text))
+            self.service.set_binding(profile_id, control, parse_binding_text(text))
         except ValueError as e:  # BindingError is a ValueError
             return {"ok": False, "error": str(e), "state": self.service.state()}
         return {"ok": True, "error": None, "state": self.service.state()}
 
-    async def set_dpad_mode(self, mode: str) -> dict:
-        self.service.set_dpad_mode(mode)
+    async def set_dpad_mode(self, profile_id: str, mode: str) -> dict:
+        self.service.set_dpad_mode(profile_id, mode)
+        return self.service.state()
+
+    async def set_running_app(self, app_id: Optional[int], name: Optional[str]) -> dict:
+        self.service.set_running_app(app_id, name)
+        return self.service.state()
+
+    async def assign_running_game(self, profile_id: str) -> dict:
+        self.service.assign_running_game(profile_id)
+        return self.service.state()
+
+    async def create_profile(self, name: str, copy_from_id: str) -> dict:
+        self.service.create_profile(name, copy_from_id)
+        return self.service.state()
+
+    async def rename_profile(self, profile_id: str, name: str) -> dict:
+        self.service.rename_profile(profile_id, name)
+        return self.service.state()
+
+    async def delete_profile(self, profile_id: str) -> dict:
+        self.service.delete_profile(profile_id)
         return self.service.state()
 
     async def set_lighting(self, effect: str, color: str, brightness: int) -> dict:

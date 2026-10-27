@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 from tartarus.bindings import parse_binding_text
-from tartarus.config import active_profile, load_config
+from tartarus.config import default_profile, load_config
 from tartarus.devmap import ALL_CONTROLS
 from tartarus.linux.discovery import TartarusNodes
 from tartarus.linux.evdev import EV_KEY, EV_REL, EV_SYN, REL_WHEEL, REL_WHEEL_HI_RES
@@ -150,42 +150,49 @@ class ServiceTest(unittest.TestCase):
     def test_state_shape(self):
         rig = Rig(self.path)
         state = rig.service.state()
-        self.assertEqual(set(state), {"connected", "device", "device_id", "dpad_mode", "steam_mode", "bindings", "lighting", "effects"})
+        self.assertEqual(set(state), {"connected", "device", "device_id", "steam_mode", "lighting", "effects",
+                                 "active_profile", "running_app", "max_profiles", "profiles"})
         self.assertFalse(state["connected"])
         self.assertIsNone(state["device"])
         self.assertIsNone(state["device_id"])
-        self.assertEqual(state["dpad_mode"], "4way")
         self.assertEqual(state["steam_mode"], "api")
-        self.assertEqual(list(state["bindings"]), list(ALL_CONTROLS))
-        self.assertEqual(state["bindings"]["k01"],
+        self.assertEqual(state["active_profile"], "default")
+        self.assertIsNone(state["running_app"])
+        self.assertEqual(state["max_profiles"], 8)
+        self.assertEqual(len(state["profiles"]), 1)
+        first = state["profiles"][0]
+        self.assertEqual((first["id"], first["name"], first["is_default"], first["games"], first["dpad_mode"]),
+                         ("default", "Default", True, [], "4way"))
+        self.assertEqual(list(first["bindings"]), list(ALL_CONTROLS))
+        self.assertEqual(first["bindings"]["k01"],
                          {"binding": {"type": "key", "keys": ["1"]}, "label": "1", "factory": "1"})
-        self.assertEqual(state["bindings"]["dpad_up_right"]["factory"], "hold:Up+Right")
+        self.assertEqual(first["bindings"]["dpad_up_right"]["factory"], "hold:Up+Right")
         for control in ALL_CONTROLS:
-            self.assertTrue(state["bindings"][control]["factory"])
+            self.assertTrue(first["bindings"][control]["factory"])
 
     def test_set_binding_persists(self):
         rig = Rig(self.path)
-        rig.service.set_binding("k01", parse_binding_text("Esc"))
-        self.assertEqual(active_profile(load_config(self.path)).bindings["k01"], parse_binding_text("Esc"))
-        self.assertEqual(rig.service.state()["bindings"]["k01"]["label"], "Esc")
+        rig.service.set_binding("default", "k01", parse_binding_text("Esc"))
+        self.assertEqual(default_profile(load_config(self.path)).bindings["k01"], parse_binding_text("Esc"))
+        self.assertEqual(rig.service.state()["profiles"][0]["bindings"]["k01"]["label"], "Esc")
 
     def test_set_dpad_mode_persists(self):
         rig = Rig(self.path)
-        rig.service.set_dpad_mode("8way")
-        self.assertEqual(active_profile(load_config(self.path)).dpad_mode, "8way")
+        rig.service.set_dpad_mode("default", "8way")
+        self.assertEqual(default_profile(load_config(self.path)).dpad_mode, "8way")
 
     def test_unknown_control_or_mode_rejected(self):
         rig = Rig(self.path)
         with self.assertRaises(ValueError):
-            rig.service.set_binding("thumb", parse_binding_text("Esc"))
+            rig.service.set_binding("default", "thumb", parse_binding_text("Esc"))
         with self.assertRaises(ValueError):
-            rig.service.set_dpad_mode("2way")
+            rig.service.set_dpad_mode("default", "2way")
         self.assertFalse(self.path.exists())
 
     def test_connect_remaps_and_unplug_repolls(self):
         async def go():
             rig = Rig(self.path)
-            rig.service.set_binding("k01", parse_binding_text("Esc"))
+            rig.service.set_binding("default", "k01", parse_binding_text("Esc"))
             await rig.service.start()
             rig.nodes = TWO_NODES
             await until(lambda: rig.service.state()["connected"])
@@ -297,6 +304,39 @@ class PluginTest(unittest.TestCase):
         plugin = load_main(decky).Plugin()
         asyncio.run(plugin._unload())  # _main never ran: no service attribute
 
+    def test_plugin_profile_callables(self):
+        import logging
+        with tempfile.TemporaryDirectory() as tmp:
+            async def emit(*args):
+                pass
+
+            decky = types.SimpleNamespace(logger=logging.getLogger("tartarus.test"),
+                                          DECKY_PLUGIN_SETTINGS_DIR=tmp, emit=emit)
+            main = load_main(decky)
+            plugin = main.Plugin()
+            plugin.service = main.TartarusService(Path(tmp) / "settings.json", emit)
+
+            async def go():
+                state = await plugin.create_profile("MMO", "default")
+                self.assertEqual(state["profiles"][1]["name"], "MMO")
+                p2 = state["profiles"][1]["id"]
+                ok = await plugin.set_binding_text(p2, "k01", "Esc")
+                self.assertTrue(ok["ok"])
+                profiles = ok["state"]["profiles"]
+                self.assertEqual(profiles[1]["bindings"]["k01"]["label"], "Esc")
+                self.assertEqual(profiles[0]["bindings"]["k01"]["label"], "1")
+                await plugin.set_running_app(1343400, "RuneScape")
+                state = await plugin.assign_running_game(p2)
+                self.assertEqual(state["active_profile"], p2)
+                self.assertEqual(state["running_app"], {"app_id": 1343400, "name": "RuneScape"})
+                state = await plugin.rename_profile(p2, "Runescape")
+                self.assertEqual(state["profiles"][1]["name"], "Runescape")
+                state = await plugin.delete_profile(p2)
+                self.assertEqual(len(state["profiles"]), 1)
+                self.assertEqual(state["active_profile"], "default")
+
+            asyncio.run(go())
+
     def test_plugin_set_binding_text(self):
         import logging
         with tempfile.TemporaryDirectory() as tmp:
@@ -310,17 +350,17 @@ class PluginTest(unittest.TestCase):
             plugin.service = main.TartarusService(Path(tmp) / "settings.json", emit)
 
             async def go():
-                ok = await plugin.set_binding_text("k01", "Esc")
+                ok = await plugin.set_binding_text("default", "k01", "Esc")
                 self.assertEqual((ok["ok"], ok["error"]), (True, None))
-                self.assertEqual(ok["state"]["bindings"]["k01"]["label"], "Esc")
-                bad = await plugin.set_binding_text("k01", "NoSuchKey")
+                self.assertEqual(ok["state"]["profiles"][0]["bindings"]["k01"]["label"], "Esc")
+                bad = await plugin.set_binding_text("default", "k01", "NoSuchKey")
                 self.assertFalse(bad["ok"])
                 self.assertTrue(bad["error"])
-                self.assertFalse((await plugin.set_binding_text("thumb", "Esc"))["ok"])
-                state = await plugin.set_dpad_mode("8way")
-                self.assertEqual(state["dpad_mode"], "8way")
-                state = await plugin.set_binding("k02", {"type": "key", "keys": ["B"]})
-                self.assertEqual(state["bindings"]["k02"]["label"], "B")
+                self.assertFalse((await plugin.set_binding_text("default", "thumb", "Esc"))["ok"])
+                state = await plugin.set_dpad_mode("default", "8way")
+                self.assertEqual(state["profiles"][0]["dpad_mode"], "8way")
+                state = await plugin.set_binding("default", "k02", {"type": "key", "keys": ["B"]})
+                self.assertEqual(state["profiles"][0]["bindings"]["k02"]["label"], "B")
 
             asyncio.run(go())
 
