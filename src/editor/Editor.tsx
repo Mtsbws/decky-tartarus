@@ -39,8 +39,16 @@ export function Editor() {
       .catch((e) => setError(errorText(e)));
   }
 
+  // The editor's error belongs to the control and profile it came from.
+  function select(control: string) {
+    setSelected(control);
+    setError(null);
+  }
+
+  // A sub-page open on Customize closes with the profile change, which flushes its pending write.
   function switchView(id: string) {
     setViewing(id);
+    setError(null);
     const p = state && profileById(state, id);
     if (p && p.dpad_mode === "4way" && /^dpad_.*_/.test(selected)) setSelected("dpad_up");
   }
@@ -65,7 +73,7 @@ export function Editor() {
                 profile={profile}
                 selected={selected}
                 error={error}
-                onSelect={setSelected}
+                onSelect={select}
                 onView={switchView}
                 onDpad={toggleDpad}
                 onChanged={setState}
