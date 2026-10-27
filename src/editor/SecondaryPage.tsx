@@ -1,8 +1,8 @@
-import { DialogButton, Field, Focusable, SliderField, ToggleField } from "@decky/ui";
+import { DialogButton, SliderField, Toggle } from "@decky/ui";
 import { useEffect, useState } from "react";
 
 import { errorText, ProfileState, setSecondary, State } from "../api";
-import { Card } from "./Card";
+import { Card, Row } from "./Card";
 import { ChoosePage } from "./ChoosePage";
 import { controlTitle } from "./Keypad";
 import { BUTTON, DRIVER_NOTE, ERROR, mmText, tenth } from "./layout";
@@ -10,7 +10,7 @@ import { RecordButton } from "./RecordButton";
 import { SubPage } from "./SubPage";
 import { useDebounce } from "./useDebounce";
 
-export function DeepPressPage(props: {
+export function SecondaryPage(props: {
   control: string;
   state: State;
   profile: ProfileState;
@@ -35,7 +35,7 @@ export function DeepPressPage(props: {
   const value = draft ?? secondary?.actuation ?? max_mm;
   const min = Math.min(tenth((profile.actuation[control] ?? default_mm) + min_gap_mm), max_mm);
 
-  // Off removes the deep press with its binding; on starts it at the deepest point, unbound.
+  // Off removes the secondary function with its binding; on starts it at the deepest point, unbound.
   function toggle(on: boolean) {
     setSecondary(profile.id, control, on ? max_mm : null)
       .then((s) => {
@@ -68,21 +68,25 @@ export function DeepPressPage(props: {
   }
 
   return (
-    <SubPage title={`Deep press · ${controlTitle(control)}`} onBack={onBack}>
+    <SubPage title={`Secondary function · ${controlTitle(control)}`} onBack={onBack}>
       <div style={{ maxWidth: 720 }}>
         <Card>
-          <ToggleField label="Deep press" checked={secondary !== undefined} onChange={toggle} />
+          <Row label="Secondary function" description="A second binding when the key is pressed deeper.">
+            <Toggle value={secondary !== undefined} onChange={toggle} />
+          </Row>
           {secondary && (
             <>
-              <Field label={`Binding: ${secondary.label}`} padding="compact">
-                <Focusable flow-children="row" style={{ display: "flex", gap: 10 }}>
-                  <DialogButton style={BUTTON} onClick={() => setChoosing(true)}>
-                    Choose…
-                  </DialogButton>
-                  <RecordButton control={control + ".b"} profile={profile} onChanged={onChanged} onError={setError} />
-                </Focusable>
-              </Field>
-              <SliderField label={`Depth: ${mmText(value)}`} value={value} min={min} max={max_mm} step={0.1} onChange={change} />
+              <Row label={`Binding: ${secondary.label}`}>
+                <DialogButton style={BUTTON} onClick={() => setChoosing(true)}>
+                  Choose…
+                </DialogButton>
+                <RecordButton control={control + ".b"} profile={profile} onChanged={onChanged} onError={setError} />
+              </Row>
+              <Row label={`Actuation: ${mmText(value)}`}>
+                <div style={{ flex: 1.4, minWidth: 0 }}>
+                  <SliderField value={value} min={min} max={max_mm} step={0.1} bottomSeparator="none" onChange={change} />
+                </div>
+              </Row>
             </>
           )}
           {state.actuation.status !== "on" && <div style={{ fontSize: 13, opacity: 0.7, marginTop: 6 }}>{DRIVER_NOTE}</div>}

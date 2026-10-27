@@ -7,7 +7,7 @@ import { BUTTON } from "./layout";
 
 type RecordStatus = "idle" | "recording" | "nothing";
 
-// A key and its deep press each have a Record button. The result of a recording
+// A key and its secondary function each have a Record button. The result of a recording
 // goes to the button that started it last; another one still waiting gives up.
 let recordOwner = 0;
 let nextPickerId = 1;

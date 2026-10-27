@@ -230,7 +230,8 @@ function Picture() {
 
 type View = "bindings" | "actuation";
 
-const cornerStyle: CSSProperties = { display: "flex", gap: 4, fontSize: 11, lineHeight: 1 };
+// No gap: a key with a secondary function needs the room for its "2×".
+const cornerStyle: CSSProperties = { display: "flex", justifyContent: "space-between", fontSize: 11, lineHeight: 1 };
 // Steam's line height is taller than a key has room for, so labels set their own.
 const labelStyle: CSSProperties = {
   fontSize: 13,
@@ -298,8 +299,7 @@ export function Keypad(props: {
             >
               <div style={cornerStyle}>
                 <span style={{ opacity: 0.6 }}>{CORNER[c] ?? controlName(c)}</span>
-                <span style={{ flex: 1 }} />
-                {view === "bindings" && c in profile.secondary && <span>2×</span>}
+                {view === "bindings" && c in profile.secondary && <span style={{ flexShrink: 0 }}>2×</span>}
               </div>
               <div style={labelStyle}>
                 {view === "actuation"
