@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { errorText, ProfileState, setBindingText, State } from "../api";
 import { Card } from "./Card";
 import { ChoosePage } from "./ChoosePage";
+import { DeepPressPage } from "./DeepPressPage";
 import { EditingRow } from "./EditingRow";
 import { controlTitle, Keypad } from "./Keypad";
-import { BUTTON, ERROR, PAGE_HEIGHT } from "./layout";
+import { BUTTON, DRIVER_NOTE, ERROR, PAGE_HEIGHT } from "./layout";
 import { RecordButton } from "./RecordButton";
 
 export function CustomizePage(props: {
@@ -20,7 +21,7 @@ export function CustomizePage(props: {
   onChanged(s: State): void;
 }) {
   const { state, profile, selected, error, onSelect, onView, onDpad, onChanged } = props;
-  const [sub, setSub] = useState<"choose" | null>(null);
+  const [sub, setSub] = useState<"choose" | "deep" | null>(null);
   const [cardError, setCardError] = useState<string | null>(null);
 
   // A sub-page and a card error belong to the control and profile they came from.
@@ -51,6 +52,8 @@ export function CustomizePage(props: {
         <EditingRow state={state} profile={profile} onView={onView} />
         {sub === "choose" ? (
           <ChoosePage control={selected} state={state} profile={profile} onChanged={onChanged} onDone={() => setSub(null)} />
+        ) : sub === "deep" ? (
+          <DeepPressPage control={selected} state={state} profile={profile} onChanged={onChanged} onBack={() => setSub(null)} />
         ) : (
           <Card title={controlTitle(selected)}>
             <div style={{ fontSize: 22, fontWeight: 700, margin: "2px 0 6px" }}>{binding?.label}</div>
@@ -70,8 +73,12 @@ export function CustomizePage(props: {
               </Field>
             )}
             {/^k\d\d$/.test(selected) && (
-              <Field label="Deep press" padding="compact">
-                <DialogButton style={BUTTON}>
+              <Field
+                label="Deep press"
+                description={state.actuation.status !== "on" ? DRIVER_NOTE : undefined}
+                padding="compact"
+              >
+                <DialogButton style={BUTTON} onClick={() => setSub("deep")}>
                   {secondary ? `${secondary.label} · ${secondary.actuation.toFixed(1)} mm ›` : "Off ›"}
                 </DialogButton>
               </Field>
