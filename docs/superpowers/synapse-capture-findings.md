@@ -137,10 +137,17 @@ mode host-side:
 
 Read for ideas only; it's GPL.
 
+**Plugin in driver mode (Deck check M2, 2026-10-27):** the profile-LED command works in driver
+mode (status `0x02`; patterns changed with the game). The LEDs stayed correct through effect and
+brightness changes, switch off/on, replug, suspend/resume and plugin disable/enable. Keys 01-20
+typed at a light press, the top button, D-pad and wheel worked, and the Deck didn't suspend.
+Every unload stopped in 0.2 s.
+
 ## Still a guess
 
-- Whether the profile LED works in driver mode, survives backlight effect and brightness
-  changes, and whether values between `00` and `FF` dim it.
+- Whether profile-LED values between `00` and `FF` dim it.
+- Whether a backlight effect or brightness change clears the profile LEDs by itself: the plugin
+  re-sends them after every lighting change, so the Deck check below can't tell.
 - What `args[4] = 0x01` means (OpenRazer and the plugin send `0x00` for static).
 - The cause of the suspend after the first `setmode 03`.
 
