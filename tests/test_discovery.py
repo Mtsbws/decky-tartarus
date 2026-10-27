@@ -74,7 +74,14 @@ class DiscoveryTest(unittest.TestCase):
         self.sys.add_tartarus()
         self.assertEqual(find_tartarus(self.root), TartarusNodes(
             event=["/dev/input/event11", "/dev/input/event12", "/dev/input/event13", "/dev/input/event14"],
-            hidraw="/dev/hidraw8"))
+            hidraw="/dev/hidraw8", depth="/dev/hidraw7"))
+
+    def test_depth_node_missing_is_none(self):
+        self.sys.add_event(11, "Razer Razer Tartarus Pro", 0, "0007")
+        self.sys.add_hidraw(8, 2, "0009")
+        nodes = find_tartarus(self.root)
+        self.assertEqual(nodes.hidraw, "/dev/hidraw8")
+        self.assertIsNone(nodes.depth)
 
     def test_hidraw_missing_is_none(self):
         self.sys.add_event(11, "Razer Razer Tartarus Pro", 0, "0007")

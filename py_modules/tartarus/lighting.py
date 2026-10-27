@@ -1,7 +1,8 @@
 """Razer feature reports for the keypad's lighting (pure; sending is linux/hidraw.py).
 
 Byte values come from the OpenRazer source for 1532:0244, as recorded in the spike
-findings. Only firmware-native effects ship; never build set-device-mode (00/04).
+findings. Only firmware-native effects ship. The device-mode report (00/04) is in
+devmode.py.
 """
 from __future__ import annotations
 
