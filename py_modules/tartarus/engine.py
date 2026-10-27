@@ -10,7 +10,7 @@ from .codes import WHEEL_DOWN, WHEEL_UP, code_for
 from .config import Profile
 from .devmap import ALL_CONTROLS, ACTUATION_KEYS, DPAD_CARDINALS, FACTORY_CODES
 from .dpad import resolve_dpad
-from .layers import B_SUFFIX
+from .layers import B_SUFFIX, HYPERSHIFT, STANDARD
 
 MACRO_DELAY = 0.015  # seconds between a step's down and up, and between steps
 
@@ -38,7 +38,9 @@ class RemapEngine:
         self._passthrough = False
         self._counts: Dict[int, int] = {}  # output code -> how many triggers hold it
         self._held: Dict[str, List[int]] = {}  # control -> codes it holds down
-        self._pressed: Set[str] = set()  # controls whose trigger is down
+        self._pressed: Dict[str, str] = {}  # control whose trigger is down -> layer its press started in
+        self._hypershift_down = False
+        self._hypershift_control: Optional[str] = None
         self._dpad_pressed: Set[str] = set()  # physical cardinals down
         self._dpad_active: FrozenSet[str] = frozenset()
         self._macros: Dict[str, asyncio.Task] = {}
@@ -125,6 +127,8 @@ class RemapEngine:
         self._counts.clear()
         self._held.clear()
         self._pressed.clear()
+        self._hypershift_down = False
+        self._hypershift_control = None
         self._dpad_pressed.clear()
         self._dpad_active = frozenset()
         for tracker in self._trackers.values():
@@ -146,20 +150,30 @@ class RemapEngine:
         for control in sorted(after - before, key=_ORDER.get):
             self._trigger(control, True)
 
-    def _trigger(self, control: str, is_down: bool) -> None:
+    def _active_layer(self) -> str:
+        return HYPERSHIFT if self._hypershift_down else STANDARD
+
+    def _trigger(self, control: str, is_down: bool, layer: Optional[str] = None) -> None:
         if not is_down:
             if control in self._pressed:
-                self._pressed.discard(control)
+                del self._pressed[control]
+                if control == self._hypershift_control:
+                    self._hypershift_down = False
+                    self._hypershift_control = None
                 for code in reversed(self._held.pop(control, [])):
                     self._up(code)
             return
         if control in self._pressed:
             return
-        self._pressed.add(control)
-        b = self._binding_for(control)
+        layer = layer or self._active_layer()
+        self._pressed[control] = layer
+        b = self._binding_for(control, layer)
         if b is None:
             return
-        if b.type in HOLD_TYPES:
+        if b.type == "hypershift":
+            self._hypershift_down = True
+            self._hypershift_control = control
+        elif b.type in HOLD_TYPES:
             held = []
             for name in b.keys:
                 code = code_for(name)
@@ -182,11 +196,20 @@ class RemapEngine:
                 self._tap(_STEAM_KEYS[b.action])
         # "disable" does nothing
 
-    def _binding_for(self, control: str) -> Optional[Binding]:
-        if control.endswith(B_SUFFIX):
-            secondary = self._profile.secondary.get(control[:-len(B_SUFFIX)])
+    def _binding_for(self, control: str, layer: str) -> Optional[Binding]:
+        """The binding a press of `control` in `layer` runs; a control the layer doesn't list uses its standard one."""
+        profile = self._profile
+        is_secondary = control.endswith(B_SUFFIX)
+        base = control[:-len(B_SUFFIX)] if is_secondary else control
+        if layer == HYPERSHIFT and base in profile.hypershift.bindings:
+            if not is_secondary:
+                return profile.hypershift.bindings[base]
+            entry = profile.hypershift.secondary.get(base)
+            return entry.binding if entry is not None else None
+        if is_secondary:
+            secondary = profile.secondary.get(base)
             return secondary.binding if secondary is not None else None
-        return self._profile.bindings.get(control)
+        return profile.bindings.get(base)
 
     async def _macro(self, control: str, steps: Sequence[Sequence[str]]) -> None:
         try:
