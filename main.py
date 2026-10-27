@@ -72,8 +72,8 @@ class Plugin:
         self.service.set_lighting(effect, color, brightness)
         return self.service.state()
 
-    async def set_analog(self, enabled: bool) -> dict:
-        self.service.set_analog(enabled)
+    async def set_adjustable_actuation(self, enabled: bool) -> dict:
+        self.service.set_adjustable_actuation(enabled)
         return self.service.state()
 
     async def set_leds(self, profile_id: str, leds: list) -> dict:

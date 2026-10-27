@@ -9,7 +9,7 @@ from typing import Dict
 from .codes import KEYS
 
 # Keys 01-20: depth-sensing in driver mode.
-ANALOG_KEYS = tuple(f"k{i:02d}" for i in range(1, 21))
+ACTUATION_KEYS = tuple(f"k{i:02d}" for i in range(1, 21))
 
 # System-control codes the keypad's report 3 can send; never passed on.
 SYSTEM_CODES = frozenset({116, 142, 143})  # KEY_POWER, KEY_SLEEP, KEY_WAKEUP

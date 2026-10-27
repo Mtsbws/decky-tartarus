@@ -8,12 +8,12 @@ import time
 from pathlib import Path
 from typing import Any, Awaitable, Callable, List, Optional, Sequence, Set, Tuple
 
-from .analog import DEFAULT_MM, MIN_GAP_MM, MM_MAX, MM_MIN, parse_depth_report
+from .actuation import DEFAULT_MM, MIN_GAP_MM, MM_MAX, MM_MIN, parse_depth_report
 from .bindings import Binding, binding_label, binding_to_dict
 from .config import (DEFAULT_ID, DPAD_MODES, LED_ORDER, MAX_APP_ID, MAX_PROFILES, Game, Lighting, Profile, clean_name,
                      default_profile, find_profile, load_config, new_profile_id, next_leds, profile_for_app, save_config)
 from .codes import name_for
-from .devmap import ALL_CONTROLS, ANALOG_KEYS, FACTORY_CODES, FACTORY_OUTPUT, SYSTEM_CODES
+from .devmap import ALL_CONTROLS, ACTUATION_KEYS, FACTORY_CODES, FACTORY_OUTPUT, SYSTEM_CODES
 from .devmode import DRIVER_MODE, NORMAL_MODE, set_mode_report
 from .engine import RemapEngine
 from .lighting import EFFECTS, effect_reports, leds_report
@@ -84,7 +84,7 @@ class TartarusService:
         self._depth_path: Optional[str] = None  # interface 1's hidraw node
         self._depth: Any = None  # its reader, while in driver mode
         self._driver_mode = False  # the keypad is in driver mode because we put it there
-        self._analog: Optional[str] = None  # "on" | "off" | "unavailable"; None while disconnected
+        self._actuation: Optional[str] = None  # "on" | "off" | "unavailable"; None while disconnected
         self._factory_key_logged = False
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._supervisor: Optional[asyncio.Task] = None
@@ -201,7 +201,7 @@ class TartarusService:
         self._devices = []
         self._hidraw = None
         self._depth_path = None
-        self._analog = None
+        self._actuation = None
         self._last_seen = None
         self._log.info("keypad disconnected")
         if notify:
@@ -211,30 +211,30 @@ class TartarusService:
 
     def _enter_driver_mode(self) -> None:
         """Switch keys 01-20 to depth reports; on any failure the keypad stays in normal mode."""
-        if not self._config.analog:
-            self._analog = "off"
+        if not self._config.adjustable_actuation:
+            self._actuation = "off"
             return
-        self._analog = "unavailable"
+        self._actuation = "unavailable"
         if self._depth_path is None or self._hidraw is None:
-            self._log.warning("analog keys unavailable: no %s interface found",
+            self._log.warning("adjustable actuation unavailable: no %s interface found",
                               "depth" if self._depth_path is None else "command")
             return
         if not self._send_command(set_mode_report(DRIVER_MODE), "driver mode"):
-            self._log.warning("analog keys unavailable: driver mode failed")
+            self._log.warning("adjustable actuation unavailable: driver mode failed")
             return
         self._driver_mode = True
         try:
             reader = self._open_hidraw(self._depth_path)
         except OSError as e:
-            self._log.warning("analog keys unavailable: opening %s failed (%s)", self._depth_path, e)
+            self._log.warning("adjustable actuation unavailable: opening %s failed (%s)", self._depth_path, e)
             self._leave_driver_mode()
-            self._analog = "unavailable"
+            self._actuation = "unavailable"
             return
         assert self._loop is not None
         self._depth = reader
         self._loop.add_reader(reader.fd, self._on_depth_readable)
-        self._analog = "on"
-        self._log.info("driver mode: analog keys on")
+        self._actuation = "on"
+        self._log.info("driver mode: adjustable actuation on")
 
     def _leave_driver_mode(self) -> None:
         """Stop reading depth and put the keypad back in normal mode, if we changed it."""
@@ -279,7 +279,7 @@ class TartarusService:
             if type_ == EV_KEY:
                 if code in SYSTEM_CODES:
                     continue
-                if self._driver_mode and FACTORY_CODES.get(code) in ANALOG_KEYS:
+                if self._driver_mode and FACTORY_CODES.get(code) in ACTUATION_KEYS:
                     if not self._factory_key_logged:
                         self._factory_key_logged = True
                         self._log.info("dropping factory key %d from a depth key in driver mode", code)
@@ -490,7 +490,7 @@ class TartarusService:
             "device_id": f"{VENDOR}:{PRODUCT}" if self._devices else None,
             "steam_mode": STEAM_ACTION_MODE,
             "lighting": {"effect": lighting.effect, "color": lighting.color, "brightness": lighting.brightness},
-            "analog": {"enabled": self._config.analog, "status": self._analog, "default_mm": DEFAULT_MM,
+            "actuation": {"enabled": self._config.adjustable_actuation, "status": self._actuation, "default_mm": DEFAULT_MM,
                        "min_mm": MM_MIN, "max_mm": MM_MAX, "min_gap_mm": MIN_GAP_MM},
             "effects": list(EFFECTS),
             "active_profile": self._profile().id,
@@ -598,11 +598,11 @@ class TartarusService:
         save_config(self._path, self._config)
         self._apply_lighting()
 
-    def set_analog(self, enabled: bool) -> None:
-        """The panel's Analog keys switch: release what is held, then change the mode at once."""
+    def set_adjustable_actuation(self, enabled: bool) -> None:
+        """The panel's Adjustable actuation switch: release what is held, then change the mode at once."""
         if not isinstance(enabled, bool):
             raise ValueError("enabled must be true or false")
-        self._config.analog = enabled
+        self._config.adjustable_actuation = enabled
         save_config(self._path, self._config)
         if self._devices:
             if self._engine is not None:

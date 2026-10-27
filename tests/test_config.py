@@ -122,20 +122,20 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(c.lighting.effect, "static")
         self.assertEqual(self._backups(), [])
 
-    def test_analog_round_trips_and_defaults_on(self):
-        self.assertTrue(load_config(self.path).analog)  # no file
+    def test_adjustable_actuation_round_trips_and_defaults_on(self):
+        self.assertTrue(load_config(self.path).adjustable_actuation)  # no file
         c = default_config()
-        c.analog = False
+        c.adjustable_actuation = False
         save_config(self.path, c)
-        self.assertIs(load_config(self.path).analog, False)
+        self.assertIs(load_config(self.path).adjustable_actuation, False)
         for raw in (None, "yes"):
             data = json.loads(self.path.read_text())
             if raw is None:
-                del data["analog"]
+                del data["adjustable_actuation"]
             else:
-                data["analog"] = raw
+                data["adjustable_actuation"] = raw
             self.path.write_text(json.dumps(data))
-            self.assertIs(load_config(self.path).analog, True, raw)
+            self.assertIs(load_config(self.path).adjustable_actuation, True, raw)
 
     def test_corrupt_file_backed_up(self):
         self._write("{nope")

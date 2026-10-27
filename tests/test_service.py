@@ -150,7 +150,7 @@ class ServiceTest(unittest.TestCase):
     def test_state_shape(self):
         rig = Rig(self.path)
         state = rig.service.state()
-        self.assertEqual(set(state), {"connected", "device", "device_id", "steam_mode", "lighting", "analog", "effects",
+        self.assertEqual(set(state), {"connected", "device", "device_id", "steam_mode", "lighting", "actuation", "effects",
                                  "active_profile", "running_app", "max_profiles", "profiles", "led_patterns"})
         self.assertFalse(state["connected"])
         self.assertIsNone(state["device"])
@@ -423,8 +423,8 @@ class PluginTest(unittest.TestCase):
                 self.assertEqual(state["running_app"], {"app_id": 1343400, "name": "RuneScape"})
                 state = await plugin.set_leds(p2, [False, True, True])
                 self.assertEqual(state["profiles"][1]["leds"], [False, True, True])
-                state = await plugin.set_analog(False)
-                self.assertIs(state["analog"]["enabled"], False)
+                state = await plugin.set_adjustable_actuation(False)
+                self.assertIs(state["actuation"]["enabled"], False)
                 state = await plugin.rename_profile(p2, "Runescape")
                 self.assertEqual(state["profiles"][1]["name"], "Runescape")
                 state = await plugin.delete_profile(p2)

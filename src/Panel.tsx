@@ -2,7 +2,7 @@ import { ButtonItem, DropdownItem, Focusable, Navigation, PanelSection, PanelSec
 import { addEventListener, removeEventListener } from "@decky/api";
 import { useEffect, useState } from "react";
 
-import { activeProfile, assignRunningGame, EV_STATE, getState, LightingState, setAnalog, setLighting, State } from "./api";
+import { activeProfile, assignRunningGame, EV_STATE, getState, LightingState, setAdjustableActuation, setLighting, State } from "./api";
 
 export const EDITOR_ROUTE = "/decky-tartarus/editor";
 
@@ -25,7 +25,7 @@ export function errorText(e: unknown): string {
 let lighting: LightingState | null = null;
 let lightingError: string | null = null;
 let assignError: string | null = null;
-let analogError: string | null = null;
+let actuationError: string | null = null;
 let timer: number | undefined;
 let writing = 0;
 const listeners = new Set<() => void>();
@@ -54,16 +54,16 @@ function changeLighting(patch: Partial<LightingState>) {
 }
 
 // The switch shows the backend's value; the state event after the call updates it.
-function switchAnalog(enabled: boolean) {
-  setAnalog(enabled)
-    .then(() => (analogError = null))
-    .catch((e) => (analogError = errorText(e)))
+function switchActuation(enabled: boolean) {
+  setAdjustableActuation(enabled)
+    .then(() => (actuationError = null))
+    .catch((e) => (actuationError = errorText(e)))
     .finally(publish);
 }
 
-const ANALOG_NOTES: Record<string, string> = {
-  unavailable: "Analog keys unavailable: keys work at the fixed hardware point.",
-  off: "Keys work at the fixed hardware point.",
+const ACTUATION_NOTES: Record<string, string> = {
+  unavailable: "Adjustable actuation unavailable: keys fire at the fixed hardware point.",
+  off: "Keys fire at the fixed hardware point.",
 };
 
 function assignGame(profileId: string) {
@@ -121,12 +121,12 @@ export function Panel() {
         {state && (
           <PanelSectionRow>
             <ToggleField
-              label="Analog keys"
-              description={state.connected && state.analog.status ? ANALOG_NOTES[state.analog.status] : undefined}
-              checked={state.analog.enabled}
-              onChange={switchAnalog}
+              label="Adjustable actuation"
+              description={state.connected && state.actuation.status ? ACTUATION_NOTES[state.actuation.status] : undefined}
+              checked={state.actuation.enabled}
+              onChange={switchActuation}
             />
-            {analogError && <div style={{ color: "#e05050" }}>{analogError}</div>}
+            {actuationError && <div style={{ color: "#e05050" }}>{actuationError}</div>}
           </PanelSectionRow>
         )}
         {state?.running_app && (

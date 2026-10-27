@@ -4,7 +4,7 @@
 
 **Goal:** Driver mode whenever the plugin has the keypad, with per-key actuation (1.5-3.6 mm), a secondary function per key, and the profile LEDs showing the active profile.
 
-**Architecture:** A new pure module `analog.py` turns depth reports into per-key A/B down/up events (`KeyTracker`). The engine owns one tracker per key 01-20, built from the profile, and routes A to control `kNN` and B to control `kNN.b`, so both reuse the existing held/release bookkeeping. The service manages the device mode (driver on connect, normal on disconnect and stop), reads interface 1's hidraw node with `loop.add_reader`, drops system keys, and sends the profile LEDs. Settings stay schema 2 with optional fields.
+**Architecture:** A new pure module `actuation.py` turns depth reports into per-key A/B down/up events (`KeyTracker`). The engine owns one tracker per key 01-20, built from the profile, and routes A to control `kNN` and B to control `kNN.b`, so both reuse the existing held/release bookkeeping. The service manages the device mode (driver on connect, normal on disconnect and stop), reads interface 1's hidraw node with `loop.add_reader`, drops system keys, and sends the profile LEDs. Settings stay schema 2 with optional fields.
 
 **Tech Stack:** Python 3 stdlib (`unittest`, `asyncio`), TypeScript + React with `@decky/ui` / `@decky/api` (pnpm, rollup).
 
@@ -37,16 +37,16 @@ Tests: `python3 -m unittest discover -s tests -t .` from the repo root (144 test
 - Actuation: keys k01-k20 only, 1.5-3.6 mm in 0.1 mm steps, default 1.5 mm. B at least 0.5 mm deeper than A.
 - Secondary semantics: A down past A; A up then B down past B; B up below B's release; A silent until below A's release (re-arm); a jump straight past B sends only B; B re-fires from between A and B without re-arm.
 - Dropped in both modes: `KEY_POWER` (116), `KEY_SLEEP` (142), `KEY_WAKEUP` (143). In driver mode, also the factory codes of k01-k20 (logged once per connection). Other unknown codes pass through as today.
-- Analog switch: global, on by default, stored in the settings file. Driver-mode failure → normal mode, logged, panel says "Analog keys unavailable".
+- Adjustable actuation switch: global, on by default, stored in the settings file. Driver-mode failure → normal mode, logged, panel says "Adjustable actuation unavailable".
 - `stop()` under 1 s; releases held outputs, then sends normal mode, before anything that can block.
 - No periodic `00/84` polling. No InputPlumber code copied (GPL).
 - Settings stay `SCHEMA_VERSION = 2`: new fields are optional, so a v2 file loads unchanged. A version bump would make an older plugin treat the file as corrupt and move it aside. No backup is needed since nothing is migrated.
-- Bad stored values (actuation off range/step, secondary B not 0.5 mm deeper, unparsable B binding, non-analog control) are dropped per key with a warning.
+- Bad stored values (actuation off range/step, secondary B not 0.5 mm deeper, unparsable B binding, control other than k01-k20) are dropped per key with a warning.
 - Every active-profile change still goes through `engine.set_profile`.
 
 ## Review Focus
 
-1. **A key is held through a profile switch, a Record start or the analog toggle in driver mode.** `release_all` releases the output. The tracker must not re-fire on the next report while the key is still down: it waits until the key drops below its release point. Test in Task 7 (`test_release_all_blocks_until_rearm`).
+1. **A key is held through a profile switch, a Record start or the Adjustable actuation switch in driver mode.** `release_all` releases the output. The tracker must not re-fire on the next report while the key is still down: it waits until the key drops below its release point. Test in Task 7 (`test_release_all_blocks_until_rearm`).
 2. **The keypad disappears mid-session (hub drop) in driver mode.** The depth reader errors or reports EOF. That must disconnect cleanly like an evdev read failure. The normal-mode send to the gone device fails quietly, and the reconnect re-enters driver mode. Test in Task 8 (`test_depth_read_error_disconnects_and_reconnects_in_driver_mode`).
 3. **Driver mode works but opening the depth node fails.** Keys 01-20 would be dead. The service must send normal mode back and fall back. Test in Task 8 (`test_depth_open_failure_restores_normal_mode`).
 4. **The user sets an LED pattern with ints (`[1, 0, 0]`) from the frontend.** `(1, 0, 0) == (True, False, False)` in Python, so a bare `in LED_ORDER` check passes and stores ints. Test in Task 2.
@@ -146,7 +146,7 @@ Use superpowers:systematic-debugging. The cause is unknown. Candidates: the supe
 - Test: `tests/test_service.py`
 
 **Interfaces:**
-- Produces: `devmap.SYSTEM_CODES = frozenset({116, 142, 143})  # KEY_POWER, KEY_SLEEP, KEY_WAKEUP`; `devmap.ANALOG_KEYS = tuple(f"k{i:02d}" for i in range(1, 21))`.
+- Produces: `devmap.SYSTEM_CODES = frozenset({116, 142, 143})  # KEY_POWER, KEY_SLEEP, KEY_WAKEUP`; `devmap.ACTUATION_KEYS = tuple(f"k{i:02d}" for i in range(1, 21))`.
 
 - [ ] **Step 1: Failing test** `test_system_keys_dropped`: connect, push `(EV_KEY, 142, 1), (EV_KEY, 142, 0), (EV_KEY, 116, 1), (EV_KEY, 143, 1)` → `emitter.out` has none of them. An unknown code (e.g. 183, F13) still passes through. Also during Record: a system key is not fed to the capture.
 - [ ] **Step 2: Run, expect FAIL**
@@ -179,8 +179,8 @@ Use superpowers:systematic-debugging. The cause is unknown. Candidates: the supe
 ### Task 6: Depth mapping and the single-function tracker
 
 **Files:**
-- Create: `py_modules/tartarus/analog.py`
-- Test: Create `tests/test_analog.py`
+- Create: `py_modules/tartarus/actuation.py`
+- Test: Create `tests/test_actuation.py`
 
 **Interfaces:**
 - Produces:
@@ -209,8 +209,8 @@ Use superpowers:systematic-debugging. The cause is unknown. Candidates: the supe
 - Test: `tests/test_engine.py`
 
 **Interfaces:**
-- Consumes: `KeyTracker`, `mm_to_depth`, `DEFAULT_MM`, `ANALOG_KEYS`.
-- Produces: `RemapEngine.handle_depth(depths: bytes) -> None` (20 bytes, index i = `ANALOG_KEYS[i]`). The engine builds one tracker per key on `__init__` and `set_profile`. In M2 every key uses `mm_to_depth(DEFAULT_MM)`. Slot `"a"` triggers control `kNN` through the existing `_trigger`. `KeyTracker.reset()` semantics: the tracker forgets what it holds. If the last depth it saw is at or above its lowest release point, it ignores everything until the depth drops below that point (re-arm).
+- Consumes: `KeyTracker`, `mm_to_depth`, `DEFAULT_MM`, `ACTUATION_KEYS`.
+- Produces: `RemapEngine.handle_depth(depths: bytes) -> None` (20 bytes, index i = `ACTUATION_KEYS[i]`). The engine builds one tracker per key on `__init__` and `set_profile`. In M2 every key uses `mm_to_depth(DEFAULT_MM)`. Slot `"a"` triggers control `kNN` through the existing `_trigger`. `KeyTracker.reset()` semantics: the tracker forgets what it holds. If the last depth it saw is at or above its lowest release point, it ignores everything until the depth drops below that point (re-arm).
 
 - [ ] **Step 1: Failing tests**
   - `test_depth_press_and_release`: profile with k01 → `Esc`. `handle_depth` with byte 0 at 16 → Esc down; at 7 → Esc up. Other bytes 0 → nothing else.
@@ -226,56 +226,56 @@ Use superpowers:systematic-debugging. The cause is unknown. Candidates: the supe
 ### Task 8: Mode lifecycle in the service
 
 **Files:**
-- Modify: `py_modules/tartarus/config.py` (`Config.analog: bool = True`; dump/parse `"analog"`, non-bool → `True`), `py_modules/tartarus/service.py`, `main.py`, `src/api.ts`
-- Test: Create `tests/test_service_analog.py`; `tests/test_config.py`
+- Modify: `py_modules/tartarus/config.py` (`Config.adjustable_actuation: bool = True`; dump/parse `"adjustable_actuation"`, non-bool → `True`), `py_modules/tartarus/service.py`, `main.py`, `src/api.ts`
+- Test: Create `tests/test_service_actuation.py`; `tests/test_config.py`
 
 **Interfaces:**
-- Consumes: `set_mode_report`, `HidrawReader`, `TartarusNodes.depth`, `engine.handle_depth`, `parse_depth_report`, `ANALOG_KEYS`.
+- Consumes: `set_mode_report`, `HidrawReader`, `TartarusNodes.depth`, `engine.handle_depth`, `parse_depth_report`, `ACTUATION_KEYS`.
 - Produces:
   - Service ctor kwarg `open_hidraw: Callable[[str], Any] = HidrawReader`.
-  - `_enter_driver_mode() -> None` and `_leave_driver_mode() -> None`. `self._analog: Optional[str]` is `"on"`, `"off"` (switch off), `"unavailable"`, or `None` when disconnected.
-  - `set_analog(enabled: bool) -> None`; callable `set_analog(enabled) -> state`.
-  - State `"analog": {"enabled": bool, "status": "on" | "off" | "unavailable" | None, "default_mm": 1.5, "min_mm": 1.5, "max_mm": 3.6, "min_gap_mm": 0.5}`. TS type `AnalogState` and `setAnalog`.
+  - `_enter_driver_mode() -> None` and `_leave_driver_mode() -> None`. `self._actuation: Optional[str]` is `"on"`, `"off"` (switch off), `"unavailable"`, or `None` when disconnected.
+  - `set_adjustable_actuation(enabled: bool) -> None`; callable `set_adjustable_actuation(enabled) -> state`.
+  - State `"actuation": {"enabled": bool, "status": "on" | "off" | "unavailable" | None, "default_mm": 1.5, "min_mm": 1.5, "max_mm": 3.6, "min_gap_mm": 0.5}`. TS type `ActuationState` and `setAdjustableActuation`.
 - Lifecycle:
   - Connect order: grab → `_enter_driver_mode` (send driver mode, status `0x02`, then open the depth reader and `add_reader`) → lighting → LEDs.
-  - Failure (no `depth` or `hidraw` node, OSError, status ≠ `0x02`, reader open fails after the mode was set) → send normal mode if driver mode was set, `_analog = "unavailable"`, warning.
+  - Failure (no `depth` or `hidraw` node, OSError, status ≠ `0x02`, reader open fails after the mode was set) → send normal mode if driver mode was set, `_actuation = "unavailable"`, warning.
   - `_disconnect` and `stop`: `release_all`, then `_leave_driver_mode` (remove the reader, close it, send normal mode if the mode is on; failures logged at info), then ungrab as today.
   - Depth reader errors are treated like an evdev read failure: `_disconnect()`.
-  - In driver mode, `EV_KEY` factory codes of `ANALOG_KEYS` are dropped and logged once per connection.
+  - In driver mode, `EV_KEY` factory codes of `ACTUATION_KEYS` are dropped and logged once per connection.
 
 - [ ] **Step 1: Failing tests** (Rig with `FakeSender` and a pipe-backed `FakeHidraw` exposing `push(report: bytes)` and `unplug()`):
-  - `test_connect_enters_driver_mode`: sent order `set_mode_report(DRIVER_MODE)`, then the lighting reports, then the LED report. `state()["analog"]["status"] == "on"`. Pushing a depth report with k01 at 20 → the k01 binding goes down.
+  - `test_connect_enters_driver_mode`: sent order `set_mode_report(DRIVER_MODE)`, then the lighting reports, then the LED report. `state()["actuation"]["status"] == "on"`. Pushing a depth report with k01 at 20 → the k01 binding goes down.
   - `test_driver_mode_status_failure_falls_back`: driver mode answered `0x05` → status `"unavailable"`, warning logged, evdev k01 still works.
   - `test_no_depth_node_falls_back`: `TartarusNodes(..., depth=None)` → no mode report sent, status `"unavailable"`.
   - `test_depth_open_failure_restores_normal_mode` (Review Focus 3): `open_hidraw` raises → the sent reports include driver then normal mode; status `"unavailable"`.
   - `test_stop_sends_normal_mode_after_release`: hold k01 by depth, `stop()` → in a shared log list, the emitter's k01 release comes before `set_mode_report(NORMAL_MODE)`, and that comes before any ungrab.
   - `test_depth_read_error_disconnects_and_reconnects_in_driver_mode` (Review Focus 2): `FakeHidraw.unplug()` → disconnected, the held output released, then on reconnect a second driver-mode report is sent.
   - `test_resume_reenters_driver_mode`: as `test_resume_reconnects`: normal mode sent, then driver mode again.
-  - `test_analog_keys_evdev_dropped_in_driver_mode`: evdev `KEY_1` (k01's factory code) → no output, one info log for repeated codes. `KEY_LEFTALT` (top button) still remaps.
-  - `test_set_analog_toggles_at_runtime`: hold k01 by depth, `set_analog(False)` → release first, then normal mode sent, reader closed, status `"off"`, setting persisted. `set_analog(True)` → driver mode again. Non-bool → `ValueError`.
-  - `test_analog_off_at_connect`: stored `"analog": false` → no mode report, status `"off"`.
-  - `tests/test_config.py`: `analog` round-trips; missing or `"yes"` → `True`.
+  - `test_actuation_keys_evdev_dropped_in_driver_mode`: evdev `KEY_1` (k01's factory code) → no output, one info log for repeated codes. `KEY_LEFTALT` (top button) still remaps.
+  - `test_set_adjustable_actuation_toggles_at_runtime`: hold k01 by depth, `set_adjustable_actuation(False)` → release first, then normal mode sent, reader closed, status `"off"`, setting persisted. `set_adjustable_actuation(True)` → driver mode again. Non-bool → `ValueError`.
+  - `test_actuation_off_at_connect`: stored `"adjustable_actuation": false` → no mode report, status `"off"`.
+  - `tests/test_config.py`: `adjustable_actuation` round-trips; missing or `"yes"` → `True`.
 - [ ] **Step 2: Run, expect FAIL**
 - [ ] **Step 3: Implement** as in Interfaces. Drain the reader per readable callback (loop `read_report()` until `None`, at most 64 reports). Each report goes to `engine.handle_depth` at once.
 - [ ] **Step 4: Full suite PASS; `pnpm build` clean.** `TWO_NODES` has no `depth` node, so older service tests now run in the "unavailable" fallback. That is fine, as long as no test changes its assertions to pass.
 - [ ] **Step 5: Commit** `feat: driver mode while the plugin has the keypad`
 
-### Task 9: Panel analog switch
+### Task 9: Panel Adjustable actuation switch
 
 **Files:**
 - Modify: `src/Panel.tsx`
 
-- [ ] **Step 1: Implement.** In the Keypad section, a `ToggleField` "Analog keys" bound to `state.analog.enabled` (backend state, not local state; see the remount note in `Panel.tsx`) that calls `setAnalog`. Under it, when connected: status `"unavailable"` → "Analog keys unavailable: keys work at the fixed hardware point."; `"off"` → "Keys work at the fixed hardware point.".
+- [ ] **Step 1: Implement.** In the Keypad section, a `ToggleField` "Adjustable actuation" bound to `state.actuation.enabled` (backend state, not local state; see the remount note in `Panel.tsx`) that calls `setAdjustableActuation`. Under it, when connected: status `"unavailable"` → "Adjustable actuation unavailable: keys fire at the fixed hardware point."; `"off"` → "Keys fire at the fixed hardware point.".
 - [ ] **Step 2: `pnpm build` clean**
 - [ ] **Step 3: Commit** `feat: analog keys switch in the panel`
 
 ### Deck check M2 (user runs; Claude asks before the first deploy, since it enters driver mode)
 
 1. Deploy (this is also the unload check from Task 3: no "still alive" in the log).
-2. Panel shows Analog on. Keys 01-20 type at a light press (1.5 mm). Top button, D-pad and wheel work. No suspend in the next minute.
+2. Panel shows Adjustable actuation on. Keys 01-20 type at a light press (1.5 mm). Top button, D-pad and wheel work. No suspend in the next minute.
 3. **Profile LEDs in driver mode:** switch games → LEDs follow. Change the effect, then the brightness → LEDs stay. If the LEDs don't change in driver mode, stop and plan the fallback with the user: send the LED report before `_enter_driver_mode`, on connect and on switch (switch would then need normal → LEDs → driver, which the user must approve). If that fails too, stop and ask.
-4. Toggle Analog off → keys type at the hardware point. Toggle back on.
-5. Unplug → replug → keys work, analog on. Suspend → resume → same.
+4. Toggle Adjustable actuation off → keys type at the hardware point. Toggle back on.
+5. Unplug → replug → keys work, adjustable actuation on. Suspend → resume → same.
 6. Disable the plugin in Decky → keys 01-20 type normally (normal mode restored). Re-enable.
 7. Update `docs/superpowers/synapse-capture-findings.md` "Still a guess" with the LED-in-driver-mode result.
 
@@ -298,7 +298,7 @@ Use superpowers:systematic-debugging. The cause is unknown. Candidates: the supe
   - `test_bad_actuation_dropped` (one warning each): `{"k01": 1.4, "k02": 2.55, "k03": "2", "top_button": 2.0, "k99": 2.0, "k04": true}` → `{}`, and `{"k05": 2.6000000000000005}` → `{"k05": 2.6}` (Review Focus 5). A value of exactly 1.5 is dropped silently, since it is the default.
   - A non-dict `actuation` → `{}`.
 - [ ] **Step 2: Run, expect FAIL**
-- [ ] **Step 3: Implement** in `_parse_profile` and `_dump`, using `analog.valid_mm`. `create_profile` copies it (`dict(source.actuation)`). Add that to `test_create_profile_copies_and_caps`.
+- [ ] **Step 3: Implement** in `_parse_profile` and `_dump`, using `actuation.valid_mm`. `create_profile` copies it (`dict(source.actuation)`). Add that to `test_create_profile_copies_and_caps`.
 - [ ] **Step 4: PASS**
 - [ ] **Step 5: Commit** `feat: store actuation per key`
 
@@ -306,14 +306,14 @@ Use superpowers:systematic-debugging. The cause is unknown. Candidates: the supe
 
 **Files:**
 - Modify: `py_modules/tartarus/engine.py`, `py_modules/tartarus/service.py`, `main.py`, `src/api.ts`
-- Test: `tests/test_engine.py`, `tests/test_service_analog.py`
+- Test: `tests/test_engine.py`, `tests/test_service_actuation.py`
 
 **Interfaces:**
 - Produces:
   - Engine trackers use `mm_to_depth(profile.actuation.get(key, DEFAULT_MM))`.
   - `set_actuation(profile_id: str, control: str, mm: float) -> None`
   - `set_all_actuation(profile_id: str, mm: float) -> None`
-  - Both raise `ValueError` for invalid mm or a non-analog control. A value equal to `DEFAULT_MM` removes the entry. They save, and call `set_profile` on the engine if the profile is active (via `_edited`).
+  - Both raise `ValueError` for invalid mm or a control other than k01-k20. A value equal to `DEFAULT_MM` removes the entry. They save, and call `set_profile` on the engine if the profile is active (via `_edited`).
   - Callables `set_actuation`, `set_all_actuation` → state.
   - State `profiles[i]["actuation"]: {control: mm}`.
   - TS `ProfileState.actuation: Record<string, number>`, `setActuation`, `setAllActuation`.
@@ -355,8 +355,8 @@ Use superpowers:systematic-debugging. The cause is unknown. Candidates: the supe
 ### Task 13: Secondary in the tracker
 
 **Files:**
-- Modify: `py_modules/tartarus/analog.py`
-- Test: `tests/test_analog.py`
+- Modify: `py_modules/tartarus/actuation.py`
+- Test: `tests/test_actuation.py`
 
 **Interfaces:**
 - Produces: `KeyTracker(fire_a, fire_b)` with `fire_b > fire_a`. States: idle, A held, B held, latched (between, A silent). Transitions:
@@ -391,12 +391,12 @@ Use superpowers:systematic-debugging. The cause is unknown. Candidates: the supe
 - Test: `tests/test_config.py`
 
 **Interfaces:**
-- Produces: `@dataclass(frozen=True) Secondary(binding: Binding, actuation: float)` (setters replace it, never mutate); `Profile.secondary: Dict[str, Secondary] = field(default_factory=dict)`. JSON `"secondary": {"k05": {"binding": {...binding_to_dict...}, "actuation": 3.6}}`. `gap_ok(a_mm: float, b_mm: float) -> bool` in `analog.py`: `tenths(b) - tenths(a) >= 5`.
+- Produces: `@dataclass(frozen=True) Secondary(binding: Binding, actuation: float)` (setters replace it, never mutate); `Profile.secondary: Dict[str, Secondary] = field(default_factory=dict)`. JSON `"secondary": {"k05": {"binding": {...binding_to_dict...}, "actuation": 3.6}}`. `gap_ok(a_mm: float, b_mm: float) -> bool` in `actuation.py`: `tenths(b) - tenths(a) >= 5`.
 
 - [ ] **Step 1: Failing tests**
   - `test_secondary_round_trip`.
   - Missing → `{}`.
-  - `test_bad_secondary_dropped` (warning each): non-analog control; bad binding dict; actuation `3.7`; B `2.0` with A `1.6` (gap 0.4); B `2.1` with A `1.6` is kept (`gap_ok(1.6, 2.1)`, Review Focus 5).
+  - `test_bad_secondary_dropped` (warning each): control other than k01-k20; bad binding dict; actuation `3.7`; B `2.0` with A `1.6` (gap 0.4); B `2.1` with A `1.6` is kept (`gap_ok(1.6, 2.1)`, Review Focus 5).
   - The gap is checked against the parsed A (a dropped A means 1.5).
   - `create_profile` copies it with `dict(source.secondary)` (safe because `Secondary` is frozen); add that to `test_create_profile_copies_and_caps`.
 - [ ] **Step 2: Run, expect FAIL**
@@ -408,7 +408,7 @@ Use superpowers:systematic-debugging. The cause is unknown. Candidates: the supe
 
 **Files:**
 - Modify: `py_modules/tartarus/engine.py`, `py_modules/tartarus/service.py`, `main.py`, `src/api.ts`
-- Test: `tests/test_engine.py`, `tests/test_service_analog.py`
+- Test: `tests/test_engine.py`, `tests/test_service_actuation.py`
 
 **Interfaces:**
 - Produces:
@@ -441,19 +441,19 @@ Deploy. Settings file (plugin disabled): k12 secondary B = `Z` at 3.6, A = `C`. 
 
 All editor controls must work with the D-pad and A button (wrap groups in `Focusable` with `flow-children` as the existing editor does), and take their values from backend state.
 
-### Task 16: Actuation slider, All keys, badges, analog note
+### Task 16: Actuation slider, All keys, badges, adjustable actuation note
 
 **Files:**
-- Create: `src/editor/AnalogSettings.tsx`
+- Create: `src/editor/ActuationSettings.tsx`
 - Modify: `src/editor/Editor.tsx`, `src/editor/Keypad.tsx`
 
 **Interfaces:**
-- Produces: `AnalogSettings(props: { control: string; state: State; profile: ProfileState; onChanged(s: State): void })`, rendered under `BindingPicker` when `control` matches `/^k\d\d$/`.
+- Produces: `ActuationSettings(props: { control: string; state: State; profile: ProfileState; onChanged(s: State): void })`, rendered under `BindingPicker` when `control` matches `/^k\d\d$/`.
 
 - [ ] **Step 1: Implement**
-  - `SliderField` "Actuation", min 1.5, max 3.6, step 0.1, showing `x.x mm`, value `profile.actuation[control] ?? state.analog.default_mm`. Send `setActuation` on change (debounce 300 ms like the panel's lighting slider; a backend error shows inline in red).
+  - `SliderField` "Actuation", min 1.5, max 3.6, step 0.1, showing `x.x mm`, value `profile.actuation[control] ?? state.actuation.default_mm`. Send `setActuation` on change (debounce 300 ms like the panel's lighting slider; a backend error shows inline in red).
   - An "All keys" row: a slider plus an "Apply to all keys" `DialogButton` → `setAllActuation`. A refusal shows the backend message.
-  - When `state.analog.status !== "on"`: a note "Applies only with analog keys on."
+  - When `state.actuation.status !== "on"`: a note "Applies only with Adjustable actuation on."
   - Keypad: a key with an actuation entry shows its mm (e.g. `2.5`) in the corner label's row, right-aligned at fontSize 9. A key with a secondary shows a small `2×` badge. The rest of the look stays as today.
 - [ ] **Step 2: `pnpm build` clean**
 - [ ] **Step 3: Commit** `feat: actuation controls in the editor`
@@ -461,7 +461,7 @@ All editor controls must work with the D-pad and A button (wrap groups in `Focus
 ### Task 17: Secondary function controls
 
 **Files:**
-- Modify: `src/editor/AnalogSettings.tsx`, `src/editor/BindingPicker.tsx` (only if it needs a label prop), `src/editor/Editor.tsx`
+- Modify: `src/editor/ActuationSettings.tsx`, `src/editor/BindingPicker.tsx` (only if it needs a label prop), `src/editor/Editor.tsx`
 
 - [ ] **Step 1: Implement**
   - `ToggleField` "Secondary function". On → `setSecondary(profile.id, control, 3.6)`; off → `setSecondary(profile.id, control, null)`. If A > 3.1 the backend refuses and the toggle shows its message.
@@ -480,4 +480,4 @@ All editor controls must work with the D-pad and A button (wrap groups in `Focus
 
 ### Deck check M5 (user runs)
 
-Deploy. Using only the D-pad and A: select key 05, set actuation 2.5, see the badge; turn on the secondary function, record B, set B 3.4; apply All keys 2.0 → B stays ≥ 2.5; pick another LED pattern for a profile → LEDs change if it's active; Analog off → the note shows. Then the final whole-branch review with an `opus` subagent.
+Deploy. Using only the D-pad and A: select key 05, set actuation 2.5, see the badge; turn on the secondary function, record B, set B 3.4; apply All keys 2.0 → B stays ≥ 2.5; pick another LED pattern for a profile → LEDs change if it's active; Adjustable actuation off → the note shows. Then the final whole-branch review with an `opus` subagent.

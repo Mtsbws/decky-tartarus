@@ -85,14 +85,14 @@ have actuation everywhere. Everything that *can* restore normal mode must:
   4. apply lighting, then the active profile's LEDs
 - **If driver mode fails** (no interface 1 or 2 hidraw node, OSError, status not `0x02`), keep
   going in normal mode: keys work as on/off keys at the hardware point, no analog, no secondary
-  functions. Log it and show it in the panel (e.g. "Analog keys unavailable").
+  functions. Log it and show it in the panel ("Adjustable actuation unavailable").
 - **On stop**: release all held outputs, send normal mode, then ungrab and close as today.
   - **Unload bug to fix:** on the Deck, Decky reported the plugin "still alive 5 seconds after
     stop request" and SIGKILLed it. A killed plugin never sends normal mode, so `stop()` must
     finish well inside that limit. The builder finds the cause (the supervisor, a pending macro,
     the hidraw reader, the frontend…) and fixes it. *Claude's call:* `stop()` targets under
     1 s; it releases held outputs, then sends normal mode, before anything that can block.
-- **Analog switch** (*Claude's call*): a global panel toggle "Analog keys", on by default. Off =
+- **Adjustable actuation switch** (*Claude's call*; named after Razer's term by the user): a global panel toggle "Adjustable actuation", on by default. Off =
   normal mode, today's behaviour. It's an escape hatch if driver mode misbehaves, and a quick way
   to compare. It is global, not per profile, because the user wants analog in every profile.
   It's stored in the settings file and survives restarts. Switching it at runtime first releases
@@ -184,7 +184,7 @@ Pattern: today's editor (profile bar, keypad drawing, binding picker per control
 - The keypad drawing marks keys with a non-default actuation or a secondary function (badge or
   label; looks are the builder's call).
 - When analog is off or unavailable, these controls stay editable but show a note that they apply
-  only with analog keys on.
+  only with Adjustable actuation on.
 - Steam Deck QAM is narrow and gamepad-driven: everything works with the D-pad and A button, as the
   current editor does.
 

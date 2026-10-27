@@ -1,6 +1,6 @@
 import unittest
 
-from tartarus.analog import KeyTracker, mm_to_depth, parse_depth_report, valid_mm
+from tartarus.actuation import KeyTracker, mm_to_depth, parse_depth_report, valid_mm
 
 
 class MappingTest(unittest.TestCase):

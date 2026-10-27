@@ -66,7 +66,7 @@ class FakeHidraw:
             self.closed = True
 
 
-class AnalogServiceTest(unittest.TestCase):
+class ActuationServiceTest(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.path = Path(self._tmp.name) / "settings.json"
@@ -107,7 +107,7 @@ class AnalogServiceTest(unittest.TestCase):
             self.assertEqual(self.sender.sent[0], ("/dev/hidraw8", DRIVER))
             self.assertEqual(self.reports(), [DRIVER] + effect_reports("spectrum", "#00ff00", 100)
                              + [leds_report(NO_LEDS)])
-            self.assertEqual(rig.service.state()["analog"],
+            self.assertEqual(rig.service.state()["actuation"],
                              {"enabled": True, "status": "on", "default_mm": 1.5, "min_mm": 1.5, "max_mm": 3.6,
                               "min_gap_mm": 0.5})
             self.assertEqual(self.readers[0].path, "/dev/hidraw7")
@@ -123,7 +123,7 @@ class AnalogServiceTest(unittest.TestCase):
             with self.assertLogs("tartarus", "WARNING") as logs:
                 rig = await self.connected(FakeSender(status=0x05))
             self.assertTrue(any("driver mode" in line for line in logs.output))
-            self.assertEqual(rig.service.state()["analog"]["status"], "unavailable")
+            self.assertEqual(rig.service.state()["actuation"]["status"], "unavailable")
             self.assertEqual(self.readers, [])
             rig.devices[0].push((EV_KEY, KEY_1, 1))
             await until(lambda: rig.emitter.out)
@@ -136,7 +136,7 @@ class AnalogServiceTest(unittest.TestCase):
         async def go():
             rig = await self.connected(nodes=TartarusNodes(event=NODES.event, hidraw=NODES.hidraw, depth=None))
             self.assertNotIn(DRIVER, self.reports())
-            self.assertEqual(rig.service.state()["analog"]["status"], "unavailable")
+            self.assertEqual(rig.service.state()["actuation"]["status"], "unavailable")
             await rig.service.stop()
 
         self.run_async(go())
@@ -146,7 +146,7 @@ class AnalogServiceTest(unittest.TestCase):
             self.open_error = OSError(errno.EACCES, "denied")
             rig = await self.connected()
             self.assertEqual(self.reports()[:2], [DRIVER, NORMAL])
-            self.assertEqual(rig.service.state()["analog"]["status"], "unavailable")
+            self.assertEqual(rig.service.state()["actuation"]["status"], "unavailable")
             await rig.service.stop()
             self.assertEqual(self.reports().count(NORMAL), 1)
 
@@ -200,7 +200,7 @@ class AnalogServiceTest(unittest.TestCase):
 
         self.run_async(go())
 
-    def test_analog_keys_evdev_dropped_in_driver_mode(self):
+    def test_actuation_keys_evdev_dropped_in_driver_mode(self):
         async def go():
             rig = await self.connected()
             with self.assertLogs("tartarus", "INFO") as logs:
@@ -213,36 +213,36 @@ class AnalogServiceTest(unittest.TestCase):
 
         self.run_async(go())
 
-    def test_set_analog_toggles_at_runtime(self):
+    def test_set_adjustable_actuation_toggles_at_runtime(self):
         async def go():
             rig = await self.connected()
             self.readers[0].push(depth_report(k01=200))
             await until(lambda: rig.emitter.out)
             self.sender.sent.clear()
-            rig.service.set_analog(False)
+            rig.service.set_adjustable_actuation(False)
             self.assertEqual(rig.emitter.out, [("key", KEY_ESC, True), ("key", KEY_ESC, False)])
             self.assertEqual(self.reports(), [NORMAL])
             self.assertTrue(self.readers[0].closed)
-            self.assertEqual(rig.service.state()["analog"]["status"], "off")
-            self.assertEqual(rig.service.state()["analog"]["enabled"], False)
-            self.assertIs(json.loads(self.path.read_text())["analog"], False)
-            rig.service.set_analog(True)
+            self.assertEqual(rig.service.state()["actuation"]["status"], "off")
+            self.assertEqual(rig.service.state()["actuation"]["enabled"], False)
+            self.assertIs(json.loads(self.path.read_text())["adjustable_actuation"], False)
+            rig.service.set_adjustable_actuation(True)
             self.assertEqual(self.reports(), [NORMAL, DRIVER])
-            self.assertEqual(rig.service.state()["analog"]["status"], "on")
+            self.assertEqual(rig.service.state()["actuation"]["status"], "on")
             with self.assertRaises(ValueError):
-                rig.service.set_analog("yes")
+                rig.service.set_adjustable_actuation("yes")
             await rig.service.stop()
 
         self.run_async(go())
 
-    def test_analog_off_at_connect(self):
+    def test_actuation_off_at_connect(self):
         async def go():
             data = json.loads(self.path.read_text())
-            data["analog"] = False
+            data["adjustable_actuation"] = False
             self.path.write_text(json.dumps(data))
             rig = await self.connected()
             self.assertNotIn(DRIVER, self.reports())
-            self.assertEqual(rig.service.state()["analog"]["status"], "off")
+            self.assertEqual(rig.service.state()["actuation"]["status"], "off")
             await rig.service.stop()
             self.assertNotIn(NORMAL, self.reports())
 
@@ -252,7 +252,7 @@ class AnalogServiceTest(unittest.TestCase):
         async def go():
             rig = Rig(self.path, open_hidraw=self.open_hidraw)
             await rig.service.start()
-            self.assertIsNone(rig.service.state()["analog"]["status"])
+            self.assertIsNone(rig.service.state()["actuation"]["status"])
             await rig.service.stop()
 
         self.run_async(go())
