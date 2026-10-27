@@ -3,8 +3,12 @@ import { addEventListener, removeEventListener } from "@decky/api";
 import { useEffect, useState } from "react";
 
 import { EV_STATE, activeProfile, errorText, getState, profileById, setDpadMode, State } from "../api";
+import { LightingControls } from "../LightingControls";
+import { syncLighting } from "../lighting";
 import { ActuationPage } from "./ActuationPage";
+import { Card } from "./Card";
 import { CustomizePage } from "./CustomizePage";
+import { PAGE_HEIGHT } from "./layout";
 
 type Page = "customize" | "actuation" | "lighting" | "profiles";
 
@@ -18,9 +22,13 @@ export function Editor() {
   useEffect(() => {
     getState().then((s) => {
       setState(s);
+      syncLighting(s);
       setViewing((v) => v ?? s.active_profile);
     });
-    const listener = addEventListener<[State]>(EV_STATE, setState);
+    const listener = addEventListener<[State]>(EV_STATE, (s) => {
+      setState(s);
+      syncLighting(s);
+    });
     return () => {
       removeEventListener(EV_STATE, listener);
     };
@@ -86,7 +94,18 @@ export function Editor() {
             title: "Actuation",
             content: <ActuationPage state={state} profile={profile} onView={switchView} onChanged={setState} />,
           },
-          { id: "lighting", title: "Lighting", content: <div /> },
+          {
+            id: "lighting",
+            title: "Lighting",
+            // As wide as the Quick Access panel's rows plus margins, so the swatches stay together.
+            content: (
+              <div style={{ height: PAGE_HEIGHT, maxWidth: 560 }}>
+                <Card title="Lighting">
+                  <LightingControls effects={state.effects} collapsible={false} />
+                </Card>
+              </div>
+            ),
+          },
           { id: "profiles", title: "Profiles", content: <div /> },
         ]}
       />
