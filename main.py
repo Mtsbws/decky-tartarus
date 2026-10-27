@@ -27,7 +27,8 @@ class Plugin:
         decky.logger.info("Decky Tartarus unloaded")
 
     async def _uninstall(self):
-        pass
+        if self.service is not None:
+            await self.service.stop()  # Decky calls _unload first; stop is idempotent
 
     async def get_state(self) -> dict:
         return self.service.state()
@@ -69,6 +70,34 @@ class Plugin:
 
     async def set_lighting(self, effect: str, color: str, brightness: int) -> dict:
         self.service.set_lighting(effect, color, brightness)
+        return self.service.state()
+
+    async def set_lighting_enabled(self, enabled: bool) -> dict:
+        self.service.set_lighting_enabled(enabled)
+        return self.service.state()
+
+    async def set_adjustable_actuation(self, enabled: bool) -> dict:
+        self.service.set_adjustable_actuation(enabled)
+        return self.service.state()
+
+    async def set_actuation(self, profile_id: str, control: str, mm: float) -> dict:
+        self.service.set_actuation(profile_id, control, mm)
+        return self.service.state()
+
+    async def set_all_actuation(self, profile_id: str, mm: float) -> dict:
+        self.service.set_all_actuation(profile_id, mm)
+        return self.service.state()
+
+    async def set_actuation_keys(self, profile_id: str, controls: list, mm: float) -> dict:
+        self.service.set_actuation_keys(profile_id, controls, mm)
+        return self.service.state()
+
+    async def set_secondary(self, profile_id: str, control: str, mm: Optional[float]) -> dict:
+        self.service.set_secondary(profile_id, control, mm)
+        return self.service.state()
+
+    async def set_leds(self, profile_id: str, leds: list) -> dict:
+        self.service.set_leds(profile_id, leds)
         return self.service.state()
 
     async def record_start(self) -> None:

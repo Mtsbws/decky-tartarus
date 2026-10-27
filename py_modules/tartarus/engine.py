@@ -4,12 +4,14 @@ from __future__ import annotations
 import asyncio
 from typing import Awaitable, Callable, Dict, FrozenSet, List, Optional, Protocol, Sequence, Set
 
+from .actuation import DEFAULT_MM, KeyTracker, mm_to_depth
 from .bindings import Binding
 from .codes import WHEEL_DOWN, WHEEL_UP, code_for
 from .config import Profile
-from .devmap import ALL_CONTROLS, DPAD_CARDINALS, FACTORY_CODES
+from .devmap import ALL_CONTROLS, ACTUATION_KEYS, DPAD_CARDINALS, FACTORY_CODES
 from .dpad import resolve_dpad
 
+B_SUFFIX = ".b"  # control kNN.b is key kNN's secondary function
 MACRO_DELAY = 0.015  # seconds between a step's down and up, and between steps
 
 HOLD_TYPES = ("key", "modifier", "mouse", "media", "combo")
@@ -40,6 +42,8 @@ class RemapEngine:
         self._dpad_pressed: Set[str] = set()  # physical cardinals down
         self._dpad_active: FrozenSet[str] = frozenset()
         self._macros: Dict[str, asyncio.Task] = {}
+        self._trackers: Dict[str, KeyTracker] = {}
+        self._build_trackers()
 
     # Record mode forwards raw events. Switching either way releases what is held,
     # so a key pressed in one mode can't stay down in the other.
@@ -83,9 +87,33 @@ class RemapEngine:
             self._trigger(control, False)
             self._out.sync()
 
+    def handle_depth(self, depths: bytes) -> None:
+        """One driver-mode depth report: byte i is ACTUATION_KEYS[i]."""
+        for control, depth in zip(ACTUATION_KEYS, depths):
+            tracker = self._trackers[control]
+            if depth == tracker.last:
+                continue
+            for slot, is_down in tracker.feed(depth):
+                if not self._passthrough:  # still fed, so a key held into Record re-arms first
+                    self._trigger(control if slot == "a" else control + B_SUFFIX, is_down)
+        self._out.sync()
+
     def set_profile(self, profile: Profile) -> None:
         self.release_all()
         self._profile = profile
+        self._build_trackers()
+
+    def _build_trackers(self) -> None:
+        """One tracker per actuation key; a new one inherits the old one's depth and re-arm wait."""
+        for control in ACTUATION_KEYS:
+            secondary = self._profile.secondary.get(control)
+            tracker = KeyTracker(mm_to_depth(self._profile.actuation.get(control, DEFAULT_MM)),
+                                 mm_to_depth(secondary.actuation) if secondary is not None else None)
+            old = self._trackers.get(control)
+            if old is not None:
+                tracker.last = old.last
+                tracker.reset()
+            self._trackers[control] = tracker
 
     def release_all(self) -> None:
         for task in self._macros.values():
@@ -99,6 +127,8 @@ class RemapEngine:
         self._pressed.clear()
         self._dpad_pressed.clear()
         self._dpad_active = frozenset()
+        for tracker in self._trackers.values():
+            tracker.reset()
         self._out.sync()
 
     # --- controls ---
@@ -126,7 +156,7 @@ class RemapEngine:
         if control in self._pressed:
             return
         self._pressed.add(control)
-        b: Optional[Binding] = self._profile.bindings.get(control)
+        b = self._binding_for(control)
         if b is None:
             return
         if b.type in HOLD_TYPES:
@@ -151,6 +181,12 @@ class RemapEngine:
             elif self.steam_mode == "keys":
                 self._tap(_STEAM_KEYS[b.action])
         # "disable" does nothing
+
+    def _binding_for(self, control: str) -> Optional[Binding]:
+        if control.endswith(B_SUFFIX):
+            secondary = self._profile.secondary.get(control[:-len(B_SUFFIX)])
+            return secondary.binding if secondary is not None else None
+        return self._profile.bindings.get(control)
 
     async def _macro(self, control: str, steps: Sequence[Sequence[str]]) -> None:
         try:

@@ -1,10 +1,10 @@
-import { staticClasses } from "@decky/ui";
+import { DialogButton, Focusable, staticClasses } from "@decky/ui";
 import { addEventListener, definePlugin, removeEventListener, routerHook } from "@decky/api";
-import { FaKeyboard } from "react-icons/fa";
+import { FaCog, FaKeyboard } from "react-icons/fa";
 
 import { EV_STEAM_ACTION } from "./api";
 import { Editor } from "./editor/Editor";
-import { EDITOR_ROUTE, Panel } from "./Panel";
+import { EDITOR_ROUTE, openEditor, Panel } from "./Panel";
 import { startRunningAppPoll } from "./runningApp";
 import { openSteamAction, SteamAction } from "./steamActions";
 
@@ -15,7 +15,18 @@ export default definePlugin(() => {
 
   return {
     name: "Decky Tartarus",
-    titleView: <div className={staticClasses.Title}>Tartarus</div>,
+    titleView: (
+      // Laid out like CSS Loader's title: name on the left, a 40×28 button on the right.
+      <Focusable
+        className={staticClasses.Title}
+        style={{ display: "flex", alignItems: "center", width: "100%", padding: 0, boxShadow: "none" }}
+      >
+        <div style={{ marginRight: "auto" }}>Tartarus</div>
+        <DialogButton style={{ height: 28, width: 40, minWidth: 0, padding: "10px 12px" }} onClick={openEditor}>
+          <FaCog style={{ marginTop: -4, display: "block" }} />
+        </DialogButton>
+      </Focusable>
+    ),
     content: <Panel />,
     icon: <FaKeyboard />,
     onDismount() {

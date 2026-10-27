@@ -11,6 +11,7 @@ from tartarus.config import (
     SCHEMA_VERSION,
     Game,
     Profile,
+    Secondary,
     clean_name,
     default_config,
     default_profile,
@@ -21,6 +22,7 @@ from tartarus.config import (
     profile_for_app,
     save_config,
 )
+from tartarus.actuation import gap_ok
 from tartarus.devmap import ALL_CONTROLS, FACTORY_CODES, FACTORY_OUTPUT
 
 
@@ -121,6 +123,107 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(p.bindings["k02"], parse_binding_text(FACTORY_OUTPUT["k02"]))
         self.assertEqual(c.lighting.effect, "static")
         self.assertEqual(self._backups(), [])
+
+    def test_adjustable_actuation_round_trips_and_defaults_on(self):
+        self.assertTrue(load_config(self.path).adjustable_actuation)  # no file
+        c = default_config()
+        c.adjustable_actuation = False
+        save_config(self.path, c)
+        self.assertIs(load_config(self.path).adjustable_actuation, False)
+        for raw in (None, "yes"):
+            data = json.loads(self.path.read_text())
+            if raw is None:
+                del data["adjustable_actuation"]
+            else:
+                data["adjustable_actuation"] = raw
+            self.path.write_text(json.dumps(data))
+            self.assertIs(load_config(self.path).adjustable_actuation, True, raw)
+
+    def test_lighting_enabled_defaults_true_for_old_file(self):
+        self._write(_stored([_entry("default", "Default")]))
+        self.assertIs(load_config(self.path).lighting.enabled, True)
+
+    def test_lighting_enabled_round_trip(self):
+        c = default_config()
+        c.lighting.enabled = False
+        save_config(self.path, c)
+        self.assertIs(json.loads(self.path.read_text())["lighting"]["enabled"], False)
+        self.assertIs(load_config(self.path).lighting.enabled, False)
+
+    def test_lighting_enabled_not_bool_means_true(self):
+        data = _stored([_entry("default", "Default")])
+        data["lighting"]["enabled"] = "no"
+        self._write(data)
+        lighting = load_config(self.path).lighting
+        self.assertIs(lighting.enabled, True)
+        self.assertEqual((lighting.effect, lighting.color, lighting.brightness), ("static", "#ff0000", 40))
+
+    def test_actuation_round_trip(self):
+        c = default_config()
+        default_profile(c).actuation = {"k01": 2.5, "k20": 3.6}
+        save_config(self.path, c)
+        self.assertEqual(json.loads(self.path.read_text())["profiles"][0]["actuation"], {"k01": 2.5, "k20": 3.6})
+        self.assertEqual(load_config(self.path), c)
+
+    def test_v2_file_without_actuation_loads(self):
+        self._write(_stored({}))
+        self.assertEqual(default_profile(load_config(self.path)).actuation, {})
+
+    def test_bad_actuation_dropped(self):
+        bad = {"k01": 1.4, "k02": 2.55, "k03": "2", "top_button": 2.0, "k99": 2.0, "k04": True}
+        entry = _entry("default", "Default")
+        entry["actuation"] = dict(bad, k05=2.6000000000000005, k06=1.5)
+        self._write(_stored([entry]))
+        with self.assertLogs("tartarus", "WARNING") as logs:
+            c = load_config(self.path)
+        self.assertEqual(default_profile(c).actuation, {"k05": 2.6})
+        self.assertEqual(len(logs.records), len(bad))
+        for raw in ([2.5], "k01", None):
+            entry["actuation"] = raw
+            self._write(_stored([entry]))
+            self.assertEqual(default_profile(load_config(self.path)).actuation, {}, raw)
+
+    def test_secondary_round_trip(self):
+        c = default_config()
+        default_profile(c).secondary = {"k05": Secondary(parse_binding_text("Z"), 3.6)}
+        save_config(self.path, c)
+        stored = json.loads(self.path.read_text())["profiles"][0]["secondary"]
+        self.assertEqual(stored, {"k05": {"binding": binding_to_dict(parse_binding_text("Z")), "actuation": 3.6}})
+        self.assertEqual(load_config(self.path), c)
+
+    def test_v2_file_without_secondary_loads(self):
+        self._write(_stored({}))
+        self.assertEqual(default_profile(load_config(self.path)).secondary, {})
+
+    def test_bad_secondary_dropped(self):
+        z = binding_to_dict(parse_binding_text("Z"))
+        bad = {
+            "top_button": {"binding": z, "actuation": 3.6},
+            "k99": {"binding": z, "actuation": 3.6},
+            "k01": {"binding": {"type": "nope"}, "actuation": 3.6},
+            "k02": {"binding": z, "actuation": 3.7},
+            "k03": {"binding": z, "actuation": 2.0},  # A 1.6: gap 0.4
+            "k04": {"binding": z},
+            "k06": [z, 3.6],
+            "k07": {"binding": z, "actuation": 2.0},  # A 1.7 dropped as bad, so 1.5: kept
+            "k08": {"binding": z, "actuation": 1.9},  # A 1.4 dropped as bad, so 1.5: gap 0.4
+        }
+        entry = _entry("default", "Default")
+        entry["actuation"] = {"k03": 1.6, "k05": 1.6, "k07": 1.75, "k08": 1.4}
+        entry["secondary"] = dict(bad, k05={"binding": z, "actuation": 2.1000000000000005})
+        self._write(_stored([entry]))
+        with self.assertLogs("tartarus", "WARNING") as logs:
+            c = load_config(self.path)
+        p = default_profile(c)
+        self.assertTrue(gap_ok(1.6, 2.1))
+        self.assertEqual(p.secondary, {"k05": Secondary(parse_binding_text("Z"), 2.1),
+                                       "k07": Secondary(parse_binding_text("Z"), 2.0)})
+        secondary_logs = [r for r in logs.records if "secondary" in r.getMessage()]
+        self.assertEqual(len(secondary_logs), len(bad) - 1)
+        for raw in ([z], "k01", None):
+            entry["secondary"] = raw
+            self._write(_stored([entry]))
+            self.assertEqual(default_profile(load_config(self.path)).secondary, {}, raw)
 
     def test_corrupt_file_backed_up(self):
         self._write("{nope")

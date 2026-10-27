@@ -150,8 +150,8 @@ class ServiceTest(unittest.TestCase):
     def test_state_shape(self):
         rig = Rig(self.path)
         state = rig.service.state()
-        self.assertEqual(set(state), {"connected", "device", "device_id", "steam_mode", "lighting", "effects",
-                                 "active_profile", "running_app", "max_profiles", "profiles"})
+        self.assertEqual(set(state), {"connected", "device", "device_id", "steam_mode", "lighting", "actuation", "effects",
+                                 "active_profile", "running_app", "max_profiles", "profiles", "led_patterns"})
         self.assertFalse(state["connected"])
         self.assertIsNone(state["device"])
         self.assertIsNone(state["device_id"])
@@ -159,10 +159,12 @@ class ServiceTest(unittest.TestCase):
         self.assertEqual(state["active_profile"], "default")
         self.assertIsNone(state["running_app"])
         self.assertEqual(state["max_profiles"], 8)
+        self.assertEqual(state["led_patterns"][0], [True, False, False])
         self.assertEqual(len(state["profiles"]), 1)
         first = state["profiles"][0]
-        self.assertEqual((first["id"], first["name"], first["is_default"], first["games"], first["dpad_mode"]),
-                         ("default", "Default", True, [], "4way"))
+        self.assertEqual((first["id"], first["name"], first["is_default"], first["games"], first["dpad_mode"],
+                          first["leds"]),
+                         ("default", "Default", True, [], "4way", [False, False, False]))
         self.assertEqual(list(first["bindings"]), list(ALL_CONTROLS))
         self.assertEqual(first["bindings"]["k01"],
                          {"binding": {"type": "key", "keys": ["1"]}, "label": "1", "factory": "1"})
@@ -220,6 +222,30 @@ class ServiceTest(unittest.TestCase):
             await rig.service.stop()
             self.assertTrue(all(d.closed for d in rig.devices))
             self.assertTrue(rig.emitter.closed)
+
+        self.run_async(go())
+
+    def test_system_keys_dropped(self):
+        async def go():
+            rig = Rig(self.path)
+            await rig.service.start()
+            rig.nodes = TWO_NODES
+            await until(lambda: rig.service.state()["connected"])
+            kbd = rig.devices[0]
+            kbd.push((EV_KEY, 142, 1), (EV_KEY, 142, 0), (EV_KEY, 116, 1), (EV_KEY, 143, 1),
+                     (EV_KEY, 183, 1), (EV_SYN, 0, 0))
+            await until(lambda: rig.emitter.out)
+            await asyncio.sleep(0.02)
+            self.assertEqual(rig.emitter.out, [("key", 183, True)])
+
+            # During Record the engine passes keys through; system keys still go nowhere.
+            rig.service.record_start()
+            kbd.push((EV_KEY, 142, 1), (EV_KEY, 142, 0), (EV_KEY, KEY_1, 1), (EV_KEY, KEY_1, 0))
+            await until(lambda: any(e[0] == "record_result" for e in rig.events))
+            results = [e for e in rig.events if e[0] == "record_result"]
+            self.assertEqual(results, [("record_result", {"type": "key", "keys": ["1"]})])
+            self.assertFalse(any(o[0] == "key" and o[1] in (116, 142, 143) for o in rig.emitter.out))
+            await rig.service.stop()
 
         self.run_async(go())
 
@@ -284,6 +310,57 @@ class ServiceTest(unittest.TestCase):
         rig = Rig(self.path)
         self.run_async(rig.service.stop())
 
+    def test_stop_finishes_without_yielding(self):
+        # Decky closes the plugin's socket during _unload, and its listener then spins on EOF without
+        # ever yielding: a stop() suspended at an await never resumes, and Decky SIGKILLs us 5 s later.
+        async def go():
+            rig = Rig(self.path)
+            rig.service.set_binding("default", "k01", parse_binding_text("Esc"))
+            await rig.service.start()
+            rig.nodes = TWO_NODES
+            await until(lambda: rig.service.state()["connected"])
+            order = []
+            key = rig.emitter.key
+            rig.emitter.key = lambda code, down: (order.append(("key", code, down)), key(code, down))
+            for dev in rig.devices:
+                dev.ungrab = lambda: order.append("ungrab")
+            rig.devices[0].push((EV_KEY, KEY_1, 1))
+            await until(lambda: ("key", KEY_ESC, True) in order)
+            supervisor = rig.service._supervisor
+
+            with self.assertRaises(StopIteration):
+                rig.service.stop().send(None)  # runs to the end in one step
+            self.assertEqual(order[1:], [("key", KEY_ESC, False), "ungrab", "ungrab"])
+            self.assertTrue(all(d.closed for d in rig.devices))
+            self.assertTrue(rig.emitter.closed)
+            await asyncio.sleep(0)
+            self.assertTrue(supervisor.cancelled())
+
+        self.run_async(go())
+
+    def test_stop_cancels_pending_emits(self):
+        async def go():
+            rig = Rig(self.path)
+            started = []
+
+            async def slow_emit(event, *args):
+                started.append(event)
+                await asyncio.sleep(10)
+
+            rig.service._emit = slow_emit
+            await rig.service.start()
+            rig.service.set_running_app(5, "X")  # notifies the frontend
+            await until(lambda: started)
+            pending = set(rig.service._pending)
+            self.assertTrue(pending)
+            with self.assertRaises(StopIteration):
+                rig.service.stop().send(None)
+            await asyncio.sleep(0)
+            self.assertTrue(all(t.cancelled() for t in pending))
+            self.assertEqual(rig.service._pending, set())
+
+        self.run_async(go())
+
 
 def load_main(fake_decky):
     sys.modules["decky"] = fake_decky
@@ -303,6 +380,21 @@ class PluginTest(unittest.TestCase):
                                       DECKY_PLUGIN_SETTINGS_DIR="/nonexistent")
         plugin = load_main(decky).Plugin()
         asyncio.run(plugin._unload())  # _main never ran: no service attribute
+        asyncio.run(plugin._uninstall())
+
+    def test_plugin_uninstall_stops_service(self):
+        import logging
+        decky = types.SimpleNamespace(logger=logging.getLogger("tartarus.test"),
+                                      DECKY_PLUGIN_SETTINGS_DIR="/nonexistent")
+        plugin = load_main(decky).Plugin()
+        stopped = []
+
+        async def stop():
+            stopped.append(True)
+
+        plugin.service = types.SimpleNamespace(stop=stop)
+        asyncio.run(plugin._uninstall())
+        self.assertEqual(stopped, [True])
 
     def test_plugin_profile_callables(self):
         import logging
@@ -329,6 +421,10 @@ class PluginTest(unittest.TestCase):
                 state = await plugin.assign_running_game(p2)
                 self.assertEqual(state["active_profile"], p2)
                 self.assertEqual(state["running_app"], {"app_id": 1343400, "name": "RuneScape"})
+                state = await plugin.set_leds(p2, [False, True, True])
+                self.assertEqual(state["profiles"][1]["leds"], [False, True, True])
+                state = await plugin.set_adjustable_actuation(False)
+                self.assertIs(state["actuation"]["enabled"], False)
                 state = await plugin.rename_profile(p2, "Runescape")
                 self.assertEqual(state["profiles"][1]["name"], "Runescape")
                 state = await plugin.delete_profile(p2)

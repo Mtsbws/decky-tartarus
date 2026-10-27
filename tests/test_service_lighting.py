@@ -7,12 +7,14 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tartarus.config import load_config
-from tartarus.lighting import EFFECTS, effect_reports
+from tartarus.config import NO_LEDS, load_config
+from tartarus.lighting import EFFECTS, effect_reports, leds_report
 from tartarus.linux import hidraw, ioctl
 from tartarus.linux.discovery import TartarusNodes
 
 from tests.test_service import TWO_NODES, Rig, until
+
+HID = "/dev/hidraw8"
 
 
 class FakeSender:
@@ -41,7 +43,8 @@ class LightingServiceTest(unittest.TestCase):
 
     def test_state_has_lighting(self):
         state = Rig(self.path, send_feature=FakeSender()).service.state()
-        self.assertEqual(state["lighting"], {"effect": "spectrum", "color": "#00ff00", "brightness": 100})
+        self.assertEqual(state["lighting"], {"effect": "spectrum", "color": "#00ff00", "brightness": 100,
+                                             "enabled": True})
         self.assertEqual(state["effects"], list(EFFECTS))
 
     def test_set_lighting_persists_and_applies(self):
@@ -53,7 +56,8 @@ class LightingServiceTest(unittest.TestCase):
             await until(lambda: rig.service.state()["connected"])
             sender.sent.clear()
             rig.service.set_lighting("breathing", "#ff0000", 40)
-            self.assertEqual(sender.sent, [("/dev/hidraw8", r) for r in effect_reports("breathing", "#ff0000", 40)])
+            self.assertEqual(sender.sent, [("/dev/hidraw8", r) for r in effect_reports("breathing", "#ff0000", 40)
+                                           + [leds_report(NO_LEDS)]])
             await rig.service.stop()
 
         self.run_async(go())
@@ -76,12 +80,12 @@ class LightingServiceTest(unittest.TestCase):
             await rig.service.start()
             rig.nodes = TWO_NODES
             await until(lambda: rig.service.state()["connected"])
-            expected = [("/dev/hidraw8", r) for r in effect_reports("wave", "#00ff00", 70)]
+            expected = [("/dev/hidraw8", r) for r in effect_reports("wave", "#00ff00", 70) + [leds_report(NO_LEDS)]]
             self.assertEqual(sender.sent, expected)
             # Resume reconnects, and the lighting goes out again.
             rig.service._resume.check = lambda boottime, monotonic: True
-            await until(lambda: len(sender.sent) >= 4)
-            self.assertEqual(sender.sent[2:4], expected)
+            await until(lambda: len(sender.sent) >= 6)
+            self.assertEqual(sender.sent[3:6], expected)
             await rig.service.stop()
 
         self.run_async(go())
@@ -96,7 +100,94 @@ class LightingServiceTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     rig.service.set_lighting(*args)
         self.assertEqual(self.path.read_text(), before)
-        self.assertEqual(rig.service.state()["lighting"], {"effect": "static", "color": "#123456", "brightness": 30})
+        self.assertEqual(rig.service.state()["lighting"], {"effect": "static", "color": "#123456", "brightness": 30,
+                                                           "enabled": True})
+
+    async def connected(self, sender):
+        rig = Rig(self.path, send_feature=sender)
+        await rig.service.start()
+        rig.nodes = TWO_NODES
+        await until(lambda: rig.service.state()["connected"])
+        return rig
+
+    def test_lighting_off_sends_brightness_zero_and_keeps_brightness(self):
+        async def go():
+            sender = FakeSender()
+            rig = await self.connected(sender)
+            rig.service.set_lighting("static", "#ff0000", 40)
+            sender.sent.clear()
+            rig.service.set_lighting_enabled(False)
+            self.assertEqual(sender.sent, [(HID, r) for r in effect_reports("static", "#ff0000", 0)
+                                           + [leds_report(NO_LEDS)]])
+            self.assertEqual(rig.service.state()["lighting"],
+                             {"effect": "static", "color": "#ff0000", "brightness": 40, "enabled": False})
+            await rig.service.stop()
+
+        self.run_async(go())
+        lighting = load_config(self.path).lighting
+        self.assertEqual((lighting.brightness, lighting.enabled), (40, False))
+
+    def test_lighting_on_resends_stored(self):
+        async def go():
+            sender = FakeSender()
+            rig = await self.connected(sender)
+            rig.service.set_lighting("static", "#ff0000", 40)
+            rig.service.set_lighting_enabled(False)
+            sender.sent.clear()
+            rig.service.set_lighting_enabled(True)
+            self.assertEqual(sender.sent, [(HID, r) for r in effect_reports("static", "#ff0000", 40)
+                                           + [leds_report(NO_LEDS)]])
+            self.assertIs(rig.service.state()["lighting"]["enabled"], True)
+            await rig.service.stop()
+
+        self.run_async(go())
+
+    def test_set_lighting_while_off_stays_dark(self):
+        async def go():
+            sender = FakeSender()
+            rig = await self.connected(sender)
+            rig.service.set_lighting_enabled(False)
+            sender.sent.clear()
+            rig.service.set_lighting("wave", "#00ff00", 70)
+            self.assertEqual(sender.sent, [(HID, r) for r in effect_reports("wave", "#00ff00", 0)
+                                           + [leds_report(NO_LEDS)]])
+            self.assertEqual(rig.service.state()["lighting"],
+                             {"effect": "wave", "color": "#00ff00", "brightness": 70, "enabled": False})
+            await rig.service.stop()
+
+        self.run_async(go())
+
+    def test_lighting_off_survives_reconnect_resume_and_restart(self):
+        async def go():
+            sender = FakeSender()
+            rig = Rig(self.path, send_feature=sender)
+            rig.service.set_lighting_enabled(False)
+            self.assertEqual(sender.sent, [])
+            await rig.service.start()
+            rig.nodes = TWO_NODES
+            await until(lambda: rig.service.state()["connected"])
+            expected = [(HID, r) for r in effect_reports("spectrum", "#00ff00", 0) + [leds_report(NO_LEDS)]]
+            self.assertEqual(sender.sent, expected)
+            rig.service._resume.check = lambda boottime, monotonic: True
+            await until(lambda: len(sender.sent) >= 6)
+            self.assertEqual(sender.sent[3:6], expected)
+            await rig.service.stop()
+            self.assertIs(Rig(self.path, send_feature=FakeSender()).service.state()["lighting"]["enabled"], False)
+
+        self.run_async(go())
+
+    def test_set_lighting_enabled_rejects_non_bool(self):
+        sender = FakeSender()
+        rig = Rig(self.path, send_feature=sender)
+        rig.service.set_lighting("static", "#123456", 30)
+        before = self.path.read_bytes()
+        for value in ("yes", 1):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    rig.service.set_lighting_enabled(value)
+        self.assertEqual(self.path.read_bytes(), before)
+        self.assertEqual(sender.sent, [])
+        self.assertIs(rig.service.state()["lighting"]["enabled"], True)
 
     def test_stored_unknown_effect_falls_back_to_default(self):
         self.path.write_text(json.dumps({"version": 1, "active_profile": "default",
@@ -116,7 +207,9 @@ class LightingServiceTest(unittest.TestCase):
                     rig.nodes = TWO_NODES
                     await until(lambda: rig.service.state()["connected"])
                     rig.service.set_lighting("static", "#00ff00", 100)  # must not raise
-                self.assertEqual(len(logs.output), 2)
+                # Connect and set_lighting each warn once for lighting and once for the LEDs
+                # (TWO_NODES has no depth node, so connect also warns that adjustable actuation is unavailable).
+                self.assertEqual(len([line for line in logs.output if "adjustable actuation" not in line]), 4)
                 await rig.service.stop()
 
         self.run_async(go())

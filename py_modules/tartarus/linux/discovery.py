@@ -14,6 +14,7 @@ from typing import List, Optional
 VENDOR, PRODUCT = "1532", "0244"
 HID_ID = "HID_ID=0003:00001532:00000244"
 LIGHTING_INTERFACE = 2  # USB interface 2 (mouse protocol) takes the lighting reports
+DEPTH_INTERFACE = 1  # USB interface 1 streams key depth in driver mode
 KEY_A = 30
 
 _IFACE = re.compile(r"/\d+-[\d.]+:\d+\.(\d+)/")  # USB interface segment, e.g. 1-1.4.2:1.2
@@ -24,6 +25,7 @@ _NUMBER = re.compile(r"(\d+)$")
 class TartarusNodes:
     event: List[str]
     hidraw: Optional[str]
+    depth: Optional[str] = None
 
 
 def _read(path: str) -> Optional[str]:
@@ -68,14 +70,18 @@ def find_tartarus(sys_root: str = "/sys") -> Optional[TartarusNodes]:
     event = ["/dev/input/" + os.path.basename(p) for p in _events(sys_root) if _is_tartarus(p)]
     if not event:
         return None
-    hidraw = None
+    hidraw = depth = None
     for sys_hid in _numbered(glob.glob(os.path.join(sys_root, "class", "hidraw", "hidraw*"))):
         device = os.path.join(sys_hid, "device")
         uevent = _read(os.path.join(device, "uevent")) or ""
-        if HID_ID in uevent.splitlines() and _interface(device) == LIGHTING_INTERFACE:
+        if HID_ID not in uevent.splitlines():
+            continue
+        interface = _interface(device)
+        if interface == LIGHTING_INTERFACE and hidraw is None:
             hidraw = "/dev/" + os.path.basename(sys_hid)
-            break
-    return TartarusNodes(event=event, hidraw=hidraw)
+        elif interface == DEPTH_INTERFACE and depth is None:
+            depth = "/dev/" + os.path.basename(sys_hid)
+    return TartarusNodes(event=event, hidraw=hidraw, depth=depth)
 
 
 def list_keyboards(sys_root: str = "/sys") -> List[str]:

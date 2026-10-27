@@ -10,8 +10,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from .actuation import DEFAULT_MM, gap_ok, valid_mm
 from .bindings import Binding, BindingError, binding_from_dict, binding_to_dict, parse_binding_text
-from .devmap import ALL_CONTROLS, FACTORY_OUTPUT
+from .devmap import ACTUATION_KEYS, ALL_CONTROLS, FACTORY_OUTPUT
 
 SCHEMA_VERSION = 2
 DPAD_MODES = ("4way", "8way")
@@ -40,6 +41,14 @@ class Lighting:
     effect: str = "spectrum"
     color: str = "#00ff00"
     brightness: int = 100
+    enabled: bool = True
+
+
+@dataclass(frozen=True)
+class Secondary:
+    """A key's second binding, B, at a deeper actuation point (mm). Replaced, never mutated."""
+    binding: Binding
+    actuation: float
 
 
 @dataclass
@@ -49,6 +58,8 @@ class Profile:
     dpad_mode: str  # "4way" | "8way"
     bindings: Dict[str, Binding]
     leds: Tuple[bool, bool, bool] = NO_LEDS
+    actuation: Dict[str, float] = field(default_factory=dict)  # mm, only keys away from DEFAULT_MM
+    secondary: Dict[str, Secondary] = field(default_factory=dict)
 
 
 @dataclass
@@ -63,6 +74,7 @@ class Config:
     profiles: List[Profile]  # Default is always first
     games: Dict[str, Game] = field(default_factory=dict)  # 32-bit app ID as a decimal string
     lighting: Lighting = field(default_factory=Lighting)
+    adjustable_actuation: bool = True  # driver mode (key depth) while the plugin has the keypad
 
 
 class _Corrupt(Exception):
@@ -204,11 +216,16 @@ def _dump(c: Config) -> dict:
                 "leds": list(p.leds),
                 "dpad_mode": p.dpad_mode,
                 "bindings": {control: binding_to_dict(b) for control, b in p.bindings.items()},
+                "actuation": dict(p.actuation),
+                "secondary": {control: {"binding": binding_to_dict(sec.binding), "actuation": sec.actuation}
+                              for control, sec in p.secondary.items()},
             }
             for p in c.profiles
         ],
         "games": {key: {"name": g.name, "profile": g.profile} for key, g in c.games.items()},
-        "lighting": {"effect": c.lighting.effect, "color": c.lighting.color, "brightness": c.lighting.brightness},
+        "lighting": {"effect": c.lighting.effect, "color": c.lighting.color, "brightness": c.lighting.brightness,
+                     "enabled": c.lighting.enabled},
+        "adjustable_actuation": c.adjustable_actuation,
     }
 
 
@@ -225,7 +242,7 @@ def _parse(data) -> Config:
         raise _Corrupt("no profiles")
     profiles = _parse_profiles(raw_profiles)
     return Config(version=SCHEMA_VERSION, profiles=profiles, games=_parse_games(data.get("games"), profiles),
-                  lighting=_parse_lighting(data.get("lighting")))
+                  lighting=_parse_lighting(data.get("lighting")), adjustable_actuation=_parse_adjustable_actuation(data.get("adjustable_actuation")))
 
 
 def _parse_profiles(raw_profiles: list) -> List[Profile]:
@@ -326,8 +343,48 @@ def _parse_bindings(raw) -> Dict[str, Binding]:
 
 def _parse_profile(raw: dict, pid: str) -> Profile:
     mode = raw.get("dpad_mode")
+    actuation = _parse_actuation(raw.get("actuation"))
     return Profile(id=pid, name=pid, dpad_mode=mode if mode in DPAD_MODES else "4way",
-                   bindings=_parse_bindings(raw.get("bindings")))
+                   bindings=_parse_bindings(raw.get("bindings")), actuation=actuation,
+                   secondary=_parse_secondary(raw.get("secondary"), actuation))
+
+
+def _parse_actuation(raw) -> Dict[str, float]:
+    actuation: Dict[str, float] = {}
+    if not isinstance(raw, dict):
+        return actuation
+    for control, mm in raw.items():
+        if control not in ACTUATION_KEYS or not valid_mm(mm):
+            log.warning("dropping actuation %r for %r", mm, control)
+        elif round(mm, 1) != DEFAULT_MM:
+            actuation[control] = round(mm, 1)
+    return actuation
+
+
+def _parse_secondary(raw, actuation: Dict[str, float]) -> Dict[str, Secondary]:
+    """Checked against the parsed A points, so a dropped A counts as DEFAULT_MM."""
+    secondary: Dict[str, Secondary] = {}
+    if not isinstance(raw, dict):
+        return secondary
+    for control, value in raw.items():
+        if control not in ACTUATION_KEYS or not isinstance(value, dict):
+            log.warning("dropping secondary function for %r", control)
+            continue
+        mm = value.get("actuation")
+        if not valid_mm(mm) or not gap_ok(actuation.get(control, DEFAULT_MM), mm):
+            log.warning("dropping secondary function for %s: bad actuation %r", control, mm)
+            continue
+        try:
+            binding = binding_from_dict(value.get("binding"))
+        except BindingError as e:
+            log.warning("dropping secondary function for %s (%s)", control, e)
+            continue
+        secondary[control] = Secondary(binding, round(mm, 1))
+    return secondary
+
+
+def _parse_adjustable_actuation(raw) -> bool:
+    return raw if isinstance(raw, bool) else True
 
 
 def _parse_lighting(raw) -> Lighting:
@@ -341,4 +398,6 @@ def _parse_lighting(raw) -> Lighting:
     brightness = raw.get("brightness")
     if isinstance(brightness, int) and not isinstance(brightness, bool) and 0 <= brightness <= 100:
         lighting.brightness = brightness
+    if isinstance(raw.get("enabled"), bool):
+        lighting.enabled = raw["enabled"]
     return lighting

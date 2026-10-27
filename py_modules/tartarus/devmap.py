@@ -8,6 +8,12 @@ from typing import Dict
 
 from .codes import KEYS
 
+# Keys 01-20: depth-sensing in driver mode.
+ACTUATION_KEYS = tuple(f"k{i:02d}" for i in range(1, 21))
+
+# System-control codes the keypad's report 3 can send; never passed on.
+SYSTEM_CODES = frozenset({116, 142, 143})  # KEY_POWER, KEY_SLEEP, KEY_WAKEUP
+
 KEY_CONTROLS = tuple(f"k{i:02d}" for i in range(1, 21)) + ("top_button", "wheel_click")
 WHEEL_CONTROLS = ("wheel_up", "wheel_down")
 DPAD_CARDINALS = ("dpad_up", "dpad_right", "dpad_down", "dpad_left")

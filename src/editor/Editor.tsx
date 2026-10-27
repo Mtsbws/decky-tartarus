@@ -1,25 +1,35 @@
-import { ToggleField } from "@decky/ui";
+import { Tabs } from "@decky/ui";
 import { addEventListener, removeEventListener } from "@decky/api";
 import { useEffect, useState } from "react";
 
-import { EV_STATE, activeProfile, getState, profileById, setDpadMode, State } from "../api";
-import { errorText } from "../Panel";
-import { BindingPicker } from "./BindingPicker";
-import { controlName, Keypad } from "./Keypad";
-import { ProfileBar } from "./ProfileBar";
+import { EV_STATE, activeProfile, errorText, getState, profileById, setDpadMode, State } from "../api";
+import { LightingControls } from "../LightingControls";
+import { syncLighting } from "../lighting";
+import { ActuationPage } from "./ActuationPage";
+import { Card } from "./Card";
+import { CustomizePage } from "./CustomizePage";
+import { PAGE_HEIGHT } from "./layout";
+import { ProfilesPage } from "./ProfilesPage";
+
+type Page = "customize" | "actuation" | "lighting" | "profiles";
 
 export function Editor() {
   const [state, setState] = useState<State | null>(null);
   const [selected, setSelected] = useState<string>("k01");
   const [error, setError] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
+  const [page, setPage] = useState<Page>("customize");
 
   useEffect(() => {
     getState().then((s) => {
       setState(s);
+      syncLighting(s);
       setViewing((v) => v ?? s.active_profile);
     });
-    const listener = addEventListener<[State]>(EV_STATE, setState);
+    const listener = addEventListener<[State]>(EV_STATE, (s) => {
+      setState(s);
+      syncLighting(s);
+    });
     return () => {
       removeEventListener(EV_STATE, listener);
     };
@@ -39,8 +49,16 @@ export function Editor() {
       .catch((e) => setError(errorText(e)));
   }
 
+  // The editor's error belongs to the control and profile it came from.
+  function select(control: string) {
+    setSelected(control);
+    setError(null);
+  }
+
+  // A sub-page open on Customize closes with the profile change, which flushes its pending write.
   function switchView(id: string) {
     setViewing(id);
+    setError(null);
     const p = state && profileById(state, id);
     if (p && p.dpad_mode === "4way" && /^dpad_.*_/.test(selected)) setSelected("dpad_up");
   }
@@ -49,23 +67,64 @@ export function Editor() {
 
   const profile = viewedProfile(state);
 
+  // The route sits under Steam's header and above its footer, 40 px each (60 screen px on the Deck).
   return (
-    <div style={{ marginTop: 40, height: "calc(100% - 40px)", display: "flex", flexDirection: "column", padding: "8px 16px", boxSizing: "border-box" }}>
-      <ProfileBar state={state} viewing={profile.id} onView={switchView} onChanged={setState} />
-      <div style={{ flex: 1, minHeight: 0, display: "flex", gap: 16 }}>
-        <div style={{ flex: 3, minWidth: 0, overflowY: "auto" }}>
-          <Keypad profile={profile} selected={selected} onSelect={setSelected} />
-          <ToggleField label="8-way D-pad" checked={profile.dpad_mode === "8way"} onChange={toggleDpad} />
-          {error && <div style={{ color: "#e05050" }}>{error}</div>}
-          {!state.connected && <div style={{ opacity: 0.7 }}>Keypad not connected: changes are saved and apply when it's plugged in.</div>}
-        </div>
-        <div style={{ flex: 2, minWidth: 0, overflowY: "auto" }}>
-          <h3 style={{ margin: "0 0 8px" }}>
-            Key {controlName(selected)}: {profile.bindings[selected]?.label}
-          </h3>
-          <BindingPicker control={selected} state={state} profile={profile} onChanged={setState} />
-        </div>
-      </div>
+    <div style={{ height: "100%", padding: "40px 0", boxSizing: "border-box" }}>
+      <Tabs
+        activeTab={page}
+        onShowTab={(id: string) => setPage(id as Page)}
+        tabs={[
+          {
+            id: "customize",
+            title: "Customize",
+            content: (
+              <CustomizePage
+                state={state}
+                profile={profile}
+                selected={selected}
+                error={error}
+                onSelect={select}
+                onView={switchView}
+                onDpad={toggleDpad}
+                onChanged={setState}
+              />
+            ),
+          },
+          {
+            id: "actuation",
+            title: "Actuation",
+            content: <ActuationPage state={state} profile={profile} onView={switchView} onChanged={setState} />,
+          },
+          {
+            id: "lighting",
+            title: "Lighting",
+            // As wide as the Quick Access panel's rows plus margins, so the swatches stay together.
+            content: (
+              <div style={{ height: PAGE_HEIGHT, maxWidth: 560 }}>
+                <Card title="Lighting">
+                  <LightingControls effects={state.effects} collapsible={false} />
+                </Card>
+              </div>
+            ),
+          },
+          {
+            id: "profiles",
+            title: "Profiles",
+            content: (
+              <ProfilesPage
+                state={state}
+                viewing={profile.id}
+                onEdit={(id) => {
+                  switchView(id);
+                  setPage("customize");
+                }}
+                onView={switchView}
+                onChanged={setState}
+              />
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }

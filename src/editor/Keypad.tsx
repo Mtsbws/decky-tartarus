@@ -2,6 +2,7 @@ import { Focusable } from "@decky/ui";
 import type { CSSProperties } from "react";
 
 import { ProfileState } from "../api";
+import { LED_COLOURS } from "../StatusLights";
 
 // Our own drawing of the Tartarus Pro (no Razer images), traced from a
 // top-down photo: five key columns with the pinky column dropped half a key,
@@ -80,6 +81,15 @@ export function controlName(control: string): string {
   return SHORT[control] ?? control.replace(/^k/, "");
 }
 
+// The control's name as a title: "Key 05", "Wheel up", "Thumbpad up-right".
+export function controlTitle(control: string): string {
+  if (isKey(control)) return `Key ${control.slice(1)}`;
+  const words = control.startsWith("dpad_")
+    ? `Thumbpad ${control.slice(5).replace(/_/g, "-")}`
+    : control.replace(/_/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 // The wheel is too narrow for its full names.
 const CORNER: Record<string, string> = { wheel_up: "▲", wheel_click: "●", wheel_down: "▼" };
 
@@ -87,7 +97,10 @@ const pct = (v: number, of: number) => `${(v / of) * 100}%`;
 
 // Keys look like keycaps; the wheel and thumbpad parts are see-through so the
 // drawing underneath shows.
-function look(control: string, selected: boolean): CSSProperties {
+function look(control: string, selected: boolean, view: View): CSSProperties {
+  if (selected && view === "actuation") {
+    return { border: "2px solid #44b030", background: "rgba(46, 92, 30, 0.92)" };
+  }
   if (selected) {
     return { border: "2px solid #1a9fff", background: "rgba(26, 61, 92, 0.92)", boxShadow: "0 0 8px #1a9fff" };
   }
@@ -154,7 +167,7 @@ function Picture() {
       {/* Thumb wing: the stem with the status lights, then the stick module */}
       <rect x={456} y={118} width={70} height={232} rx={26} fill="url(#tt-wing)" stroke="#434b57" strokeWidth={2} />
       {[230, 254, 278].map((y, i) => (
-        <circle key={y} cx={514} cy={y} r={3} fill={["#ffb02e", "#5cff3b", "#2ec5ff"][i]} />
+        <circle key={y} cx={514} cy={y} r={3} fill={LED_COLOURS[i]} />
       ))}
       <rect x={440} y={316} width={158} height={192} rx={44} fill="url(#tt-wing)" stroke="#434b57" strokeWidth={2} />
       {/* Arm that holds the thumb key */}
@@ -215,63 +228,82 @@ function Picture() {
   );
 }
 
-export function Keypad(props: { profile: ProfileState; selected: string | null; onSelect(control: string): void }) {
-  const { profile, selected, onSelect } = props;
+type View = "bindings" | "actuation";
+
+// A small gap: a key with a secondary function needs the room for its "2×".
+const cornerStyle: CSSProperties = { display: "flex", justifyContent: "space-between", gap: 2, fontSize: 11, lineHeight: 1 };
+// Steam's line height is taller than a key has room for, so labels set their own.
+const labelStyle: CSSProperties = {
+  fontSize: 13,
+  lineHeight: 1.15,
+  fontWeight: 600,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  textAlign: "center",
+};
+
+// "bindings": every control can be selected and shows its binding.
+// "actuation": only keys 01-20 can be selected and each shows its actuation.
+export function Keypad(props: {
+  profile: ProfileState;
+  view: View;
+  selected: readonly string[];
+  defaultMm: number;
+  onSelect(control: string): void;
+}) {
+  const { profile, view, selected, defaultMm, onSelect } = props;
   const controls = Object.keys(LAYOUT).filter(
     (c) => c in profile.bindings && (profile.dpad_mode === "8way" || !DIAGONALS.has(c)),
   );
 
   return (
-    // Capped so the whole device fits under the header on the Deck's screen.
-    <div
-      style={{
-        position: "relative",
-        width: "100%",
-        maxWidth: `calc((100vh - 200px) * ${W / H})`,
-        margin: "0 auto",
-        aspectRatio: `${W} / ${H}`,
-      }}
-    >
+    // Sized by the page height; the width follows the drawing's shape.
+    <div style={{ position: "relative", height: "100%", aspectRatio: `${W} / ${H}`, maxWidth: "100%", flexShrink: 0 }}>
       <Picture />
       <Focusable style={{ position: "absolute", inset: 0 }} flow-children="grid">
         {controls.map((c) => {
           const box = LAYOUT[c];
+          const style: CSSProperties = {
+            position: "absolute",
+            left: pct(box.x, W),
+            top: pct(box.y, H),
+            width: pct(box.w, W),
+            height: pct(box.h, H),
+            transform: box.rot ? `rotate(${box.rot}deg)` : undefined,
+            boxSizing: "border-box",
+            borderRadius: c === "top_button" ? 14 : c.startsWith("dpad") ? 18 : 8,
+            color: "#dfe3e6",
+            padding: "2px 4px",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            ...look(c, selected.includes(c), view),
+          };
+          if (view === "actuation" && !isKey(c)) {
+            return (
+              <div key={c} style={{ ...style, opacity: 0.35 }}>
+                <div style={cornerStyle}>
+                  <span style={{ opacity: 0.6 }}>{CORNER[c] ?? controlName(c)}</span>
+                </div>
+              </div>
+            );
+          }
           return (
             <Focusable
               key={c}
               onActivate={() => onSelect(c)}
               onClick={() => onSelect(c)}
-              style={{
-                position: "absolute",
-                left: pct(box.x, W),
-                top: pct(box.y, H),
-                width: pct(box.w, W),
-                height: pct(box.h, H),
-                transform: box.rot ? `rotate(${box.rot}deg)` : undefined,
-                boxSizing: "border-box",
-                borderRadius: c === "top_button" ? 14 : c.startsWith("dpad") ? 18 : 8,
-                color: "#dfe3e6",
-                padding: "2px 4px",
-                overflow: "hidden",
-                cursor: "pointer",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                ...look(c, c === selected),
-              }}
+              style={{ ...style, cursor: "pointer" }}
             >
-              <div style={{ fontSize: 9, opacity: 0.6, lineHeight: 1 }}>{CORNER[c] ?? controlName(c)}</div>
-              <div
-                style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  textAlign: "center",
-                }}
-              >
-                {profile.bindings[c].label}
+              <div style={cornerStyle}>
+                <span style={{ opacity: 0.6 }}>{CORNER[c] ?? controlName(c)}</span>
+                {view === "bindings" && c in profile.secondary && <span style={{ flexShrink: 0 }}>2×</span>}
+              </div>
+              <div style={labelStyle}>
+                {/* A key has about 28 CSS px for its label: "1.5" fits, "1.5 mm" doesn't (the card names the unit). */}
+                {view === "actuation" ? (profile.actuation[c] ?? defaultMm).toFixed(1) : profile.bindings[c].label}
               </div>
             </Focusable>
           );

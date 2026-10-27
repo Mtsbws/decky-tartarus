@@ -4,7 +4,7 @@ import unittest
 
 from tartarus.bindings import parse_binding_text
 from tartarus.codes import code_for
-from tartarus.config import default_profile, default_config
+from tartarus.config import Secondary, default_profile, default_config
 from tartarus.engine import RemapEngine
 
 KEY_1 = 2  # factory code of k01
@@ -14,7 +14,7 @@ KEY_UP, KEY_RIGHT = 103, 106
 KEY_B = 48  # not sent by the keypad's factory map
 
 ESC, CTRL, SHIFT = code_for("Esc"), code_for("Ctrl"), code_for("Shift")
-C, V, W, A, B, E, F5 = (code_for(n) for n in ("C", "V", "W", "A", "B", "E", "F5"))
+C, V, W, A, B, E, F5, Z = (code_for(n) for n in ("C", "V", "W", "A", "B", "E", "F5", "Z"))
 RMB = code_for("RMB")
 RIGHT = code_for("Right")
 
@@ -226,6 +226,111 @@ class EngineTest(unittest.IsolatedAsyncioTestCase):
         e.handle_key(KEY_1, 0)
         self.assertEqual(self.out.events, [down(ESC), up(ESC)])
         self.assertTrue(e.passthrough)
+
+
+    # --- depth (driver mode) ---
+
+    @staticmethod
+    def depths(**keys):
+        out = bytearray(20)
+        for control, depth in keys.items():
+            out[int(control[1:]) - 1] = depth
+        return bytes(out)
+
+    async def test_depth_press_and_release(self):
+        e = self.engine(profile(k01="Esc"))
+        e.handle_depth(self.depths(k01=16))
+        self.assertEqual(self.out.events, [down(ESC)])
+        e.handle_depth(self.depths(k01=7))
+        self.assertEqual(self.out.events, [down(ESC), up(ESC)])
+
+    async def test_depth_uses_k01_binding_types(self):
+        e = self.engine(profile(k02="A, B", k03="steam:menu"))
+        e.handle_depth(self.depths(k02=40, k03=40))
+        await self.settle()
+        self.assertEqual(self.out.events, [("steam", "menu"), down(A), up(A), down(B), up(B)])
+
+    async def test_depth_ignored_in_passthrough(self):
+        e = self.engine(profile(k01="Esc"))
+        e.passthrough = True
+        e.handle_depth(self.depths(k01=200))
+        e.handle_depth(self.depths(k01=0))
+        self.assertEqual(self.out.events, [])
+
+    async def test_depth_held_into_passthrough_does_not_fire_after(self):
+        e = self.engine(profile(k01="Esc"))
+        e.passthrough = True
+        e.handle_depth(self.depths(k01=200))
+        e.passthrough = False
+        e.handle_depth(self.depths(k01=210))
+        self.assertEqual(self.out.events, [])
+
+    async def test_release_all_blocks_until_rearm(self):
+        prof = profile(k01="Esc")
+        e = self.engine(prof)
+        e.handle_depth(self.depths(k01=200))
+        self.assertEqual(self.out.events, [down(ESC)])
+        e.set_profile(prof)
+        self.assertEqual(self.out.events, [down(ESC), up(ESC)])
+        e.handle_depth(self.depths(k01=210))
+        e.handle_depth(self.depths(k01=5))
+        self.assertEqual(self.out.events, [down(ESC), up(ESC)])
+        e.handle_depth(self.depths(k01=16))
+        self.assertEqual(self.out.events, [down(ESC), up(ESC), down(ESC)])
+
+    async def test_actuation_point_from_profile(self):
+        prof = profile(k01="Esc")
+        prof.actuation = {"k01": 2.5}
+        e = self.engine(prof)
+        e.handle_depth(self.depths(k01=119))
+        self.assertEqual(self.out.events, [])
+        e.handle_depth(self.depths(k01=120))
+        e.handle_depth(self.depths(k01=112))
+        self.assertEqual(self.out.events, [down(ESC)])
+        e.handle_depth(self.depths(k01=111))
+        self.assertEqual(self.out.events, [down(ESC), up(ESC)])
+
+    async def test_unchanged_bytes_do_nothing(self):
+        e = self.engine(profile(k01="Esc"))
+        e.handle_depth(self.depths(k01=100))
+        e.handle_depth(self.depths(k01=100))
+        self.assertEqual(self.out.events, [down(ESC)])
+
+
+    # --- secondary function ---
+
+    @staticmethod
+    def crouch_prone(b_text="Z"):
+        prof = profile(k05="C")
+        prof.secondary = {"k05": Secondary(parse_binding_text(b_text), 3.6)}
+        return prof
+
+    async def test_secondary_crouch_prone(self):
+        e = self.engine(self.crouch_prone())
+        e.handle_depth(self.depths(k05=20))
+        self.assertEqual(self.out.events, [down(C)])
+        e.handle_depth(self.depths(k05=255))
+        self.assertEqual(self.out.events, [down(C), up(C), down(Z)])
+        e.handle_depth(self.depths(k05=200))
+        e.handle_depth(self.depths(k05=0))
+        self.assertEqual(self.out.events, [down(C), up(C), down(Z), up(Z)])
+
+    async def test_release_all_with_b_held(self):
+        e = self.engine(self.crouch_prone())
+        e.handle_depth(self.depths(k05=255))
+        e.release_all()
+        self.assertEqual(self.out.events, [down(Z), up(Z)])
+        e.handle_depth(self.depths(k05=254))
+        e.handle_depth(self.depths(k05=7))
+        self.assertEqual(self.out.events, [down(Z), up(Z)])
+        e.handle_depth(self.depths(k05=20))
+        self.assertEqual(self.out.events, [down(Z), up(Z), down(C)])
+
+    async def test_b_macro(self):
+        e = self.engine(self.crouch_prone("A, B"))
+        e.handle_depth(self.depths(k05=255))
+        await self.settle()
+        self.assertEqual(self.out.events, [down(A), up(A), down(B), up(B)])
 
 
 if __name__ == "__main__":

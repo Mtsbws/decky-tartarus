@@ -1,7 +1,7 @@
 import { DialogButton, ModalRoot, TextField } from "@decky/ui";
 import { useState } from "react";
 
-import { errorText } from "../Panel";
+import { errorText } from "../api";
 
 type Props = { title: string; initial: string; onSubmit(name: string): Promise<void>; closeModal?(): void };
 

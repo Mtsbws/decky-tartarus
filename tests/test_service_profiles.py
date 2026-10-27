@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest import mock
 
 from tartarus.bindings import parse_binding_text
-from tartarus.config import Config, Game, Profile, default_config, factory_bindings, load_config, save_config
+from tartarus.config import Config, Game, Profile, Secondary, default_config, factory_bindings, load_config, save_config
 from tartarus.linux.evdev import EV_KEY, EV_SYN
 
 from tests.test_service import KEY_1, KEY_ESC, TWO_NODES, Rig, until
@@ -18,7 +18,8 @@ def write_settings(path):
     mmo = factory_bindings()
     mmo["k01"] = parse_binding_text("Esc")
     c.profiles.append(Profile(id="p2", name="MMO", dpad_mode="4way", bindings=mmo,
-                            leds=(True, False, False)))
+                            leds=(True, False, False), actuation={"k02": 2.5},
+                            secondary={"k02": Secondary(parse_binding_text("Z"), 3.6)}))
     c.games = {str(RUNESCAPE): Game(name="RuneScape", profile="p2")}
     save_config(path, c)
 
@@ -245,6 +246,8 @@ class ProfileSwitchTest(unittest.TestCase):
             self.assertEqual(fps.bindings, mmo.bindings)
             self.assertEqual(fps.dpad_mode, mmo.dpad_mode)
             self.assertEqual(fps.leds, (False, True, False))
+            self.assertEqual(fps.actuation, {"k02": 2.5})
+            self.assertEqual(fps.secondary, {"k02": Secondary(parse_binding_text("Z"), 3.6)})
             svc.set_binding(new_id, "k01", parse_binding_text("F5"))
             self.assertEqual(load_config(self.path).profiles[1].bindings["k01"], parse_binding_text("Esc"))
             for i in range(8 - len(load_config(self.path).profiles)):
