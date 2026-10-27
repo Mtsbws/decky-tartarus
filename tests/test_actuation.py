@@ -49,9 +49,27 @@ class TrackerTest(unittest.TestCase):
         t.reset()
         self.assertEqual(t.feed(16), [("a", True)])
 
-    def test_secondary_not_yet(self):
-        with self.assertRaises(NotImplementedError):
-            KeyTracker(16, 251)
+    def test_secondary_a_then_b_then_up(self):
+        t = KeyTracker(16, 251)
+        self.assertEqual(self.feed(t, 20, 100, 251, 242, 100, 7, 20),
+                         [[("a", True)], [], [("a", False), ("b", True)], [("b", False)],
+                          [], [], [("a", True)]])
+
+    def test_secondary_fast_jump_only_b(self):
+        t = KeyTracker(16, 251)
+        self.assertEqual(self.feed(t, 0, 255, 0), [[], [("b", True)], [("b", False)]])
+
+    def test_secondary_b_refires_without_rearm(self):
+        t = KeyTracker(16, 251)
+        self.feed(t, 20, 251)
+        self.assertEqual(self.feed(t, 200, 251, 200, 7),
+                         [[("b", False)], [("b", True)], [("b", False)], []])
+
+    def test_secondary_reset_blocks(self):
+        t = KeyTracker(16, 251)
+        t.feed(251)
+        t.reset()
+        self.assertEqual(self.feed(t, 255, 7, 251), [[], [], [("b", True)]])
 
 
 if __name__ == "__main__":

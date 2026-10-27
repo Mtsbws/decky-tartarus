@@ -49,32 +49,74 @@ def parse_depth_report(data: bytes) -> Optional[bytes]:
 
 
 class KeyTracker:
-    """One key's state: fires slot "a" on the report that crosses its point."""
+    """One key's state: fires slot "a" on the report that crosses its point, and slot "b"
+    past the deeper point when the key has a secondary function.
+
+    With B, only one slot is ever held. Coming up from B, the key is latched: A stays silent
+    until the key drops below A's release point, while B can fire again from there.
+    """
 
     def __init__(self, fire_a: int, fire_b: Optional[int] = None):
-        if fire_b is not None:
-            raise NotImplementedError("secondary function")
         self.fire_a = fire_a
-        self._held = False
+        self.fire_b = fire_b
+        self._held: Optional[str] = None  # "a", "b" or None
+        self._latched = False
         self._blocked = False
         self.last = 0
 
     def feed(self, depth: int) -> List[Tuple[str, bool]]:
         self.last = depth
-        release = self.fire_a - HYSTERESIS
+        release_a = self.fire_a - HYSTERESIS
         if self._blocked:
-            if depth < release:
+            if depth < release_a:
                 self._blocked = False
             return []
-        if not self._held and depth >= self.fire_a:
-            self._held = True
+        if self.fire_b is None:
+            return self._feed_single(depth, release_a)
+        return self._feed_secondary(depth, release_a, self.fire_b - HYSTERESIS)
+
+    def _feed_single(self, depth: int, release_a: int) -> List[Tuple[str, bool]]:
+        if self._held is None and depth >= self.fire_a:
+            self._held = "a"
             return [("a", True)]
-        if self._held and depth < release:
-            self._held = False
+        if self._held == "a" and depth < release_a:
+            self._held = None
             return [("a", False)]
+        return []
+
+    def _feed_secondary(self, depth: int, release_a: int, release_b: int) -> List[Tuple[str, bool]]:
+        if self._held is None:
+            if depth >= self.fire_b:
+                self._held = "b"
+                self._latched = False
+                return [("b", True)]
+            if self._latched:
+                if depth < release_a:
+                    self._latched = False
+                return []
+            if depth >= self.fire_a:
+                self._held = "a"
+                return [("a", True)]
+            return []
+        if self._held == "a":
+            if depth >= self.fire_b:
+                self._held = "b"
+                return [("a", False), ("b", True)]
+            if depth < release_a:
+                self._held = None
+                return [("a", False)]
+            return []
+        if depth < release_a:
+            self._held = None
+            return [("b", False)]
+        if depth < release_b:
+            self._held = None
+            self._latched = True
+            return [("b", False)]
         return []
 
     def reset(self) -> None:
         """Forget what is held; a key still down stays silent until it drops below its release point."""
-        self._held = False
+        self._held = None
+        self._latched = False
         self._blocked = self.last >= self.fire_a - HYSTERESIS
