@@ -4,7 +4,7 @@ A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin for t
 **Razer Tartarus Pro** (2019, USB `1532:0244`) on a Steam Deck in Game Mode. It does what
 Razer Synapse does on Windows, without Synapse or OpenRazer.
 
-<!-- screenshots:customize -->
+![Customize tab: key 05 selected, with its binding, actuation and secondary function](docs/screenshots/customize.jpg)
 
 ## Features
 
@@ -38,7 +38,7 @@ and that profile's status lights. While a game runs, **"&lt;game&gt; uses:"** as
 profile. The Lighting switch turns the backlight on or off, and the bar under it opens the
 mode, colour and brightness. The gear next to the title opens the editor.
 
-<!-- screenshots:panel -->
+<img src="docs/screenshots/panel.jpg" alt="Quick Access panel" width="640">
 
 ### Editor
 
@@ -63,7 +63,14 @@ The editor has four tabs (L1 / R1 switch between them):
 The **Editing** dropdown at the top of Customize and Actuation picks which profile you
 edit, and it says which profile the keypad uses now. Changes apply at once.
 
-<!-- screenshots:editor -->
+| | |
+|---|---|
+| ![Choose a binding: categories, key grid and modifiers](docs/screenshots/choose.jpg) | ![Secondary function page](docs/screenshots/secondary.jpg) |
+| **Choose…**: categories, a key grid and modifiers | **Secondary function**: a second binding deeper in the press |
+| ![Actuation tab: per-key depths on the drawing](docs/screenshots/actuation.jpg) | ![Lighting tab](docs/screenshots/lighting.jpg) |
+| **Actuation**: each key shows its depth in mm | **Lighting**: mode, colour and brightness |
+| ![Profiles tab](docs/screenshots/profiles.jpg) | ![Lights picker for a profile](docs/screenshots/lights.jpg) |
+| **Profiles**: games per profile and their status lights | **Lights**: patterns other profiles use are taken |
 
 ## Install
 
@@ -106,6 +113,29 @@ and its factory keys.
 
 The depth-to-mm table comes from measuring where Synapse fires on this keypad. The plugin
 only sends commands seen from Synapse or OpenRazer for this keypad.
+
+## How it was built
+
+Razer documents none of this, so the protocol was worked out step by step:
+
+1. **Start from what's known.** OpenRazer and earlier projects gave the lighting commands
+   and the keypad's normal-mode input, which was enough for remapping and lighting.
+2. **Watch Synapse.** On a Windows PC, Wireshark with USBPcap recorded the USB traffic
+   while Synapse changed settings, one change per capture
+   (`scripts/record-synapse.ps1`). A small parser read the captures. This showed that
+   Synapse never stores actuation on the keypad: it puts it in a *driver mode* where the
+   keys stream their depth, and decides on the PC when a key fires. It also showed the
+   command for the profile lights.
+3. **Measure.** Pressing keys slowly next to a key log in Synapse gave the depth where
+   each mm setting fires; that table is what the plugin uses.
+4. **Try it on the Deck carefully.** Read-only tools (`scripts/read-depth.py`) came first,
+   then one fixed command at a time (`scripts/deck-probe.py`), each send approved by hand.
+   The plugin only sends commands confirmed this way.
+5. **Build and test on the hardware.** Each feature was written up as a design, built in
+   small steps with automated tests for the backend, and checked on a Deck with a
+   checklist before moving on. The notes are in `docs/superpowers/`.
+
+The code was written with [Claude Code](https://claude.com/claude-code).
 
 ## Settings
 
