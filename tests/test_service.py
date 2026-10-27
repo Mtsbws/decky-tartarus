@@ -151,7 +151,7 @@ class ServiceTest(unittest.TestCase):
         rig = Rig(self.path)
         state = rig.service.state()
         self.assertEqual(set(state), {"connected", "device", "device_id", "steam_mode", "lighting", "effects",
-                                 "active_profile", "running_app", "max_profiles", "profiles"})
+                                 "active_profile", "running_app", "max_profiles", "profiles", "led_patterns"})
         self.assertFalse(state["connected"])
         self.assertIsNone(state["device"])
         self.assertIsNone(state["device_id"])
@@ -159,10 +159,12 @@ class ServiceTest(unittest.TestCase):
         self.assertEqual(state["active_profile"], "default")
         self.assertIsNone(state["running_app"])
         self.assertEqual(state["max_profiles"], 8)
+        self.assertEqual(state["led_patterns"][0], [True, False, False])
         self.assertEqual(len(state["profiles"]), 1)
         first = state["profiles"][0]
-        self.assertEqual((first["id"], first["name"], first["is_default"], first["games"], first["dpad_mode"]),
-                         ("default", "Default", True, [], "4way"))
+        self.assertEqual((first["id"], first["name"], first["is_default"], first["games"], first["dpad_mode"],
+                          first["leds"]),
+                         ("default", "Default", True, [], "4way", [False, False, False]))
         self.assertEqual(list(first["bindings"]), list(ALL_CONTROLS))
         self.assertEqual(first["bindings"]["k01"],
                          {"binding": {"type": "key", "keys": ["1"]}, "label": "1", "factory": "1"})
@@ -329,6 +331,8 @@ class PluginTest(unittest.TestCase):
                 state = await plugin.assign_running_game(p2)
                 self.assertEqual(state["active_profile"], p2)
                 self.assertEqual(state["running_app"], {"app_id": 1343400, "name": "RuneScape"})
+                state = await plugin.set_leds(p2, [False, True, True])
+                self.assertEqual(state["profiles"][1]["leds"], [False, True, True])
                 state = await plugin.rename_profile(p2, "Runescape")
                 self.assertEqual(state["profiles"][1]["name"], "Runescape")
                 state = await plugin.delete_profile(p2)

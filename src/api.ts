@@ -17,6 +17,7 @@ export type ProfileState = {
   is_default: boolean;
   games: string[];
   dpad_mode: "4way" | "8way";
+  leds: [boolean, boolean, boolean];
   bindings: Record<string, ControlState>;
 };
 
@@ -33,6 +34,7 @@ export type State = {
   running_app: RunningApp | null;
   max_profiles: number;
   profiles: ProfileState[];
+  led_patterns: boolean[][];
 };
 
 export const profileById = (state: State, id: string) => state.profiles.find((p) => p.id === id);
@@ -52,6 +54,7 @@ export const createProfile = callable<[name: string, copyFromId: string], State>
 export const renameProfile = callable<[profileId: string, name: string], State>("rename_profile");
 export const deleteProfile = callable<[profileId: string], State>("delete_profile");
 export const setLighting = callable<[effect: string, color: string, brightness: number], State>("set_lighting");
+export const setLeds = callable<[profileId: string, leds: boolean[]], State>("set_leds");
 export const recordStart = callable<[], void>("record_start");
 export const recordCancel = callable<[], void>("record_cancel");
 

@@ -71,6 +71,10 @@ class Plugin:
         self.service.set_lighting(effect, color, brightness)
         return self.service.state()
 
+    async def set_leds(self, profile_id: str, leds: list) -> dict:
+        self.service.set_leds(profile_id, leds)
+        return self.service.state()
+
     async def record_start(self) -> None:
         self.service.record_start()
 

@@ -6,10 +6,10 @@ import errno
 import logging
 import time
 from pathlib import Path
-from typing import Any, Awaitable, Callable, List, Optional, Set, Tuple
+from typing import Any, Awaitable, Callable, List, Optional, Sequence, Set, Tuple
 
 from .bindings import Binding, binding_label, binding_to_dict
-from .config import (DEFAULT_ID, DPAD_MODES, MAX_APP_ID, MAX_PROFILES, Game, Lighting, Profile, clean_name,
+from .config import (DEFAULT_ID, DPAD_MODES, LED_ORDER, MAX_APP_ID, MAX_PROFILES, Game, Lighting, Profile, clean_name,
                      default_profile, find_profile, load_config, new_profile_id, next_leds, profile_for_app, save_config)
 from .codes import name_for
 from .devmap import ALL_CONTROLS, FACTORY_CODES, FACTORY_OUTPUT
@@ -392,7 +392,8 @@ class TartarusService:
                                      "factory": FACTORY_OUTPUT[control]}
             games = sorted((g.name for g in self._config.games.values() if g.profile == p.id), key=str.lower)
             profiles.append({"id": p.id, "name": p.name, "is_default": p is self._config.profiles[0],
-                             "games": games, "dpad_mode": p.dpad_mode, "bindings": bindings})
+                             "games": games, "dpad_mode": p.dpad_mode, "leds": list(p.leds),
+                             "bindings": bindings})
         return {
             "connected": bool(self._devices),
             "device": self._device_name(),
@@ -404,6 +405,7 @@ class TartarusService:
             "running_app": {"app_id": self._running[0], "name": self._running[1]} if self._running else None,
             "max_profiles": MAX_PROFILES,
             "profiles": profiles,
+            "led_patterns": [list(leds) for leds in LED_ORDER],
         }
 
     def _edit_target(self, profile_id: str) -> Profile:
@@ -430,6 +432,24 @@ class TartarusService:
             raise ValueError(f"unknown d-pad mode {mode!r}")
         profile.dpad_mode = mode
         self._edited(profile)
+
+    def set_leds(self, profile_id: str, leds: Sequence[bool]) -> None:
+        profile = self._edit_target(profile_id)
+        if profile_id == DEFAULT_ID:
+            raise ValueError("Default keeps all LEDs off")
+        # Real bools only: (1, 0, 0) == (True, False, False), so ints would slip past the LED_ORDER check.
+        if not isinstance(leds, (list, tuple)) or len(leds) != 3 or not all(isinstance(v, bool) for v in leds):
+            raise ValueError(f"LED pattern must be three booleans: {leds!r}")
+        pattern = tuple(leds)
+        if pattern not in LED_ORDER:
+            raise ValueError(f"not a lit LED pattern: {list(pattern)}")
+        if any(p.leds == pattern for p in self._config.profiles if p is not profile):
+            raise ValueError("another profile uses that LED pattern")
+        profile.leds = pattern
+        self._save()
+        if profile.id == self._profile().id:
+            self._apply_leds()
+        self._notify()
 
     def _mutate(self, change: Callable[[], None]) -> None:
         """Apply an already-validated config change, persist it, follow any change of the active profile."""

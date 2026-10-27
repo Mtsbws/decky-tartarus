@@ -3,7 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tartarus.config import NO_LEDS, Game, Profile, default_config, factory_bindings, save_config
+from tartarus.config import (LED_ORDER, NO_LEDS, Game, Profile, default_config, factory_bindings, find_profile,
+                             load_config, save_config)
 from tartarus.lighting import effect_reports, leds_report
 
 from tests.test_service import TWO_NODES, Rig, until
@@ -110,6 +111,45 @@ class LedServiceTest(unittest.TestCase):
         rig.service.set_running_app(5, "X")
         rig.service.set_running_app(None, None)
         self.assertEqual(sender.sent, [])
+
+    def test_set_leds_persists_and_sends_when_active(self):
+        async def go():
+            sender = FakeSender()
+            rig = await self.connected(sender)
+            sender.sent.clear()
+            rig.service.set_leds("p2", [False, True, True])  # p2 isn't active: nothing sent
+            self.assertEqual(sender.sent, [])
+            self.assertEqual(find_profile(load_config(self.path), "p2").leds, (False, True, True))
+            rig.service.set_running_app(5, "X")
+            rig.service.set_leds("p2", [True, True, True])
+            self.assertEqual(self.reports(sender)[-1], leds_report((True, True, True)))
+            self.assertEqual(find_profile(load_config(self.path), "p2").leds, (True, True, True))
+            await rig.service.stop()
+
+        self.run_async(go())
+
+    def test_set_leds_rejects(self):
+        sender = FakeSender()
+        rig = Rig(self.path, send_feature=sender)
+        p3 = rig.service.create_profile("Shooter", "default")  # takes the next free pattern, (False, True, False)
+        before = self.path.read_text()
+        cases = [("default", [True, True, True]), ("p2", [False, True, False]), ("p2", [False, False, False]),
+                 ("p2", [1, 0, 0]), ("p2", [0, 1, 1]), ("p2", [True, False]), ("p2", (True, True, True, False)),
+                 ("p2", "TFT"), ("nope", [True, True, True])]
+        for profile_id, leds in cases:
+            with self.subTest(profile_id=profile_id, leds=leds):
+                with self.assertRaises(ValueError):
+                    rig.service.set_leds(profile_id, leds)
+        self.assertEqual(self.path.read_text(), before)
+        self.assertEqual(sender.sent, [])
+        profiles = {p["id"]: p["leds"] for p in rig.service.state()["profiles"]}
+        self.assertEqual(profiles, {"default": [False, False, False], "p2": [True, False, False],
+                                    p3: [False, True, False]})
+
+    def test_state_lists_patterns(self):
+        state = Rig(self.path).service.state()
+        self.assertEqual(state["led_patterns"], [list(p) for p in LED_ORDER])
+        self.assertEqual([p["leds"] for p in state["profiles"]], [[False, False, False], [True, False, False]])
 
 
 if __name__ == "__main__":
