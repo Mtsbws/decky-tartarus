@@ -57,10 +57,10 @@ class KeyTracker:
         self.fire_a = fire_a
         self._held = False
         self._blocked = False
-        self._last = 0
+        self.last = 0
 
     def feed(self, depth: int) -> List[Tuple[str, bool]]:
-        self._last = depth
+        self.last = depth
         release = self.fire_a - HYSTERESIS
         if self._blocked:
             if depth < release:
@@ -77,4 +77,4 @@ class KeyTracker:
     def reset(self) -> None:
         """Forget what is held; a key still down stays silent until it drops below its release point."""
         self._held = False
-        self._blocked = self._last >= self.fire_a - HYSTERESIS
+        self._blocked = self.last >= self.fire_a - HYSTERESIS

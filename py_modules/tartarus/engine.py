@@ -4,10 +4,11 @@ from __future__ import annotations
 import asyncio
 from typing import Awaitable, Callable, Dict, FrozenSet, List, Optional, Protocol, Sequence, Set
 
+from .analog import DEFAULT_MM, KeyTracker, mm_to_depth
 from .bindings import Binding
 from .codes import WHEEL_DOWN, WHEEL_UP, code_for
 from .config import Profile
-from .devmap import ALL_CONTROLS, DPAD_CARDINALS, FACTORY_CODES
+from .devmap import ALL_CONTROLS, ANALOG_KEYS, DPAD_CARDINALS, FACTORY_CODES
 from .dpad import resolve_dpad
 
 MACRO_DELAY = 0.015  # seconds between a step's down and up, and between steps
@@ -40,6 +41,8 @@ class RemapEngine:
         self._dpad_pressed: Set[str] = set()  # physical cardinals down
         self._dpad_active: FrozenSet[str] = frozenset()
         self._macros: Dict[str, asyncio.Task] = {}
+        self._trackers: Dict[str, KeyTracker] = {}
+        self._build_trackers()
 
     # Record mode forwards raw events. Switching either way releases what is held,
     # so a key pressed in one mode can't stay down in the other.
@@ -83,9 +86,31 @@ class RemapEngine:
             self._trigger(control, False)
             self._out.sync()
 
+    def handle_depth(self, depths: bytes) -> None:
+        """One driver-mode depth report: byte i is ANALOG_KEYS[i]."""
+        for control, depth in zip(ANALOG_KEYS, depths):
+            tracker = self._trackers[control]
+            if depth == tracker.last:
+                continue
+            for _slot, is_down in tracker.feed(depth):
+                if not self._passthrough:  # still fed, so a key held into Record re-arms first
+                    self._trigger(control, is_down)
+        self._out.sync()
+
     def set_profile(self, profile: Profile) -> None:
         self.release_all()
         self._profile = profile
+        self._build_trackers()
+
+    def _build_trackers(self) -> None:
+        """One tracker per analog key; a new one inherits the old one's depth and re-arm wait."""
+        for control in ANALOG_KEYS:
+            tracker = KeyTracker(mm_to_depth(DEFAULT_MM))
+            old = self._trackers.get(control)
+            if old is not None:
+                tracker.last = old.last
+                tracker.reset()
+            self._trackers[control] = tracker
 
     def release_all(self) -> None:
         for task in self._macros.values():
@@ -99,6 +124,8 @@ class RemapEngine:
         self._pressed.clear()
         self._dpad_pressed.clear()
         self._dpad_active = frozenset()
+        for tracker in self._trackers.values():
+            tracker.reset()
         self._out.sync()
 
     # --- controls ---

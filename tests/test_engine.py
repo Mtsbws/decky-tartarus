@@ -228,5 +228,62 @@ class EngineTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(e.passthrough)
 
 
+    # --- depth (driver mode) ---
+
+    @staticmethod
+    def depths(**keys):
+        out = bytearray(20)
+        for control, depth in keys.items():
+            out[int(control[1:]) - 1] = depth
+        return bytes(out)
+
+    async def test_depth_press_and_release(self):
+        e = self.engine(profile(k01="Esc"))
+        e.handle_depth(self.depths(k01=16))
+        self.assertEqual(self.out.events, [down(ESC)])
+        e.handle_depth(self.depths(k01=7))
+        self.assertEqual(self.out.events, [down(ESC), up(ESC)])
+
+    async def test_depth_uses_k01_binding_types(self):
+        e = self.engine(profile(k02="A, B", k03="steam:menu"))
+        e.handle_depth(self.depths(k02=40, k03=40))
+        await self.settle()
+        self.assertEqual(self.out.events, [("steam", "menu"), down(A), up(A), down(B), up(B)])
+
+    async def test_depth_ignored_in_passthrough(self):
+        e = self.engine(profile(k01="Esc"))
+        e.passthrough = True
+        e.handle_depth(self.depths(k01=200))
+        e.handle_depth(self.depths(k01=0))
+        self.assertEqual(self.out.events, [])
+
+    async def test_depth_held_into_passthrough_does_not_fire_after(self):
+        e = self.engine(profile(k01="Esc"))
+        e.passthrough = True
+        e.handle_depth(self.depths(k01=200))
+        e.passthrough = False
+        e.handle_depth(self.depths(k01=210))
+        self.assertEqual(self.out.events, [])
+
+    async def test_release_all_blocks_until_rearm(self):
+        prof = profile(k01="Esc")
+        e = self.engine(prof)
+        e.handle_depth(self.depths(k01=200))
+        self.assertEqual(self.out.events, [down(ESC)])
+        e.set_profile(prof)
+        self.assertEqual(self.out.events, [down(ESC), up(ESC)])
+        e.handle_depth(self.depths(k01=210))
+        e.handle_depth(self.depths(k01=5))
+        self.assertEqual(self.out.events, [down(ESC), up(ESC)])
+        e.handle_depth(self.depths(k01=16))
+        self.assertEqual(self.out.events, [down(ESC), up(ESC), down(ESC)])
+
+    async def test_unchanged_bytes_do_nothing(self):
+        e = self.engine(profile(k01="Esc"))
+        e.handle_depth(self.depths(k01=100))
+        e.handle_depth(self.depths(k01=100))
+        self.assertEqual(self.out.events, [down(ESC)])
+
+
 if __name__ == "__main__":
     unittest.main()
