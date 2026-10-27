@@ -8,15 +8,16 @@ import time
 from pathlib import Path
 from typing import Any, Awaitable, Callable, List, Optional, Sequence, Set, Tuple
 
-from .actuation import (DEFAULT_MM, MIN_GAP_MM, MM_MAX, MM_MIN, KeyTracker, mm_to_depth, parse_depth_report, tenths,
-                        valid_mm)
+from .actuation import (DEFAULT_MM, MIN_GAP_MM, MM_MAX, MM_MIN, KeyTracker, gap_ok, mm_to_depth, parse_depth_report,
+                        tenths, valid_mm)
 from .bindings import Binding, binding_label, binding_to_dict
-from .config import (DEFAULT_ID, DPAD_MODES, LED_ORDER, MAX_APP_ID, MAX_PROFILES, Game, Lighting, Profile, clean_name,
+from .config import (DEFAULT_ID, DPAD_MODES, LED_ORDER, MAX_APP_ID, MAX_PROFILES, Game, Lighting, Profile, Secondary,
+                     clean_name,
                      default_profile, find_profile, load_config, new_profile_id, next_leds, profile_for_app, save_config)
 from .codes import name_for
 from .devmap import ALL_CONTROLS, ACTUATION_KEYS, FACTORY_CODES, FACTORY_OUTPUT, SYSTEM_CODES
 from .devmode import DRIVER_MODE, NORMAL_MODE, set_mode_report
-from .engine import RemapEngine
+from .engine import B_SUFFIX, RemapEngine
 from .lighting import EFFECTS, effect_reports, leds_report
 from .linux.discovery import PRODUCT, VENDOR, TartarusNodes, find_tartarus, list_keyboards
 from .linux.evdev import EV_KEY, EV_REL, REL_WHEEL, InputDevice
@@ -499,9 +500,12 @@ class TartarusService:
                 bindings[control] = {"binding": binding_to_dict(b), "label": binding_label(b),
                                      "factory": FACTORY_OUTPUT[control]}
             games = sorted((g.name for g in self._config.games.values() if g.profile == p.id), key=str.lower)
+            secondary = {control: {"binding": binding_to_dict(sec.binding), "label": binding_label(sec.binding),
+                                   "actuation": sec.actuation}
+                         for control, sec in p.secondary.items()}
             profiles.append({"id": p.id, "name": p.name, "is_default": p is self._config.profiles[0],
                              "games": games, "dpad_mode": p.dpad_mode, "leds": list(p.leds),
-                             "actuation": dict(p.actuation), "bindings": bindings})
+                             "actuation": dict(p.actuation), "secondary": secondary, "bindings": bindings})
         return {
             "connected": bool(self._devices),
             "device": self._device_name(),
@@ -531,9 +535,16 @@ class TartarusService:
 
     def set_binding(self, profile_id: str, control: str, b: Binding) -> None:
         profile = self._edit_target(profile_id)
-        if control not in ALL_CONTROLS:
+        if control.endswith(B_SUFFIX):
+            key = control[:-len(B_SUFFIX)]
+            secondary = profile.secondary.get(key)
+            if secondary is None:
+                raise ValueError(f"{key!r} has no secondary function")
+            profile.secondary[key] = Secondary(b, secondary.actuation)
+        elif control in ALL_CONTROLS:
+            profile.bindings[control] = b
+        else:
             raise ValueError(f"unknown control {control!r}")
-        profile.bindings[control] = b
         self._edited(profile)
 
     def set_dpad_mode(self, profile_id: str, mode: str) -> None:
@@ -552,9 +563,35 @@ class TartarusService:
     def set_all_actuation(self, profile_id: str, mm: float) -> None:
         self._apply_actuation(self._edit_target(profile_id), ACTUATION_KEYS, mm)
 
+    def set_secondary(self, profile_id: str, control: str, mm: Optional[float]) -> None:
+        """Turn key control's B on at mm (new B does nothing until bound), move it, or remove it (None)."""
+        profile = self._edit_target(profile_id)
+        if control not in ACTUATION_KEYS:
+            raise ValueError(f"{control!r} has no adjustable actuation")
+        if mm is None:
+            profile.secondary.pop(control, None)
+        else:
+            if not valid_mm(mm):
+                raise ValueError(f"actuation must be {MM_MIN}-{MM_MAX} mm in 0.1 mm steps")
+            if not gap_ok(profile.actuation.get(control, DEFAULT_MM), mm):
+                raise ValueError(f"the secondary function must be at least {MIN_GAP_MM} mm deeper than the key")
+            old = profile.secondary.get(control)
+            profile.secondary[control] = Secondary(old.binding if old is not None else Binding("disable"), round(mm, 1))
+        self._edited(profile)
+
     def _apply_actuation(self, profile: Profile, controls: Sequence[str], mm: float) -> None:
         if not valid_mm(mm):
             raise ValueError(f"actuation must be {MM_MIN}-{MM_MAX} mm in 0.1 mm steps")
+        # A B that would end up too close moves deeper with A; if it can't, nothing changes.
+        moved = {}
+        for control in controls:
+            secondary = profile.secondary.get(control)
+            if secondary is not None and not gap_ok(mm, secondary.actuation):
+                b_tenths = tenths(mm) + tenths(MIN_GAP_MM)
+                if b_tenths > tenths(MM_MAX):
+                    raise ValueError(f"{control}'s secondary function would pass {MM_MAX} mm")
+                moved[control] = Secondary(secondary.binding, b_tenths / 10)
+        profile.secondary.update(moved)
         for control in controls:
             if tenths(mm) == tenths(DEFAULT_MM):
                 profile.actuation.pop(control, None)

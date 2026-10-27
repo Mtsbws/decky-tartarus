@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 from tartarus.bindings import parse_binding_text
-from tartarus.config import NO_LEDS, default_config, save_config
+from tartarus.config import NO_LEDS, Game, Profile, Secondary, default_config, factory_bindings, load_config, save_config
 from tartarus.devmode import DRIVER_MODE, NORMAL_MODE, set_mode_report
 from tartarus.lighting import effect_reports, leds_report
 from tartarus.linux.discovery import TartarusNodes
@@ -18,6 +18,7 @@ from tests.test_service_lighting import FakeSender
 
 KEY_LEFTALT = 56  # the top button's factory code
 KEY_F13 = 183
+KEY_Z = 44
 DRIVER = set_mode_report(DRIVER_MODE)
 NORMAL = set_mode_report(NORMAL_MODE)
 NODES = TartarusNodes(event=["/dev/input/event11", "/dev/input/event14"], hidraw="/dev/hidraw8",
@@ -272,6 +273,81 @@ class ActuationServiceTest(unittest.TestCase):
             svc.set_all_actuation("default", 1.5)
             self.assertEqual(json.loads(self.path.read_text())["profiles"][0]["actuation"], {})
             await svc.stop()
+
+        self.run_async(go())
+
+    def test_set_secondary_and_binding(self):
+        async def go():
+            rig = await self.connected()
+            svc = rig.service
+            svc.set_secondary("default", "k05", 3.6)
+            state = svc.state()["profiles"][0]["secondary"]
+            self.assertEqual(state, {"k05": {"binding": {"type": "disable"}, "label": state["k05"]["label"],
+                                             "actuation": 3.6}})
+            svc.set_binding("default", "k05.b", parse_binding_text("Z"))
+            svc.set_secondary("default", "k05", 3.5)
+            self.assertEqual(load_config(self.path).profiles[0].secondary,
+                             {"k05": Secondary(parse_binding_text("Z"), 3.5)})
+            self.readers[0].push(depth_report(k05=250))
+            await until(lambda: rig.emitter.out)
+            self.assertEqual(rig.emitter.out, [("key", KEY_Z, True)])
+            before = self.path.read_bytes()
+            for call in (lambda: svc.set_binding("default", "k06.b", parse_binding_text("Z")),
+                         lambda: svc.set_secondary("default", "top_button", 3.6),
+                         lambda: svc.set_secondary("default", "k05", 3.7),
+                         lambda: svc.set_secondary("default", "k05", True),
+                         lambda: svc.set_secondary("nope", "k05", 3.6)):
+                with self.assertRaises(ValueError):
+                    call()
+            self.assertEqual(self.path.read_bytes(), before)
+            svc.set_secondary("default", "k05", None)
+            self.assertEqual(load_config(self.path).profiles[0].secondary, {})
+            await svc.stop()
+
+        self.run_async(go())
+
+    def test_secondary_gap_rules(self):
+        async def go():
+            rig = await self.connected()
+            svc = rig.service
+            svc.set_actuation("default", "k05", 2.0)
+            with self.assertRaises(ValueError):
+                svc.set_secondary("default", "k05", 2.4)
+            svc.set_secondary("default", "k05", 3.6)
+            before = self.path.read_bytes()
+            with self.assertRaises(ValueError):
+                svc.set_actuation("default", "k05", 3.2)  # B would need 3.7
+            self.assertEqual(self.path.read_bytes(), before)
+            svc.set_secondary("default", "k05", 3.4)
+            svc.set_actuation("default", "k05", 3.1)
+            self.assertEqual(load_config(self.path).profiles[0].secondary["k05"].actuation, 3.6)
+            svc.set_secondary("default", "k06", 2.2)
+            before = self.path.read_bytes()
+            with self.assertRaises(ValueError):
+                svc.set_all_actuation("default", 3.2)
+            self.assertEqual(self.path.read_bytes(), before)
+            svc.set_all_actuation("default", 2.0)
+            p = load_config(self.path).profiles[0]
+            self.assertEqual({c: s.actuation for c, s in p.secondary.items()}, {"k05": 3.6, "k06": 2.5})
+            self.assertEqual(p.actuation["k05"], 2.0)
+            await svc.stop()
+
+        self.run_async(go())
+
+    def test_switch_releases_b(self):
+        async def go():
+            c = load_config(self.path)
+            c.profiles[0].secondary = {"k05": Secondary(parse_binding_text("Z"), 3.6)}
+            c.profiles.append(Profile(id="p2", name="Other", dpad_mode="4way", bindings=factory_bindings(),
+                                      leds=(True, False, False)))
+            c.games = {"5": Game(name="X", profile="p2")}
+            save_config(self.path, c)
+            rig = await self.connected()
+            self.readers[0].push(depth_report(k05=255))
+            await until(lambda: rig.emitter.out)
+            rig.service.set_running_app(5, "X")
+            self.assertEqual(rig.emitter.out, [("key", KEY_Z, True), ("key", KEY_Z, False)])
+            await rig.service.stop()
 
         self.run_async(go())
 

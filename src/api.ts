@@ -20,6 +20,9 @@ export type ActuationState = {
   min_gap_mm: number;
 };
 
+// Key kNN's B, at a deeper actuation point. Its binding is set as control "kNN.b".
+export type SecondaryState = { binding: BindingDict; label: string; actuation: number };
+
 export type ProfileState = {
   id: string;
   name: string;
@@ -28,6 +31,7 @@ export type ProfileState = {
   dpad_mode: "4way" | "8way";
   leds: [boolean, boolean, boolean];
   actuation: Record<string, number>;
+  secondary: Record<string, SecondaryState>;
   bindings: Record<string, ControlState>;
 };
 
@@ -68,6 +72,7 @@ export const setLighting = callable<[effect: string, color: string, brightness: 
 export const setAdjustableActuation = callable<[enabled: boolean], State>("set_adjustable_actuation");
 export const setActuation = callable<[profileId: string, control: string, mm: number], State>("set_actuation");
 export const setAllActuation = callable<[profileId: string, mm: number], State>("set_all_actuation");
+export const setSecondary = callable<[profileId: string, control: string, mm: number | null], State>("set_secondary");
 export const setLeds = callable<[profileId: string, leds: boolean[]], State>("set_leds");
 export const recordStart = callable<[], void>("record_start");
 export const recordCancel = callable<[], void>("record_cancel");

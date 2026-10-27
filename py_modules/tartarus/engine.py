@@ -11,6 +11,7 @@ from .config import Profile
 from .devmap import ALL_CONTROLS, ACTUATION_KEYS, DPAD_CARDINALS, FACTORY_CODES
 from .dpad import resolve_dpad
 
+B_SUFFIX = ".b"  # control kNN.b is key kNN's secondary function
 MACRO_DELAY = 0.015  # seconds between a step's down and up, and between steps
 
 HOLD_TYPES = ("key", "modifier", "mouse", "media", "combo")
@@ -92,9 +93,9 @@ class RemapEngine:
             tracker = self._trackers[control]
             if depth == tracker.last:
                 continue
-            for _slot, is_down in tracker.feed(depth):
+            for slot, is_down in tracker.feed(depth):
                 if not self._passthrough:  # still fed, so a key held into Record re-arms first
-                    self._trigger(control, is_down)
+                    self._trigger(control if slot == "a" else control + B_SUFFIX, is_down)
         self._out.sync()
 
     def set_profile(self, profile: Profile) -> None:
@@ -105,7 +106,9 @@ class RemapEngine:
     def _build_trackers(self) -> None:
         """One tracker per actuation key; a new one inherits the old one's depth and re-arm wait."""
         for control in ACTUATION_KEYS:
-            tracker = KeyTracker(mm_to_depth(self._profile.actuation.get(control, DEFAULT_MM)))
+            secondary = self._profile.secondary.get(control)
+            tracker = KeyTracker(mm_to_depth(self._profile.actuation.get(control, DEFAULT_MM)),
+                                 mm_to_depth(secondary.actuation) if secondary is not None else None)
             old = self._trackers.get(control)
             if old is not None:
                 tracker.last = old.last
@@ -153,7 +156,7 @@ class RemapEngine:
         if control in self._pressed:
             return
         self._pressed.add(control)
-        b: Optional[Binding] = self._profile.bindings.get(control)
+        b = self._binding_for(control)
         if b is None:
             return
         if b.type in HOLD_TYPES:
@@ -178,6 +181,12 @@ class RemapEngine:
             elif self.steam_mode == "keys":
                 self._tap(_STEAM_KEYS[b.action])
         # "disable" does nothing
+
+    def _binding_for(self, control: str) -> Optional[Binding]:
+        if control.endswith(B_SUFFIX):
+            secondary = self._profile.secondary.get(control[:-len(B_SUFFIX)])
+            return secondary.binding if secondary is not None else None
+        return self._profile.bindings.get(control)
 
     async def _macro(self, control: str, steps: Sequence[Sequence[str]]) -> None:
         try:

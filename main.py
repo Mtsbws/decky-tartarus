@@ -84,6 +84,10 @@ class Plugin:
         self.service.set_all_actuation(profile_id, mm)
         return self.service.state()
 
+    async def set_secondary(self, profile_id: str, control: str, mm: Optional[float]) -> dict:
+        self.service.set_secondary(profile_id, control, mm)
+        return self.service.state()
+
     async def set_leds(self, profile_id: str, leds: list) -> dict:
         self.service.set_leds(profile_id, leds)
         return self.service.state()
