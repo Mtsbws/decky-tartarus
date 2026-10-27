@@ -1,9 +1,9 @@
 import { Focusable } from "@decky/ui";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
-export function Card({ title, children }: { title?: ReactNode; children: ReactNode }) {
+export function Card({ title, style, children }: { title?: ReactNode; style?: CSSProperties; children: ReactNode }) {
   return (
-    <div style={{ background: "#14181d", borderRadius: 6, padding: "12px 14px", boxSizing: "border-box" }}>
+    <div style={{ background: "#14181d", borderRadius: 6, padding: "12px 14px", boxSizing: "border-box", ...style }}>
       {title && (
         <div style={{ color: "#5bd14a", textTransform: "uppercase", fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
           {title}

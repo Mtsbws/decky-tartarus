@@ -9,6 +9,7 @@ import { ActuationPage } from "./ActuationPage";
 import { Card } from "./Card";
 import { CustomizePage } from "./CustomizePage";
 import { PAGE_HEIGHT } from "./layout";
+import { ProfilesPage } from "./ProfilesPage";
 
 type Page = "customize" | "actuation" | "lighting" | "profiles";
 
@@ -106,7 +107,22 @@ export function Editor() {
               </div>
             ),
           },
-          { id: "profiles", title: "Profiles", content: <div /> },
+          {
+            id: "profiles",
+            title: "Profiles",
+            content: (
+              <ProfilesPage
+                state={state}
+                viewing={profile.id}
+                onEdit={(id) => {
+                  switchView(id);
+                  setPage("customize");
+                }}
+                onView={switchView}
+                onChanged={setState}
+              />
+            ),
+          },
         ]}
       />
     </div>
