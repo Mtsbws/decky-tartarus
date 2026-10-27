@@ -1,12 +1,17 @@
 import { DialogButton, Focusable, TextField } from "@decky/ui";
 import { addEventListener, removeEventListener } from "@decky/api";
-import { CSSProperties, useEffect, useState } from "react";
+import { CSSProperties, useEffect, useRef, useState } from "react";
 
 import { BindingDict, EV_RECORD, recordCancel, ProfileState, recordStart, setBinding, setBindingText, State } from "../api";
 import { errorText } from "../Panel";
 import { isMoreKey, isSteamPick, QUICK_PICKS } from "./quickPicks";
 
 type RecordStatus = "idle" | "recording" | "nothing";
+
+// A key and its deep press each have a picker. The result of a recording goes
+// to the picker that started it last; another one still waiting gives up.
+let recordOwner = 0;
+let nextPickerId = 1;
 
 const pickStyle: CSSProperties = { minWidth: 0, width: "auto", padding: "6px 10px", margin: 0, fontSize: 13 };
 
@@ -16,6 +21,7 @@ export function BindingPicker(props: { control: string; state: State; profile: P
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [moreKeys, setMoreKeys] = useState(false);
+  const pickerId = useRef(nextPickerId++).current;
 
   // A new control or profile starts clean; a recording for the previous one is cancelled.
   useEffect(() => {
@@ -30,6 +36,10 @@ export function BindingPicker(props: { control: string; state: State; profile: P
   useEffect(() => {
     if (record !== "recording") return;
     const listener = addEventListener<[BindingDict | null]>(EV_RECORD, (binding) => {
+      if (recordOwner !== pickerId) {
+        setRecord("idle");
+        return;
+      }
       if (binding === null) {
         setRecord("nothing");
         return;
@@ -58,6 +68,7 @@ export function BindingPicker(props: { control: string; state: State; profile: P
 
   function startRecording() {
     setError(null);
+    recordOwner = pickerId;
     setRecord("recording");
     recordStart().catch((e) => {
       setRecord("idle");
