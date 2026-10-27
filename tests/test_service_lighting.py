@@ -223,7 +223,8 @@ class LightingServiceTest(unittest.TestCase):
             self.assertEqual(sender.sent, [(HID, r) for r in effect_reports("wave", "#00ff00", 0)
                                            + [leds_report(NO_LEDS)]])
             self.assertEqual(rig.service.state()["lighting"],
-                             {"effect": "wave", "color": "#00ff00", "brightness": 70, "enabled": False})
+                             {"effect": "wave", "color": "#00ff00", "brightness": 70, "enabled": False,
+                              "hypershift": {"enabled": False, "color": "#ff6000"}})
             await rig.service.stop()
 
         self.run_async(go())
