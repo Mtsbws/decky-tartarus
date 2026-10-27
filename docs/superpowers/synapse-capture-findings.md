@@ -143,6 +143,12 @@ brightness changes, switch off/on, replug, suspend/resume and plugin disable/ena
 typed at a light press, the top button, D-pad and wheel worked, and the Deck didn't suspend.
 Every unload stopped in 0.2 s.
 
+**Plugin actuation and Record (Deck check M3, 2026-10-27):** with `"actuation": {"k01": 3.6}` and
+k01 bound to `A`, a light press on 01 did nothing and a full press typed `a`. Key 02 at the default
+1.5 mm typed at a light press. In driver mode, Record from depth stored the key's factory name
+(key 01 → `1`, key 07 → `Q`). At 14:48:47 a hub drop disconnected the keypad. It reconnected 4 s
+later, straight back in driver mode, and the normal-mode send to the gone node failed quietly.
+
 **Normal-mode hardware point (Deck check M3, 2026-10-27, key 01):** in normal mode, `read 30`
 showed the key-down live. The user held the key once it appeared, sent `setmode 03` from a
 second terminal, then released slowly. The first depth report after the switch:
