@@ -564,6 +564,14 @@ class TartarusService:
     def set_all_actuation(self, profile_id: str, mm: float) -> None:
         self._apply_actuation(self._edit_target(profile_id), ACTUATION_KEYS, mm)
 
+    def set_actuation_keys(self, profile_id: str, controls: Sequence[str], mm: float) -> None:
+        """Set keys' actuation together: if one key's B can't move, nothing changes."""
+        profile = self._edit_target(profile_id)
+        if (not isinstance(controls, (list, tuple)) or not controls
+                or not all(isinstance(c, str) and c in ACTUATION_KEYS for c in controls)):
+            raise ValueError("controls must be keys 01-20")
+        self._apply_actuation(profile, tuple(controls), mm)
+
     def set_secondary(self, profile_id: str, control: str, mm: Optional[float]) -> None:
         """Turn key control's B on at mm (new B does nothing until bound), move it, or remove it (None)."""
         profile = self._edit_target(profile_id)

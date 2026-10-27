@@ -276,6 +276,72 @@ class ActuationServiceTest(unittest.TestCase):
 
         self.run_async(go())
 
+    def test_set_actuation_keys(self):
+        async def go():
+            rig = await self.connected()
+            svc = rig.service
+            svc.set_actuation_keys("default", ["k01", "k07"], 2.0)
+            self.assertEqual(json.loads(self.path.read_text())["profiles"][0]["actuation"],
+                             {"k01": 2.0, "k07": 2.0})
+            svc.set_actuation_keys("default", ["k01"], 1.5)
+            self.assertEqual(svc.state()["profiles"][0]["actuation"], {"k07": 2.0})
+            await svc.stop()
+
+        self.run_async(go())
+
+    def test_set_actuation_keys_moves_b(self):
+        async def go():
+            rig = await self.connected()
+            svc = rig.service
+            svc.set_secondary("default", "k05", 2.5)
+            svc.set_actuation_keys("default", ["k05", "k06"], 2.3)
+            p = svc.state()["profiles"][0]
+            self.assertEqual((p["actuation"]["k05"], p["secondary"]["k05"]["actuation"]), (2.3, 2.8))
+            await svc.stop()
+
+        self.run_async(go())
+
+    def test_set_actuation_keys_is_atomic(self):
+        async def go():
+            rig = await self.connected()
+            svc = rig.service
+            svc.set_secondary("default", "k05", 3.6)
+            before = self.path.read_bytes()
+            with self.assertRaisesRegex(ValueError, "k05's secondary function would pass 3.6 mm"):
+                svc.set_actuation_keys("default", ["k04", "k05"], 3.2)
+            self.assertEqual(self.path.read_bytes(), before)
+            self.assertEqual(svc.state()["profiles"][0]["actuation"], {})
+            await svc.stop()
+
+        self.run_async(go())
+
+    def test_set_actuation_keys_compares_tenths(self):
+        async def go():
+            rig = await self.connected()
+            svc = rig.service
+            svc.set_secondary("default", "k05", 3.1)
+            svc.set_actuation_keys("default", ["k05"], 2.6000000000000005)
+            p = svc.state()["profiles"][0]
+            self.assertEqual((p["actuation"]["k05"], p["secondary"]["k05"]["actuation"]), (2.6, 3.1))
+            await svc.stop()
+
+        self.run_async(go())
+
+    def test_set_actuation_keys_rejects_bad_input(self):
+        async def go():
+            rig = await self.connected()
+            svc = rig.service
+            before = self.path.read_bytes()
+            for args in (("default", [], 2.0), ("default", "k01", 2.0), ("default", ["k21"], 2.0),
+                         ("default", ["top_button"], 2.0), ("default", [1], 2.0), ("default", ["k01"], 3.7),
+                         ("default", ["k01"], 2.55), ("default", ["k01"], True), ("nope", ["k01"], 2.0)):
+                with self.assertRaises(ValueError, msg=args):
+                    svc.set_actuation_keys(*args)
+            self.assertEqual(self.path.read_bytes(), before)
+            await svc.stop()
+
+        self.run_async(go())
+
     def test_set_secondary_and_binding(self):
         async def go():
             rig = await self.connected()
