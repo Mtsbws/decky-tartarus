@@ -6,7 +6,7 @@ findings. Only firmware-native effects ship; never build set-device-mode (00/04)
 from __future__ import annotations
 
 import re
-from typing import List
+from typing import List, Tuple
 
 TRANSACTION_ID = 0x1F
 BREATHING_TRANSACTION_ID = 0x3F
@@ -19,6 +19,7 @@ _SET_EFFECT = 0x02
 _SET_BRIGHTNESS = 0x04
 _VARSTORE = 0x01
 _BACKLIGHT_LED = 0x05
+_PROFILE_LED = 0x0B  # one RGB LED to the firmware: R = top, G = middle, B = bottom
 
 _WAVE_DIRECTION = 1  # left -> right
 _REACTIVE_SPEED = 2
@@ -79,3 +80,10 @@ def effect_reports(effect: str, color: str, brightness: int) -> List[bytes]:
         build_report(_EXTENDED_MATRIX, _SET_BRIGHTNESS,
                      bytes([_VARSTORE, 0x00, round(brightness * 255 / 100)])),
     ]
+
+
+def leds_report(leds: Tuple[bool, bool, bool]) -> bytes:
+    """The profile-LED report as Synapse sends it: each LED fully on or off."""
+    rgb = bytes(0xFF if on else 0x00 for on in leds)
+    return build_report(_EXTENDED_MATRIX, _SET_EFFECT,
+                        bytes([_VARSTORE, _PROFILE_LED, 0x01, 0x00, 0x01, 0x01]) + rgb)

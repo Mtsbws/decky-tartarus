@@ -14,7 +14,7 @@ from .config import (DEFAULT_ID, DPAD_MODES, MAX_APP_ID, MAX_PROFILES, Game, Lig
 from .codes import name_for
 from .devmap import ALL_CONTROLS, FACTORY_CODES, FACTORY_OUTPUT
 from .engine import RemapEngine
-from .lighting import EFFECTS, effect_reports
+from .lighting import EFFECTS, effect_reports, leds_report
 from .linux.discovery import PRODUCT, VENDOR, TartarusNodes, find_tartarus, list_keyboards
 from .linux.evdev import EV_KEY, EV_REL, REL_WHEEL, InputDevice
 from .linux.hidraw import send_feature
@@ -209,26 +209,38 @@ class TartarusService:
         lighting = self._config.lighting
         return effect_reports(lighting.effect, lighting.color, lighting.brightness)
 
+    def _send_command(self, report: bytes, what: str) -> bool:
+        """Send one feature report; failures are logged and return False, never raised."""
+        if self._hidraw is None:
+            self._log.warning("no lighting interface found; %s not applied", what)
+            return False
+        try:
+            status = self._send_feature(self._hidraw, report)
+        except OSError as e:
+            self._log.warning("%s command failed on %s (%s)", what, self._hidraw, e)
+            return False
+        if status != 0x02:
+            self._log.warning("%s command %02x/%02x returned status 0x%02x", what, report[6], report[7], status)
+            return False
+        return True
+
     def _apply_lighting(self) -> None:
-        """Send the stored lighting to the keypad; failures are logged, never raised."""
+        """Send the stored lighting, then the profile LEDs; failures are logged, never raised."""
         if not self._devices:
             return
-        if self._hidraw is None:
-            self._log.warning("no lighting interface found; lighting not applied")
+        if all(self._send_command(report, "lighting") for report in self._lighting_reports()):
+            lighting = self._config.lighting
+            self._log.info("lighting applied: %s %s %d%% (status 0x02)",
+                           lighting.effect, lighting.color, lighting.brightness)
+        self._apply_leds()
+
+    def _apply_leds(self) -> None:
+        """Show the active profile's pattern on the three profile LEDs."""
+        if not self._devices:
             return
-        for report in self._lighting_reports():
-            try:
-                status = self._send_feature(self._hidraw, report)
-            except OSError as e:
-                self._log.warning("lighting command failed on %s (%s)", self._hidraw, e)
-                return
-            if status != 0x02:
-                self._log.warning("lighting command %02x/%02x returned status 0x%02x",
-                                  report[6], report[7], status)
-                return
-        lighting = self._config.lighting
-        self._log.info("lighting applied: %s %s %d%% (status 0x02)",
-                       lighting.effect, lighting.color, lighting.brightness)
+        leds = self._profile().leds
+        if self._send_command(leds_report(leds), "profile LED"):
+            self._log.info("profile LEDs: %s", "".join("1" if on else "0" for on in leds))
 
     def _on_steam(self, action: str) -> None:
         self._send("steam_action", action)
@@ -333,6 +345,7 @@ class TartarusService:
             self._send("record_result", None)
         if self._engine is not None:
             self._engine.set_profile(active)
+        self._apply_leds()
 
     def set_running_app(self, app_id: Optional[int], name: Optional[str]) -> None:
         """The frontend reports the foreground game; None or 0 means none."""

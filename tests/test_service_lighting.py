@@ -7,8 +7,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tartarus.config import load_config
-from tartarus.lighting import EFFECTS, effect_reports
+from tartarus.config import NO_LEDS, load_config
+from tartarus.lighting import EFFECTS, effect_reports, leds_report
 from tartarus.linux import hidraw, ioctl
 from tartarus.linux.discovery import TartarusNodes
 
@@ -53,7 +53,8 @@ class LightingServiceTest(unittest.TestCase):
             await until(lambda: rig.service.state()["connected"])
             sender.sent.clear()
             rig.service.set_lighting("breathing", "#ff0000", 40)
-            self.assertEqual(sender.sent, [("/dev/hidraw8", r) for r in effect_reports("breathing", "#ff0000", 40)])
+            self.assertEqual(sender.sent, [("/dev/hidraw8", r) for r in effect_reports("breathing", "#ff0000", 40)
+                                           + [leds_report(NO_LEDS)]])
             await rig.service.stop()
 
         self.run_async(go())
@@ -76,12 +77,12 @@ class LightingServiceTest(unittest.TestCase):
             await rig.service.start()
             rig.nodes = TWO_NODES
             await until(lambda: rig.service.state()["connected"])
-            expected = [("/dev/hidraw8", r) for r in effect_reports("wave", "#00ff00", 70)]
+            expected = [("/dev/hidraw8", r) for r in effect_reports("wave", "#00ff00", 70) + [leds_report(NO_LEDS)]]
             self.assertEqual(sender.sent, expected)
             # Resume reconnects, and the lighting goes out again.
             rig.service._resume.check = lambda boottime, monotonic: True
-            await until(lambda: len(sender.sent) >= 4)
-            self.assertEqual(sender.sent[2:4], expected)
+            await until(lambda: len(sender.sent) >= 6)
+            self.assertEqual(sender.sent[3:6], expected)
             await rig.service.stop()
 
         self.run_async(go())
@@ -116,7 +117,8 @@ class LightingServiceTest(unittest.TestCase):
                     rig.nodes = TWO_NODES
                     await until(lambda: rig.service.state()["connected"])
                     rig.service.set_lighting("static", "#00ff00", 100)  # must not raise
-                self.assertEqual(len(logs.output), 2)
+                # Connect and set_lighting each warn once for lighting and once for the LEDs.
+                self.assertEqual(len(logs.output), 4)
                 await rig.service.stop()
 
         self.run_async(go())

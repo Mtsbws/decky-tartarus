@@ -7,6 +7,7 @@ from tartarus.lighting import (
     TRANSACTION_ID,
     build_report,
     effect_reports,
+    leds_report,
 )
 
 
@@ -85,3 +86,11 @@ class ReportTest(unittest.TestCase):
             for report in effect_reports(effect, "#00ff00", 70):
                 with self.subTest(effect=effect):
                     self.assertNotEqual(report[6:8], b"\x00\x04")
+
+    def test_leds_report(self):
+        r = leds_report((True, False, True))
+        self.assertEqual(r[5:17], bytes([0x09, 0x0F, 0x02, 0x01, 0x0B, 0x01, 0x00, 0x01, 0x01, 0xFF, 0x00, 0xFF]))
+        self.assertEqual(r[1], 0x1F)
+        self.assertEqual(len(r), 90)
+        self.assertEqual(r[88], reduce(lambda a, b: a ^ b, r[2:88]))
+        self.assertEqual(leds_report((False, False, False))[14:17], b"\x00\x00\x00")
