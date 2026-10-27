@@ -1,14 +1,13 @@
 import { DialogButton, Field, Focusable, ToggleField } from "@decky/ui";
 import { useEffect, useState } from "react";
 
-import { ProfileState, State } from "../api";
+import { errorText, ProfileState, setBindingText, State } from "../api";
 import { Card } from "./Card";
+import { ChoosePage } from "./ChoosePage";
 import { EditingRow } from "./EditingRow";
 import { controlTitle, Keypad } from "./Keypad";
-import { ERROR, PAGE_HEIGHT } from "./layout";
-import { SubPage } from "./SubPage";
-
-const buttonStyle = { width: "auto", minWidth: 0, padding: "4px 14px" };
+import { BUTTON, ERROR, PAGE_HEIGHT } from "./layout";
+import { RecordButton } from "./RecordButton";
 
 export function CustomizePage(props: {
   state: State;
@@ -20,11 +19,24 @@ export function CustomizePage(props: {
   onDpad(eight: boolean): void;
   onChanged(s: State): void;
 }) {
-  const { state, profile, selected, error, onSelect, onView, onDpad } = props;
+  const { state, profile, selected, error, onSelect, onView, onDpad, onChanged } = props;
   const [sub, setSub] = useState<"choose" | null>(null);
+  const [cardError, setCardError] = useState<string | null>(null);
 
-  // A sub-page belongs to the control and profile it was opened for.
-  useEffect(() => setSub(null), [selected, profile.id]);
+  // A sub-page and a card error belong to the control and profile they came from.
+  useEffect(() => {
+    setSub(null);
+    setCardError(null);
+  }, [selected, profile.id]);
+
+  function reset(factory: string) {
+    setBindingText(profile.id, selected, factory)
+      .then((r) => {
+        setCardError(r.ok ? null : r.error);
+        onChanged(r.state);
+      })
+      .catch((e) => setCardError(errorText(e)));
+  }
 
   const binding = profile.bindings[selected];
   const secondary = profile.secondary[selected];
@@ -38,28 +50,28 @@ export function CustomizePage(props: {
       <Focusable flow-children="column" style={{ flex: 1, minWidth: 300, display: "flex", flexDirection: "column", gap: 8 }}>
         <EditingRow state={state} profile={profile} onView={onView} />
         {sub === "choose" ? (
-          <SubPage title={`Choose a binding for ${controlTitle(selected)}`} onBack={() => setSub(null)}>
-            <div>Stub</div>
-          </SubPage>
+          <ChoosePage control={selected} state={state} profile={profile} onChanged={onChanged} onDone={() => setSub(null)} />
         ) : (
           <Card title={controlTitle(selected)}>
             <div style={{ fontSize: 22, fontWeight: 700, margin: "2px 0 6px" }}>{binding?.label}</div>
             <Field label="Binding" padding="compact">
-              <DialogButton style={buttonStyle} onClick={() => setSub("choose")}>
+              <DialogButton style={BUTTON} onClick={() => setSub("choose")}>
                 Choose…
               </DialogButton>
             </Field>
             <Field label="Record from a key" padding="compact">
-              <DialogButton style={buttonStyle}>Record</DialogButton>
+              <RecordButton control={selected} profile={profile} onChanged={onChanged} onError={setCardError} />
             </Field>
             {binding?.factory && (
               <Field label={`Factory default (${binding.factory})`} padding="compact">
-                <DialogButton style={buttonStyle}>Reset</DialogButton>
+                <DialogButton style={BUTTON} onClick={() => reset(binding.factory)}>
+                  Reset
+                </DialogButton>
               </Field>
             )}
             {/^k\d\d$/.test(selected) && (
               <Field label="Deep press" padding="compact">
-                <DialogButton style={buttonStyle}>
+                <DialogButton style={BUTTON}>
                   {secondary ? `${secondary.label} · ${secondary.actuation.toFixed(1)} mm ›` : "Off ›"}
                 </DialogButton>
               </Field>
@@ -67,6 +79,7 @@ export function CustomizePage(props: {
             {selected.startsWith("dpad_") && (
               <ToggleField label="8-way D-pad" checked={profile.dpad_mode === "8way"} onChange={onDpad} />
             )}
+            {cardError && <div style={{ color: ERROR }}>{cardError}</div>}
             {error && <div style={{ color: ERROR }}>{error}</div>}
           </Card>
         )}
