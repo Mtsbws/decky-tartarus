@@ -260,7 +260,12 @@ export function Keypad(props: { profile: ProfileState; selected: string | null; 
                 ...look(c, c === selected),
               }}
             >
-              <div style={{ fontSize: 9, opacity: 0.6, lineHeight: 1 }}>{CORNER[c] ?? controlName(c)}</div>
+              <div style={{ display: "flex", gap: 4, fontSize: 9, lineHeight: 1 }}>
+                <span style={{ opacity: 0.6 }}>{CORNER[c] ?? controlName(c)}</span>
+                <span style={{ flex: 1 }} />
+                {c in profile.secondary && <span>2×</span>}
+                {c in profile.actuation && <span>{profile.actuation[c].toFixed(1)}</span>}
+              </div>
               <div
                 style={{
                   fontSize: 12,

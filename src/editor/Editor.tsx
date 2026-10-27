@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { EV_STATE, activeProfile, getState, profileById, setDpadMode, State } from "../api";
 import { errorText } from "../Panel";
+import { ActuationSettings } from "./ActuationSettings";
 import { BindingPicker } from "./BindingPicker";
 import { controlName, Keypad } from "./Keypad";
 import { ProfileBar } from "./ProfileBar";
@@ -64,6 +65,7 @@ export function Editor() {
             Key {controlName(selected)}: {profile.bindings[selected]?.label}
           </h3>
           <BindingPicker control={selected} state={state} profile={profile} onChanged={setState} />
+          {/^k\d\d$/.test(selected) && <ActuationSettings control={selected} state={state} profile={profile} onChanged={setState} />}
         </div>
       </div>
     </div>
