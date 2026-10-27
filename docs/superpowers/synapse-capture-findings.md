@@ -143,6 +143,22 @@ brightness changes, switch off/on, replug, suspend/resume and plugin disable/ena
 typed at a light press, the top button, D-pad and wheel worked, and the Deck didn't suspend.
 Every unload stopped in 0.2 s.
 
+**Normal-mode hardware point (Deck check M3, 2026-10-27, key 01):** in normal mode, `read 30`
+showed the key-down live. The user held the key once it appeared, sent `setmode 03` from a
+second terminal, then released slowly. The first depth report after the switch:
+
+| Run | Held | First depth | mm (DEPTH_POINTS) |
+|---|---|---|---|
+| 1 | 12.6 s | 95 | 2.3 |
+| 2 | 16.6 s | 185 | 3.05 |
+| 3 | 7.9 s | 189 | 3.1 |
+
+These are upper bounds. The key-down reached the user through ssh with a delay, so the key went on
+past the point before the user stopped. Run 1 puts the hardware point at **2.3 mm or less**, which
+is more than 1.8 mm (depth 47). In all three runs, `setmode 03` sent an evdev release (`value 0`)
+for the held key at the moment of the switch, so entering driver mode can't leave a normal-mode
+key stuck.
+
 ## Still a guess
 
 - Whether profile-LED values between `00` and `FF` dim it.
@@ -150,6 +166,7 @@ Every unload stopped in 0.2 s.
   re-sends them after every lighting change, so the Deck check below can't tell.
 - What `args[4] = 0x01` means (OpenRazer and the plugin send `0x00` for static).
 - The cause of the suspend after the first `setmode 03`.
+- The exact normal-mode hardware point: only an upper bound (2.3 mm) is measured.
 
 ## Terms (user)
 
