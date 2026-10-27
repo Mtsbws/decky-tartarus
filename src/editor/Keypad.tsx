@@ -302,15 +302,8 @@ export function Keypad(props: {
                 {view === "bindings" && c in profile.secondary && <span style={{ flexShrink: 0 }}>2×</span>}
               </div>
               <div style={labelStyle}>
-                {view === "actuation" ? (
-                  // "1.5 mm" at full size is wider than a key; a small unit keeps the number whole.
-                  <>
-                    {(profile.actuation[c] ?? defaultMm).toFixed(1)}
-                    <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.7, marginLeft: 1 }}>mm</span>
-                  </>
-                ) : (
-                  profile.bindings[c].label
-                )}
+                {/* A key has about 28 CSS px for its label: "1.5" fits, "1.5 mm" doesn't (the card names the unit). */}
+                {view === "actuation" ? (profile.actuation[c] ?? defaultMm).toFixed(1) : profile.bindings[c].label}
               </div>
             </Focusable>
           );
