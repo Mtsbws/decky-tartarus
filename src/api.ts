@@ -23,6 +23,16 @@ export type ActuationState = {
 // Key kNN's B, at a deeper actuation point. Its binding is set as control "kNN.b".
 export type SecondaryState = { binding: BindingDict; label: string; actuation: number };
 
+// What a control does on the Hypershift layer. Controls are keyed by their plain name ("k05").
+export type HypershiftEntry = { binding: BindingDict; label: string };
+
+export type HypershiftState = {
+  key: string | null;
+  bindings: Record<string, HypershiftEntry>;
+  actuation: Record<string, number>;
+  secondary: Record<string, SecondaryState>;
+};
+
 export type ProfileState = {
   id: string;
   name: string;
@@ -33,6 +43,7 @@ export type ProfileState = {
   actuation: Record<string, number>;
   secondary: Record<string, SecondaryState>;
   bindings: Record<string, ControlState>;
+  hypershift: HypershiftState;
 };
 
 export type RunningApp = { app_id: number; name: string };
@@ -78,6 +89,7 @@ export const setLighting = callable<[effect: string, color: string, brightness: 
 export const setLightingEnabled = callable<[enabled: boolean], State>("set_lighting_enabled");
 export const setActuation = callable<[profileId: string, control: string, mm: number], State>("set_actuation");
 export const setActuationKeys = callable<[profileId: string, controls: string[], mm: number], State>("set_actuation_keys");
+export const clearHypershiftEntry = callable<[profileId: string, control: string], State>("clear_hypershift_entry");
 export const setSecondary = callable<[profileId: string, control: string, mm: number | null], State>("set_secondary");
 export const setLeds = callable<[profileId: string, leds: boolean[]], State>("set_leds");
 export const recordStart = callable<[], void>("record_start");

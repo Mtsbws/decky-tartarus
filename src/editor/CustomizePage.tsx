@@ -87,7 +87,7 @@ export function CustomizePage(props: {
   return (
     // The drawing takes the full page height; the Editing row sits above the card.
     <Focusable flow-children="row" style={{ height: PAGE_HEIGHT, display: "flex", gap: 16 }}>
-      <Keypad profile={profile} view="bindings" selected={[selected]} defaultMm={default_mm} onSelect={onSelect} />
+      <Keypad profile={profile} view="bindings" layer="standard" selected={[selected]} defaultMm={default_mm} onSelect={onSelect} />
       <Focusable flow-children="column" style={{ flex: 1, minWidth: 300, display: "flex", flexDirection: "column", gap: 8 }}>
         <EditingRow state={state} profile={profile} onView={onView} />
         <Card title={controlTitle(selected)}>

@@ -53,7 +53,7 @@ export function ActuationPage({ state, profile, onView, onChanged }: {
 
   return (
     <Focusable flow-children="row" style={{ height: PAGE_HEIGHT, display: "flex", gap: 16 }}>
-      <Keypad profile={profile} view="actuation" selected={selection} defaultMm={default_mm} onSelect={toggle} />
+      <Keypad profile={profile} view="actuation" layer="standard" selected={selection} defaultMm={default_mm} onSelect={toggle} />
       <Focusable flow-children="column" style={{ flex: 1, minWidth: 300, display: "flex", flexDirection: "column", gap: 8 }}>
         <EditingRow state={state} profile={profile} onView={onView} />
         <Card title={`Actuation · ${n} ${n === 1 ? "key" : "keys"} selected`}>
