@@ -3,6 +3,7 @@ import { addEventListener, removeEventListener } from "@decky/api";
 import { useEffect, useState } from "react";
 
 import { EV_STATE, activeProfile, errorText, getState, profileById, setDpadMode, State } from "../api";
+import { ActuationPage } from "./ActuationPage";
 import { CustomizePage } from "./CustomizePage";
 
 type Page = "customize" | "actuation" | "lighting" | "profiles";
@@ -80,7 +81,11 @@ export function Editor() {
               />
             ),
           },
-          { id: "actuation", title: "Actuation", content: <div /> },
+          {
+            id: "actuation",
+            title: "Actuation",
+            content: <ActuationPage state={state} profile={profile} onView={switchView} onChanged={setState} />,
+          },
           { id: "lighting", title: "Lighting", content: <div /> },
           { id: "profiles", title: "Profiles", content: <div /> },
         ]}
