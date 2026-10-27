@@ -15,6 +15,10 @@ Razer Synapse does on Windows, without Synapse or OpenRazer.
   3.6 mm, for one key, a selection or all of them.
 - **Secondary function:** a second binding on the same key at a deeper point, for example
   `C` at a light press and `Z` when pressed all the way.
+- **Hypershift:** hold one key (any of 01-20 or the button above the D-pad) and the other
+  keys switch to a second set of bindings, each with its own depth and secondary function.
+  Keys you leave alone keep their normal binding. Not the same as the secondary function,
+  which is a deeper point on one key's press.
 - **Profiles per game:** up to 8 named layouts (Default, FPS, MMO, …). Assign a game while
   you play and the keypad switches whenever that game starts, including non-Steam shortcuts
   such as one Moonlight shortcut per streamed PC game.
@@ -53,8 +57,14 @@ The editor has four tabs (L1 / R1 switch between them):
   - The **actuation** slider sets the key's depth.
   - **Secondary function** opens a page for the deeper binding and its depth.
   - **8-way** switches the D-pad between 4 and 8 directions.
+  - **Standard / Hypershift** switch: pick **Hypershift** to edit the second layer. Choose a
+    key's **Choose… → Hypershift** on Standard to make it the Hypershift key. On the
+    Hypershift layer each control shows **Same as Standard** until you give it its own
+    binding, depth or secondary function, and **Clear** removes its entry again. The
+    Hypershift key itself is shown locked.
 - **Actuation:** select keys on the drawing (or **Select all**), set a depth and
-  **Apply to selected**. Each key shows its depth in mm.
+  **Apply to selected**. Each key shows its depth in mm. The Standard / Hypershift switch
+  works here too; on Hypershift only keys that have a Hypershift binding can be selected.
 - **Lighting:** the same controls as the panel, with more room.
 - **Profiles:** create, rename and delete profiles, edit one's keys, and pick its
   status-light pattern under **Lights**. Patterns another profile uses are shown with its
@@ -158,8 +168,6 @@ when the keypad is plugged back in and after sleep.
 
 ## Roadmap
 
-- **Hypershift (next):** hold a key to switch keys 02-20 to a second set of bindings, as
-  in Synapse.
 - **Per-game lighting:** lighting is the same for every profile today.
 - **Actuation calibration:** check the mm scale against the physical key travel. The 3.6 mm
   point feels a little past halfway; Synapse feels the same.
