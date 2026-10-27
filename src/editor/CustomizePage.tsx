@@ -6,7 +6,7 @@ import { Card, Row } from "./Card";
 import { ChoosePage } from "./ChoosePage";
 import { EditingRow } from "./EditingRow";
 import { controlTitle, Keypad } from "./Keypad";
-import { BUTTON, DRIVER_NOTE, ERROR, mmText, PAGE_HEIGHT, tenth } from "./layout";
+import { actuationNote, BUTTON, ERROR, mmText, PAGE_HEIGHT, tenth } from "./layout";
 import { RecordButton } from "./RecordButton";
 import { SecondaryPage } from "./SecondaryPage";
 import { useDebounce } from "./useDebounce";
@@ -127,7 +127,7 @@ export function CustomizePage(props: {
               <Toggle value={profile.dpad_mode === "8way"} onChange={onDpad} />
             </Row>
           )}
-          {isKey && state.actuation.status !== "on" && <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>{DRIVER_NOTE}</div>}
+          {isKey && actuationNote(state) && <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>{actuationNote(state)}</div>}
           {cardError && <div style={{ color: ERROR, marginTop: 4 }}>{cardError}</div>}
           {error && <div style={{ color: ERROR, marginTop: 4 }}>{error}</div>}
         </Card>

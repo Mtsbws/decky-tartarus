@@ -5,7 +5,7 @@ import { errorText, ProfileState, setSecondary, State } from "../api";
 import { Card, Row } from "./Card";
 import { ChoosePage } from "./ChoosePage";
 import { controlTitle } from "./Keypad";
-import { BUTTON, DRIVER_NOTE, ERROR, mmText, tenth } from "./layout";
+import { actuationNote, BUTTON, ERROR, mmText, tenth } from "./layout";
 import { RecordButton } from "./RecordButton";
 import { SubPage } from "./SubPage";
 import { useDebounce } from "./useDebounce";
@@ -87,7 +87,7 @@ export function SecondaryPage(props: {
               </Row>
             </>
           )}
-          {state.actuation.status !== "on" && <div style={{ fontSize: 13, opacity: 0.7, marginTop: 6 }}>{DRIVER_NOTE}</div>}
+          {actuationNote(state) && <div style={{ fontSize: 13, opacity: 0.7, marginTop: 6 }}>{actuationNote(state)}</div>}
           {error && <div style={{ color: ERROR, marginTop: 6 }}>{error}</div>}
         </Card>
       </div>

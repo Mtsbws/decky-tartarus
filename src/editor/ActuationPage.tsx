@@ -1,18 +1,13 @@
-import { DialogButton, Focusable, SliderField, Toggle } from "@decky/ui";
+import { DialogButton, Focusable, SliderField } from "@decky/ui";
 import { useEffect, useState } from "react";
 
-import { errorText, ProfileState, setActuationKeys, setAdjustableActuation, State } from "../api";
+import { errorText, ProfileState, setActuationKeys, State } from "../api";
 import { Card, Row } from "./Card";
 import { EditingRow } from "./EditingRow";
 import { Keypad } from "./Keypad";
-import { BUTTON, DRIVER_NOTE, ERROR, mmText, PAGE_HEIGHT, tenth } from "./layout";
+import { actuationNote, BUTTON, ERROR, mmText, PAGE_HEIGHT, tenth } from "./layout";
 
 const KEYS = Array.from({ length: 20 }, (_, i) => `k${String(i + 1).padStart(2, "0")}`);
-
-const ACTUATION_NOTES: Record<string, string> = {
-  unavailable: "Adjustable actuation unavailable: keys fire at the fixed hardware point.",
-  off: "Keys fire at the fixed hardware point.",
-};
 
 export function ActuationPage({ state, profile, onView, onChanged }: {
   state: State;
@@ -24,7 +19,6 @@ export function ActuationPage({ state, profile, onView, onChanged }: {
   const [selection, setSelection] = useState<string[]>([]);
   const [value, setValue] = useState(default_mm);
   const [error, setError] = useState<string | null>(null);
-  const [switchError, setSwitchError] = useState<string | null>(null);
 
   const keyMm = (p: ProfileState, c: string) => p.actuation[c] ?? default_mm;
 
@@ -54,18 +48,8 @@ export function ActuationPage({ state, profile, onView, onChanged }: {
       .catch((e) => setError(errorText(e)));
   }
 
-  // The switch shows the backend's value; the returned state updates it.
-  function switchActuation(enabled: boolean) {
-    setAdjustableActuation(enabled)
-      .then((s) => {
-        setSwitchError(null);
-        onChanged(s);
-      })
-      .catch((e) => setSwitchError(errorText(e)));
-  }
-
   const n = selection.length;
-  const status = state.actuation.status;
+  const note = actuationNote(state);
 
   return (
     <Focusable flow-children="row" style={{ height: PAGE_HEIGHT, display: "flex", gap: 16 }}>
@@ -89,14 +73,7 @@ export function ActuationPage({ state, profile, onView, onChanged }: {
             </DialogButton>
           </Focusable>
           {error && <div style={{ color: ERROR, marginTop: 4 }}>{error}</div>}
-          <Row
-            label="Adjustable actuation"
-            description={state.connected && status ? ACTUATION_NOTES[status] : undefined}
-          >
-            <Toggle value={state.actuation.enabled} onChange={switchActuation} />
-          </Row>
-          {switchError && <div style={{ color: ERROR, marginTop: 4 }}>{switchError}</div>}
-          {status !== "on" && <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>{DRIVER_NOTE}</div>}
+          {note && <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>{note}</div>}
         </Card>
       </Focusable>
     </Focusable>

@@ -76,7 +76,6 @@ export const renameProfile = callable<[profileId: string, name: string], State>(
 export const deleteProfile = callable<[profileId: string], State>("delete_profile");
 export const setLighting = callable<[effect: string, color: string, brightness: number], State>("set_lighting");
 export const setLightingEnabled = callable<[enabled: boolean], State>("set_lighting_enabled");
-export const setAdjustableActuation = callable<[enabled: boolean], State>("set_adjustable_actuation");
 export const setActuation = callable<[profileId: string, control: string, mm: number], State>("set_actuation");
 export const setActuationKeys = callable<[profileId: string, controls: string[], mm: number], State>("set_actuation_keys");
 export const setSecondary = callable<[profileId: string, control: string, mm: number | null], State>("set_secondary");
