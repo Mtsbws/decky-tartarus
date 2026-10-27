@@ -6,7 +6,7 @@ from typing import Iterable, Tuple
 
 from .codes import canonical, category
 
-BINDING_TYPES = ("key", "shortcut", "combo", "modifier", "macro", "mouse", "media", "disable", "steam")
+BINDING_TYPES = ("key", "shortcut", "combo", "modifier", "macro", "mouse", "media", "disable", "steam", "hypershift")
 STEAM_ACTIONS = ("menu", "qam")
 SINGLE_TYPES = ("key", "modifier", "mouse", "media")
 
@@ -70,6 +70,8 @@ def parse_binding_text(text: str) -> Binding:
     lower = text.lower()
     if lower == "disable":
         return Binding("disable")
+    if lower == "hypershift":
+        return Binding("hypershift")
     if lower.startswith("steam:"):
         action = lower[len("steam:"):]
         if action not in STEAM_ACTIONS:
@@ -95,6 +97,8 @@ def binding_to_dict(b: Binding) -> dict:
         return {"type": "steam", "action": b.action}
     if b.type == "disable":
         return {"type": "disable"}
+    if b.type == "hypershift":
+        return {"type": "hypershift"}
     return {"type": b.type, "keys": list(b.keys)}
 
 
@@ -106,6 +110,8 @@ def binding_from_dict(d: dict) -> Binding:
         raise BindingError(f"unknown binding type: {kind!r}")
     if kind == "disable":
         return Binding("disable")
+    if kind == "hypershift":
+        return Binding("hypershift")
     if kind == "steam":
         action = d.get("action")
         if action not in STEAM_ACTIONS:
@@ -142,4 +148,6 @@ def binding_label(b: Binding) -> str:
         return ", ".join("+".join(step) for step in b.steps)
     if b.type == "steam":
         return _STEAM_LABELS[b.action]
+    if b.type == "hypershift":
+        return "Hypershift"
     return "—"

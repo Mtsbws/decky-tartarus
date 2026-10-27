@@ -74,6 +74,13 @@ class BindingTextTest(unittest.TestCase):
         self.assertEqual(binding_label(parse_binding_text("hold:W+A")), "W+A (hold)")
         self.assertEqual(binding_label(Binding("steam", action="menu")), "Steam menu")
 
+    def test_hypershift_binding(self):
+        b = parse_binding_text(" HyperShift ")
+        self.assertEqual(b, Binding("hypershift"))
+        self.assertEqual(binding_to_dict(b), {"type": "hypershift"})
+        self.assertEqual(binding_from_dict({"type": "hypershift"}), b)
+        self.assertEqual(binding_label(b), "Hypershift")
+
 
 if __name__ == "__main__":
     unittest.main()

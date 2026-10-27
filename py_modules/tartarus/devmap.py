@@ -11,6 +11,9 @@ from .codes import KEYS
 # Keys 01-20: depth-sensing in driver mode.
 ACTUATION_KEYS = tuple(f"k{i:02d}" for i in range(1, 21))
 
+# Controls that can be the Hypershift key: k01-k20 and the top button.
+HYPERSHIFT_KEYS = ACTUATION_KEYS + ("top_button",)
+
 # System-control codes the keypad's report 3 can send; never passed on.
 SYSTEM_CODES = frozenset({116, 142, 143})  # KEY_POWER, KEY_SLEEP, KEY_WAKEUP
 

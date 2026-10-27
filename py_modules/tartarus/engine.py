@@ -10,8 +10,8 @@ from .codes import WHEEL_DOWN, WHEEL_UP, code_for
 from .config import Profile
 from .devmap import ALL_CONTROLS, ACTUATION_KEYS, DPAD_CARDINALS, FACTORY_CODES
 from .dpad import resolve_dpad
+from .layers import B_SUFFIX
 
-B_SUFFIX = ".b"  # control kNN.b is key kNN's secondary function
 MACRO_DELAY = 0.015  # seconds between a step's down and up, and between steps
 
 HOLD_TYPES = ("key", "modifier", "mouse", "media", "combo")
