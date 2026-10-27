@@ -139,32 +139,32 @@ export function CustomizePage(props: {
                 </DialogButton>
                 <RecordButton control={control} profile={profile} onChanged={onChanged} onError={setCardError} />
               </Row>
-          {onHypershift && hasEntry(profile, control) && (
-            <Row label="Hypershift binding">
-              <DialogButton style={BUTTON} onClick={clearEntry}>
-                Clear
-              </DialogButton>
-            </Row>
-          )}
-          {!onHypershift && binding?.factory && (
-            <Row label={`Factory default (${binding.factory})`}>
-              <DialogButton style={BUTTON} onClick={() => reset(binding.factory)}>
-                Reset
-              </DialogButton>
-            </Row>
-          )}
-          {isKey && (!onHypershift || entry) && (
-            <Row label={`Actuation: ${mmText(actuation)}`} stacked>
-              <SliderField value={actuation} min={min_mm} max={max_mm} step={0.1} bottomSeparator="none" onChange={changeActuation} />
-            </Row>
-          )}
-          {isKey && !isHypershiftKey && (!onHypershift || entry) && (
-            <Row label="Secondary function">
-              <DialogButton style={BUTTON} onClick={() => setSub("secondary")}>
-                {secondary ? `${secondary.label} · ${mmText(secondary.actuation)} ›` : "Off ›"}
-              </DialogButton>
-            </Row>
-          )}
+              {onHypershift && hasEntry(profile, control) && (
+                <Row label="Hypershift binding">
+                  <DialogButton style={BUTTON} onClick={clearEntry}>
+                    Clear
+                  </DialogButton>
+                </Row>
+              )}
+              {!onHypershift && binding?.factory && (
+                <Row label={`Factory default (${binding.factory})`}>
+                  <DialogButton style={BUTTON} onClick={() => reset(binding.factory)}>
+                    Reset
+                  </DialogButton>
+                </Row>
+              )}
+              {isKey && (!onHypershift || entry) && (
+                <Row label={`Actuation: ${mmText(actuation)}`} stacked>
+                  <SliderField value={actuation} min={min_mm} max={max_mm} step={0.1} bottomSeparator="none" onChange={changeActuation} />
+                </Row>
+              )}
+              {isKey && !isHypershiftKey && (!onHypershift || entry) && (
+                <Row label="Secondary function">
+                  <DialogButton style={BUTTON} onClick={() => setSub("secondary")}>
+                    {secondary ? `${secondary.label} · ${mmText(secondary.actuation)} ›` : "Off ›"}
+                  </DialogButton>
+                </Row>
+              )}
             </>
           )}
           {selected.startsWith("dpad_") && (
@@ -172,7 +172,9 @@ export function CustomizePage(props: {
               <Toggle value={profile.dpad_mode === "8way"} onChange={onDpad} />
             </Row>
           )}
-          {isKey && actuationNote(state) && <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>{actuationNote(state)}</div>}
+          {isKey && !(onHypershift && isHypershiftKey) && actuationNote(state) && (
+            <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>{actuationNote(state)}</div>
+          )}
           {cardError && <div style={{ color: ERROR, marginTop: 4 }}>{cardError}</div>}
           {error && <div style={{ color: ERROR, marginTop: 4 }}>{error}</div>}
         </Card>
