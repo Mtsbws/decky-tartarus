@@ -41,6 +41,7 @@ class Lighting:
     effect: str = "spectrum"
     color: str = "#00ff00"
     brightness: int = 100
+    enabled: bool = True
 
 
 @dataclass(frozen=True)
@@ -222,7 +223,8 @@ def _dump(c: Config) -> dict:
             for p in c.profiles
         ],
         "games": {key: {"name": g.name, "profile": g.profile} for key, g in c.games.items()},
-        "lighting": {"effect": c.lighting.effect, "color": c.lighting.color, "brightness": c.lighting.brightness},
+        "lighting": {"effect": c.lighting.effect, "color": c.lighting.color, "brightness": c.lighting.brightness,
+                     "enabled": c.lighting.enabled},
         "adjustable_actuation": c.adjustable_actuation,
     }
 
@@ -396,4 +398,6 @@ def _parse_lighting(raw) -> Lighting:
     brightness = raw.get("brightness")
     if isinstance(brightness, int) and not isinstance(brightness, bool) and 0 <= brightness <= 100:
         lighting.brightness = brightness
+    if isinstance(raw.get("enabled"), bool):
+        lighting.enabled = raw["enabled"]
     return lighting

@@ -303,7 +303,7 @@ class TartarusService:
 
     def _lighting_reports(self) -> List[bytes]:
         lighting = self._config.lighting
-        return effect_reports(lighting.effect, lighting.color, lighting.brightness)
+        return effect_reports(lighting.effect, lighting.color, lighting.brightness if lighting.enabled else 0)
 
     def _send_command(self, report: bytes, what: str, quiet: bool = False) -> bool:
         """Send one feature report; failures are logged (at info if quiet) and return False, never raised."""
@@ -327,8 +327,8 @@ class TartarusService:
             return
         if all(self._send_command(report, "lighting") for report in self._lighting_reports()):
             lighting = self._config.lighting
-            self._log.info("lighting applied: %s %s %d%% (status 0x02)",
-                           lighting.effect, lighting.color, lighting.brightness)
+            self._log.info("lighting applied: %s %s %s (status 0x02)", lighting.effect, lighting.color,
+                           f"{lighting.brightness}%" if lighting.enabled else "off")
         self._apply_leds()
 
     def _apply_leds(self) -> None:
@@ -511,7 +511,8 @@ class TartarusService:
             "device": self._device_name(),
             "device_id": f"{VENDOR}:{PRODUCT}" if self._devices else None,
             "steam_mode": STEAM_ACTION_MODE,
-            "lighting": {"effect": lighting.effect, "color": lighting.color, "brightness": lighting.brightness},
+            "lighting": {"effect": lighting.effect, "color": lighting.color, "brightness": lighting.brightness,
+                         "enabled": lighting.enabled},
             "actuation": {"enabled": self._config.adjustable_actuation, "status": self._actuation, "default_mm": DEFAULT_MM,
                        "min_mm": MM_MIN, "max_mm": MM_MAX, "min_gap_mm": MIN_GAP_MM},
             "effects": list(EFFECTS),
@@ -669,9 +670,19 @@ class TartarusService:
 
     def set_lighting(self, effect: str, color: str, brightness: int) -> None:
         effect_reports(effect, color, brightness)  # raises ValueError before anything changes
-        self._config.lighting = Lighting(effect=effect, color=color, brightness=brightness)
+        self._config.lighting = Lighting(effect=effect, color=color, brightness=brightness,
+                                         enabled=self._config.lighting.enabled)
         save_config(self._path, self._config)
         self._apply_lighting()
+
+    def set_lighting_enabled(self, enabled: bool) -> None:
+        """The Lighting switch: off keeps the stored settings and sends them at brightness 0."""
+        if not isinstance(enabled, bool):
+            raise ValueError("enabled must be true or false")
+        self._config.lighting.enabled = enabled
+        save_config(self._path, self._config)
+        self._apply_lighting()
+        self._notify()
 
     def set_adjustable_actuation(self, enabled: bool) -> None:
         """The panel's Adjustable actuation switch: release what is held, then change the mode at once."""

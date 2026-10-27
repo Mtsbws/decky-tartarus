@@ -139,6 +139,25 @@ class ConfigTest(unittest.TestCase):
             self.path.write_text(json.dumps(data))
             self.assertIs(load_config(self.path).adjustable_actuation, True, raw)
 
+    def test_lighting_enabled_defaults_true_for_old_file(self):
+        self._write(_stored([_entry("default", "Default")]))
+        self.assertIs(load_config(self.path).lighting.enabled, True)
+
+    def test_lighting_enabled_round_trip(self):
+        c = default_config()
+        c.lighting.enabled = False
+        save_config(self.path, c)
+        self.assertIs(json.loads(self.path.read_text())["lighting"]["enabled"], False)
+        self.assertIs(load_config(self.path).lighting.enabled, False)
+
+    def test_lighting_enabled_not_bool_means_true(self):
+        data = _stored([_entry("default", "Default")])
+        data["lighting"]["enabled"] = "no"
+        self._write(data)
+        lighting = load_config(self.path).lighting
+        self.assertIs(lighting.enabled, True)
+        self.assertEqual((lighting.effect, lighting.color, lighting.brightness), ("static", "#ff0000", 40))
+
     def test_actuation_round_trip(self):
         c = default_config()
         default_profile(c).actuation = {"k01": 2.5, "k20": 3.6}
