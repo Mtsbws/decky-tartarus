@@ -1,19 +1,19 @@
-import { ToggleField } from "@decky/ui";
+import { SidebarNavigation } from "@decky/ui";
 import { addEventListener, removeEventListener } from "@decky/api";
 import { useEffect, useState } from "react";
 
 import { EV_STATE, activeProfile, getState, profileById, setDpadMode, State } from "../api";
 import { errorText } from "../Panel";
-import { ActuationSettings } from "./ActuationSettings";
-import { BindingPicker } from "./BindingPicker";
-import { controlName, Keypad } from "./Keypad";
-import { ProfileBar } from "./ProfileBar";
+import { CustomizePage } from "./CustomizePage";
+
+type Page = "customize" | "actuation" | "lighting" | "profiles";
 
 export function Editor() {
   const [state, setState] = useState<State | null>(null);
   const [selected, setSelected] = useState<string>("k01");
   const [error, setError] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
+  const [page, setPage] = useState<Page>("customize");
 
   useEffect(() => {
     getState().then((s) => {
@@ -50,24 +50,37 @@ export function Editor() {
 
   const profile = viewedProfile(state);
 
+  // The route sits under Steam's header and above its footer, about 40 px each.
   return (
-    <div style={{ marginTop: 40, height: "calc(100% - 40px)", display: "flex", flexDirection: "column", padding: "8px 16px", boxSizing: "border-box" }}>
-      <ProfileBar state={state} viewing={profile.id} onView={switchView} onChanged={setState} />
-      <div style={{ flex: 1, minHeight: 0, display: "flex", gap: 16 }}>
-        <div style={{ flex: 3, minWidth: 0, overflowY: "auto" }}>
-          <Keypad profile={profile} selected={selected} onSelect={setSelected} />
-          <ToggleField label="8-way D-pad" checked={profile.dpad_mode === "8way"} onChange={toggleDpad} />
-          {error && <div style={{ color: "#e05050" }}>{error}</div>}
-          {!state.connected && <div style={{ opacity: 0.7 }}>Keypad not connected: changes are saved and apply when it's plugged in.</div>}
-        </div>
-        <div style={{ flex: 2, minWidth: 0, overflowY: "auto" }}>
-          <h3 style={{ margin: "0 0 8px" }}>
-            Key {controlName(selected)}: {profile.bindings[selected]?.label}
-          </h3>
-          <BindingPicker control={selected} state={state} profile={profile} onChanged={setState} />
-          {/^k\d\d$/.test(selected) && <ActuationSettings control={selected} state={state} profile={profile} onChanged={setState} />}
-        </div>
-      </div>
+    <div style={{ height: "100%", padding: "40px 0", boxSizing: "border-box" }}>
+      <SidebarNavigation
+        title="Tartarus"
+        showTitle
+        page={page}
+        onPageRequested={(p) => setPage(p as Page)}
+        pages={[
+          {
+            identifier: "customize",
+            title: "Customize",
+            padding: "compact",
+            content: (
+              <CustomizePage
+                state={state}
+                profile={profile}
+                selected={selected}
+                error={error}
+                onSelect={setSelected}
+                onView={switchView}
+                onDpad={toggleDpad}
+                onChanged={setState}
+              />
+            ),
+          },
+          { identifier: "actuation", title: "Actuation", padding: "compact", content: <div /> },
+          { identifier: "lighting", title: "Lighting", padding: "compact", content: <div /> },
+          { identifier: "profiles", title: "Profiles", padding: "compact", content: <div /> },
+        ]}
+      />
     </div>
   );
 }
