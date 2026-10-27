@@ -1,4 +1,4 @@
-import { DialogButton, staticClasses } from "@decky/ui";
+import { DialogButton, Focusable, staticClasses } from "@decky/ui";
 import { addEventListener, definePlugin, removeEventListener, routerHook } from "@decky/api";
 import { FaCog, FaKeyboard } from "react-icons/fa";
 
@@ -16,15 +16,16 @@ export default definePlugin(() => {
   return {
     name: "Decky Tartarus",
     titleView: (
-      <div className={staticClasses.Title} style={{ display: "flex", alignItems: "center", width: "100%" }}>
-        Tartarus
-        <DialogButton
-          style={{ marginLeft: "auto", width: 28, height: 28, minWidth: 0, padding: 0 }}
-          onClick={openEditor}
-        >
-          <FaCog />
+      // Laid out like CSS Loader's title: name on the left, a 40×28 button on the right.
+      <Focusable
+        className={staticClasses.Title}
+        style={{ display: "flex", alignItems: "center", width: "100%", padding: 0, boxShadow: "none" }}
+      >
+        <div style={{ marginRight: "auto" }}>Tartarus</div>
+        <DialogButton style={{ height: 28, width: 40, minWidth: 0, padding: "10px 12px" }} onClick={openEditor}>
+          <FaCog style={{ marginTop: -4, display: "block" }} />
         </DialogButton>
-      </div>
+      </Focusable>
     ),
     content: <Panel />,
     icon: <FaKeyboard />,

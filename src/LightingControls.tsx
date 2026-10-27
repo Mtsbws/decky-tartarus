@@ -1,5 +1,5 @@
 import { ButtonItem, DropdownItem, Focusable, PanelSectionRow, SliderField, ToggleField } from "@decky/ui";
-import { FaChevronDown, FaChevronUp } from "react-icons/fa";
+import { RiArrowDownSFill, RiArrowUpSFill } from "react-icons/ri";
 
 import { useLighting } from "./lighting";
 
@@ -11,6 +11,14 @@ const SWATCHES = [
 
 const capitalise = (s: string) => s[0].toUpperCase() + s.slice(1);
 
+// A slim full-width bar under the toggle, as CSS Loader's themes have. Steam's
+// ButtonItem nesting differs between client versions, hence the three selectors.
+const COLLAPSE_CLASS = "Tartarus_CollapseButton";
+const COLLAPSE_CSS = [3, 4, 5]
+  .map((depth) => `.${COLLAPSE_CLASS} ${"> div ".repeat(depth)}> button { height: 10px !important; }`)
+  .join("\n");
+const CARET = { transform: "translate(0, -13px)", fontSize: "1.5em" };
+
 // The lighting rows shared by the Quick Access panel (collapsible) and the editor's Lighting page.
 export function LightingControls({ effects, collapsible }: { effects: string[]; collapsible: boolean }) {
   const { draft, error, expanded, change, setEnabled, setExpanded } = useLighting();
@@ -20,18 +28,27 @@ export function LightingControls({ effects, collapsible }: { effects: string[]; 
   return (
     <>
       <PanelSectionRow>
-        <ToggleField label="Lighting" checked={draft.enabled} onChange={setEnabled} />
+        <ToggleField
+          label="Lighting"
+          description={draft.enabled && collapsible ? `${capitalise(draft.effect)} · ${draft.brightness}%` : undefined}
+          bottomSeparator={draft.enabled && collapsible ? "none" : "standard"}
+          checked={draft.enabled}
+          onChange={setEnabled}
+        />
       </PanelSectionRow>
       {draft.enabled && collapsible && (
-        <PanelSectionRow>
-          <ButtonItem
-            layout="inline"
-            label={`${capitalise(draft.effect)} · ${draft.brightness}%`}
-            onClick={() => setExpanded(!expanded)}
-          >
-            {expanded ? <FaChevronUp /> : <FaChevronDown />}
-          </ButtonItem>
-        </PanelSectionRow>
+        <div className={COLLAPSE_CLASS}>
+          <style>{COLLAPSE_CSS}</style>
+          <PanelSectionRow>
+            <ButtonItem
+              layout="below"
+              bottomSeparator={expanded ? "none" : "standard"}
+              onClick={() => setExpanded(!expanded)}
+            >
+              {expanded ? <RiArrowUpSFill style={CARET} /> : <RiArrowDownSFill style={CARET} />}
+            </ButtonItem>
+          </PanelSectionRow>
+        </div>
       )}
       {open && (
         <PanelSectionRow>
