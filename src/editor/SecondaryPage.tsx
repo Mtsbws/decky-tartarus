@@ -83,7 +83,10 @@ export function SecondaryPage(props: {
                 <RecordButton control={control + ".b"} profile={profile} onChanged={onChanged} onError={setError} />
               </Row>
               <Row label={`Actuation: ${mmText(value)}`} stacked>
-                <SliderField value={value} min={min} max={max_mm} step={0.1} bottomSeparator="none" onChange={change} />
+                {/* Steam pads the slider generously; pull it closer to its label. */}
+                <div style={{ margin: "-8px 0 -6px" }}>
+                  <SliderField value={value} min={min} max={max_mm} step={0.1} bottomSeparator="none" onChange={change} />
+                </div>
               </Row>
             </>
           )}

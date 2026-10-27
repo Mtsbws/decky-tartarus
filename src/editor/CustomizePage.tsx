@@ -91,8 +91,13 @@ export function CustomizePage(props: {
       <Focusable flow-children="column" style={{ flex: 1, minWidth: 300, display: "flex", flexDirection: "column", gap: 8 }}>
         <EditingRow state={state} profile={profile} onView={onView} />
         <Card title={controlTitle(selected)}>
-          <div style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>{binding?.label}</div>
-          <Row label="Binding">
+          <Row
+            label={
+              <>
+                Binding: <b>{binding?.label}</b>
+              </>
+            }
+          >
             <DialogButton style={BUTTON} onClick={() => setSub("choose")}>
               Choose…
             </DialogButton>
@@ -107,7 +112,10 @@ export function CustomizePage(props: {
           )}
           {isKey && (
             <Row label={`Actuation: ${mmText(actuation)}`} stacked>
-              <SliderField value={actuation} min={min_mm} max={max_mm} step={0.1} bottomSeparator="none" onChange={changeActuation} />
+              {/* Steam pads the slider generously; pull it closer to its label. */}
+              <div style={{ margin: "-8px 0 -6px" }}>
+                <SliderField value={actuation} min={min_mm} max={max_mm} step={0.1} bottomSeparator="none" onChange={changeActuation} />
+              </div>
             </Row>
           )}
           {isKey && (
