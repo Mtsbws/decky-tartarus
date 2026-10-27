@@ -165,6 +165,17 @@ is more than 1.8 mm (depth 47). In all three runs, `setmode 03` sent an evdev re
 for the held key at the moment of the switch, so entering driver mode can't leave a normal-mode
 key stuck.
 
+**Plugin secondary function (Deck check M4, 2026-10-27, key 12):** Default had k12 A = `C` at
+1.5 mm and B = `Z` at 3.6 mm, tested in a text field. A half press held `C`. Going on to the bottom
+released `C` and held `Z`. Back to halfway released `Z` with no new `C`, and pressing to the bottom
+again held `Z` again. A hard, fast hit sent only `Z`. A normal full press always sends `c` first:
+at least one depth report lands between A and B on the way down, and that is A. The user saw the
+same in Synapse and accepts it for now. Disabling the plugin with B held released `Z` and left
+nothing stuck (stopped in 189 ms). The log has no warnings. The user didn't report row e (re-arm,
+then a half press gives `C`). At 15:22:49 the keypad dropped off USB for 82 s. When it came back
+at 15:24:11, the plugin reconnected 3 s later, straight back in driver mode. The normal-mode send to
+the gone node failed quietly.
+
 ## Still a guess
 
 - Whether profile-LED values between `00` and `FF` dim it.
