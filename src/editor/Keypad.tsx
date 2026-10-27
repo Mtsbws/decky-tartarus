@@ -230,8 +230,8 @@ function Picture() {
 
 type View = "bindings" | "actuation";
 
-// No gap: a key with a secondary function needs the room for its "2×".
-const cornerStyle: CSSProperties = { display: "flex", justifyContent: "space-between", fontSize: 11, lineHeight: 1 };
+// A small gap: a key with a secondary function needs the room for its "2×".
+const cornerStyle: CSSProperties = { display: "flex", justifyContent: "space-between", gap: 2, fontSize: 11, lineHeight: 1 };
 // Steam's line height is taller than a key has room for, so labels set their own.
 const labelStyle: CSSProperties = {
   fontSize: 13,

@@ -83,7 +83,8 @@ export function SecondaryPage(props: {
                 <RecordButton control={control + ".b"} profile={profile} onChanged={onChanged} onError={setError} />
               </Row>
               <Row label={`Actuation: ${mmText(value)}`}>
-                <div style={{ flex: 1.4, minWidth: 0 }}>
+                {/* The knob overhangs the track's end by its radius. */}
+                <div style={{ flex: 1.4, minWidth: 0, paddingRight: 14 }}>
                   <SliderField value={value} min={min} max={max_mm} step={0.1} bottomSeparator="none" onChange={change} />
                 </div>
               </Row>
