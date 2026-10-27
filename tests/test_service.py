@@ -225,6 +225,30 @@ class ServiceTest(unittest.TestCase):
 
         self.run_async(go())
 
+    def test_system_keys_dropped(self):
+        async def go():
+            rig = Rig(self.path)
+            await rig.service.start()
+            rig.nodes = TWO_NODES
+            await until(lambda: rig.service.state()["connected"])
+            kbd = rig.devices[0]
+            kbd.push((EV_KEY, 142, 1), (EV_KEY, 142, 0), (EV_KEY, 116, 1), (EV_KEY, 143, 1),
+                     (EV_KEY, 183, 1), (EV_SYN, 0, 0))
+            await until(lambda: rig.emitter.out)
+            await asyncio.sleep(0.02)
+            self.assertEqual(rig.emitter.out, [("key", 183, True)])
+
+            # During Record the engine passes keys through; system keys still go nowhere.
+            rig.service.record_start()
+            kbd.push((EV_KEY, 142, 1), (EV_KEY, 142, 0), (EV_KEY, KEY_1, 1), (EV_KEY, KEY_1, 0))
+            await until(lambda: any(e[0] == "record_result" for e in rig.events))
+            results = [e for e in rig.events if e[0] == "record_result"]
+            self.assertEqual(results, [("record_result", {"type": "key", "keys": ["1"]})])
+            self.assertFalse(any(o[0] == "key" and o[1] in (116, 142, 143) for o in rig.emitter.out))
+            await rig.service.stop()
+
+        self.run_async(go())
+
     def test_connect_waits_for_all_nodes(self):
         # On a replug the kernel creates the event nodes one by one; a scan can see only some.
         async def go():

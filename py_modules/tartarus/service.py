@@ -12,7 +12,7 @@ from .bindings import Binding, binding_label, binding_to_dict
 from .config import (DEFAULT_ID, DPAD_MODES, LED_ORDER, MAX_APP_ID, MAX_PROFILES, Game, Lighting, Profile, clean_name,
                      default_profile, find_profile, load_config, new_profile_id, next_leds, profile_for_app, save_config)
 from .codes import name_for
-from .devmap import ALL_CONTROLS, FACTORY_CODES, FACTORY_OUTPUT
+from .devmap import ALL_CONTROLS, FACTORY_CODES, FACTORY_OUTPUT, SYSTEM_CODES
 from .engine import RemapEngine
 from .lighting import EFFECTS, effect_reports, leds_report
 from .linux.discovery import PRODUCT, VENDOR, TartarusNodes, find_tartarus, list_keyboards
@@ -207,6 +207,8 @@ class TartarusService:
             return
         for type_, code, value in events:
             if type_ == EV_KEY:
+                if code in SYSTEM_CODES:
+                    continue
                 if self._capture is not None and value != 2:
                     control = FACTORY_CODES.get(code)
                     if control is not None:
