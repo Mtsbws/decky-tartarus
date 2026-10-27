@@ -72,6 +72,10 @@ class Plugin:
         self.service.set_lighting(effect, color, brightness)
         return self.service.state()
 
+    async def set_hypershift_lights(self, enabled: bool, color: str) -> dict:
+        self.service.set_hypershift_lights(enabled, color)
+        return self.service.state()
+
     async def set_lighting_enabled(self, enabled: bool) -> dict:
         self.service.set_lighting_enabled(enabled)
         return self.service.state()

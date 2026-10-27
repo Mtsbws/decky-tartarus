@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import tempfile
 import time
 from dataclasses import dataclass, field
@@ -35,6 +36,8 @@ LED_ORDER: Tuple[Tuple[bool, bool, bool], ...] = (
 
 log = logging.getLogger("tartarus")
 
+_HEX_COLOR = re.compile(r"#[0-9a-fA-F]{6}")
+
 
 @dataclass
 class Lighting:
@@ -42,6 +45,8 @@ class Lighting:
     color: str = "#00ff00"
     brightness: int = 100
     enabled: bool = True
+    hypershift: bool = False  # light the keypad while the Hypershift key is held
+    hypershift_color: str = "#ff6000"
 
 
 @dataclass(frozen=True)
@@ -251,7 +256,8 @@ def _dump(c: Config) -> dict:
         ],
         "games": {key: {"name": g.name, "profile": g.profile} for key, g in c.games.items()},
         "lighting": {"effect": c.lighting.effect, "color": c.lighting.color, "brightness": c.lighting.brightness,
-                     "enabled": c.lighting.enabled},
+                     "enabled": c.lighting.enabled,
+                     "hypershift": {"enabled": c.lighting.hypershift, "color": c.lighting.hypershift_color}},
         "adjustable_actuation": c.adjustable_actuation,
     }
 
@@ -475,4 +481,10 @@ def _parse_lighting(raw) -> Lighting:
         lighting.brightness = brightness
     if isinstance(raw.get("enabled"), bool):
         lighting.enabled = raw["enabled"]
+    hs = raw.get("hypershift")
+    if isinstance(hs, dict):
+        if isinstance(hs.get("enabled"), bool):
+            lighting.hypershift = hs["enabled"]
+        if isinstance(hs.get("color"), str) and _HEX_COLOR.fullmatch(hs["color"]):
+            lighting.hypershift_color = hs["color"]
     return lighting

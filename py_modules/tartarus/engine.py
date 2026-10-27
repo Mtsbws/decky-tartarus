@@ -30,8 +30,10 @@ class Emitter(Protocol):
 class RemapEngine:
     def __init__(self, emitter: Emitter, profile: Profile,
                  sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
-                 steam_mode: str = "api") -> None:
+                 steam_mode: str = "api",
+                 on_layer: Callable[[bool], None] = lambda active: None) -> None:
         self._out = emitter
+        self._on_layer = on_layer
         self._profile = profile
         self._sleep = sleep
         self.steam_mode = steam_mode
@@ -145,6 +147,7 @@ class RemapEngine:
         self._held.clear()
         self._pressed.clear()
         self._key_layer.clear()
+        was_active = self._hypershift_down
         self._hypershift_down = False
         self._hypershift_control = None
         self._dpad_pressed.clear()
@@ -152,6 +155,8 @@ class RemapEngine:
         for tracker in self._trackers.values():
             tracker.reset()
         self._out.sync()
+        if was_active:
+            self._on_layer(False)
 
     # --- controls ---
 
@@ -178,6 +183,7 @@ class RemapEngine:
                 if control == self._hypershift_control:
                     self._hypershift_down = False
                     self._hypershift_control = None
+                    self._on_layer(False)
                 for code in reversed(self._held.pop(control, [])):
                     self._up(code)
             return
@@ -191,6 +197,7 @@ class RemapEngine:
         if b.type == "hypershift":
             self._hypershift_down = True
             self._hypershift_control = control
+            self._on_layer(True)
         elif b.type in HOLD_TYPES:
             held = []
             for name in b.keys:

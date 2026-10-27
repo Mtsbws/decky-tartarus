@@ -27,8 +27,8 @@ class HypershiftEngineTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.out = FakeEmitter()
 
-    def engine(self, prof):
-        return RemapEngine(self.out, prof, sleep=lambda seconds: asyncio.sleep(0))
+    def engine(self, prof, **kw):
+        return RemapEngine(self.out, prof, sleep=lambda seconds: asyncio.sleep(0), **kw)
 
     async def settle(self):
         for _ in range(50):
@@ -36,6 +36,19 @@ class HypershiftEngineTest(unittest.IsolatedAsyncioTestCase):
 
     def check_clean(self, e):
         self.assertEqual(e._counts, {})
+
+    async def test_on_layer_callback(self):
+        calls = []
+        e = self.engine(hs_profile(k09="F1"), on_layer=calls.append)
+        e.handle_key(K19, 1)
+        self.assertEqual(calls, [True])
+        e.handle_key(K19, 0)
+        self.assertEqual(calls, [True, False])
+        e.handle_key(K19, 1)
+        e.release_all()
+        self.assertEqual(calls, [True, False, True, False])
+        e.release_all()
+        self.assertEqual(calls, [True, False, True, False])
 
     async def test_layer_binding_while_held(self):
         e = self.engine(hs_profile(k09="F1"))

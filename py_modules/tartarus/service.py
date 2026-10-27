@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import errno
 import logging
 import time
@@ -20,7 +21,7 @@ from .devmap import ALL_CONTROLS, ACTUATION_KEYS, FACTORY_CODES, FACTORY_OUTPUT,
 from .devmode import DRIVER_MODE, NORMAL_MODE, set_mode_report
 from .engine import RemapEngine
 from .layers import HYPERSHIFT, STANDARD, parse_control
-from .lighting import EFFECTS, effect_reports, leds_report
+from .lighting import EFFECTS, _rgb, effect_reports, leds_report
 from .linux.discovery import PRODUCT, VENDOR, TartarusNodes, find_tartarus, list_keyboards
 from .linux.evdev import EV_KEY, EV_REL, REL_WHEEL, InputDevice
 from .linux.hidraw import HidrawReader, send_feature
@@ -100,6 +101,7 @@ class TartarusService:
         # Record in driver mode: each key fires at the lightest point, and only the first key pressed counts.
         self._record_trackers = {control: KeyTracker(mm_to_depth(MM_MIN)) for control in ACTUATION_KEYS}
         self._record_key: Optional[str] = None
+        self._hypershift_lit = False  # the keypad shows the Hypershift lights
         self._record_timer: Optional[asyncio.TimerHandle] = None
 
     # --- lifecycle ---
@@ -107,7 +109,8 @@ class TartarusService:
     async def start(self) -> None:
         self._loop = asyncio.get_running_loop()
         self._emitter = self._make_emitter(self._on_steam)
-        self._engine = RemapEngine(self._emitter, self._profile(), steam_mode=STEAM_ACTION_MODE)
+        self._engine = RemapEngine(self._emitter, self._profile(), steam_mode=STEAM_ACTION_MODE,
+                                   on_layer=self._on_layer)
         self._supervisor = self._loop.create_task(self._supervise())
 
     async def stop(self) -> None:
@@ -333,6 +336,23 @@ class TartarusService:
                            f"{lighting.brightness}%" if lighting.enabled else "off")
         self._apply_leds()
 
+    def _on_layer(self, active: bool) -> None:
+        """The engine's Hypershift layer went active or standard: show or restore the lights."""
+        lighting = self._config.lighting
+        try:
+            if active:
+                if lighting.enabled and lighting.hypershift:
+                    reports = effect_reports("static", lighting.hypershift_color, lighting.brightness)
+                    self._hypershift_lit = True
+                    for report in reports:
+                        self._send_command(report, "Hypershift lighting", quiet=True)
+            elif self._hypershift_lit:
+                self._hypershift_lit = False
+                for report in self._lighting_reports():
+                    self._send_command(report, "lighting", quiet=True)
+        except ValueError as e:
+            self._log.warning("Hypershift lighting not applied (%s)", e)
+
     def _apply_leds(self) -> None:
         """Show the active profile's pattern on the three profile LEDs."""
         if not self._devices:
@@ -515,7 +535,8 @@ class TartarusService:
             "device_id": f"{VENDOR}:{PRODUCT}" if self._devices else None,
             "steam_mode": STEAM_ACTION_MODE,
             "lighting": {"effect": lighting.effect, "color": lighting.color, "brightness": lighting.brightness,
-                         "enabled": lighting.enabled},
+                         "enabled": lighting.enabled,
+                         "hypershift": {"enabled": lighting.hypershift, "color": lighting.hypershift_color}},
             "actuation": {"enabled": self._config.adjustable_actuation, "status": self._actuation, "default_mm": DEFAULT_MM,
                        "min_mm": MM_MIN, "max_mm": MM_MAX, "min_gap_mm": MIN_GAP_MM},
             "effects": list(EFFECTS),
@@ -754,10 +775,20 @@ class TartarusService:
 
     def set_lighting(self, effect: str, color: str, brightness: int) -> None:
         effect_reports(effect, color, brightness)  # raises ValueError before anything changes
-        self._config.lighting = Lighting(effect=effect, color=color, brightness=brightness,
-                                         enabled=self._config.lighting.enabled)
+        self._config.lighting = dataclasses.replace(self._config.lighting, effect=effect, color=color,
+                                                    brightness=brightness)
         save_config(self._path, self._config)
         self._apply_lighting()
+
+    def set_hypershift_lights(self, enabled: bool, color: str) -> None:
+        """Light the keypad in `color` while the Hypershift key is held."""
+        if not isinstance(enabled, bool):
+            raise ValueError("enabled must be true or false")
+        _rgb(color)  # raises ValueError before anything changes
+        self._config.lighting.hypershift = enabled
+        self._config.lighting.hypershift_color = color
+        save_config(self._path, self._config)
+        self._notify()
 
     def set_lighting_enabled(self, enabled: bool) -> None:
         """The Lighting switch: off keeps the stored settings and sends them at brightness 0."""

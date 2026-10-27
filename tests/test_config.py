@@ -152,6 +152,27 @@ class ConfigTest(unittest.TestCase):
         self.assertIs(json.loads(self.path.read_text())["lighting"]["enabled"], False)
         self.assertIs(load_config(self.path).lighting.enabled, False)
 
+    def test_hypershift_lights_round_trip_and_defaults(self):
+        self._write(_stored([_entry("default", "Default")]))
+        lighting = load_config(self.path).lighting
+        self.assertEqual((lighting.hypershift, lighting.hypershift_color), (False, "#ff6000"))
+        c = default_config()
+        c.lighting.hypershift = True
+        c.lighting.hypershift_color = "#00ff80"
+        save_config(self.path, c)
+        self.assertEqual(json.loads(self.path.read_text())["lighting"]["hypershift"],
+                         {"enabled": True, "color": "#00ff80"})
+        lighting = load_config(self.path).lighting
+        self.assertEqual((lighting.hypershift, lighting.hypershift_color), (True, "#00ff80"))
+
+    def test_hypershift_lights_bad_values_mean_defaults(self):
+        for raw in ("x", {"enabled": "yes", "color": "red"}, {"enabled": 1, "color": 5}):
+            data = _stored([_entry("default", "Default")])
+            data["lighting"]["hypershift"] = raw
+            self._write(data)
+            lighting = load_config(self.path).lighting
+            self.assertEqual((lighting.hypershift, lighting.hypershift_color), (False, "#ff6000"), raw)
+
     def test_lighting_enabled_not_bool_means_true(self):
         data = _stored([_entry("default", "Default")])
         data["lighting"]["enabled"] = "no"
