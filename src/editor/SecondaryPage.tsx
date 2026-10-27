@@ -5,6 +5,7 @@ import { errorText, ProfileState, setSecondary, State } from "../api";
 import { Card, Row } from "./Card";
 import { ChoosePage } from "./ChoosePage";
 import { controlTitle } from "./Keypad";
+import { baseControl, Layer, layerMm, layerSecondary } from "./layers";
 import { actuationNote, BUTTON, ERROR, mmText, tenth } from "./layout";
 import { RecordButton } from "./RecordButton";
 import { SubPage } from "./SubPage";
@@ -31,9 +32,12 @@ export function SecondaryPage(props: {
     return () => debounce.flush();
   }, [control, profile.id]);
 
-  const secondary = profile.secondary[control];
+  // "k05" or "k05.h": the Hypershift entry's secondary function is its own, set against the entry's depth.
+  const layer: Layer = control.split(".").includes("h") ? "hypershift" : "standard";
+  const key = baseControl(control);
+  const secondary = layerSecondary(profile, key, layer);
   const value = draft ?? secondary?.actuation ?? max_mm;
-  const min = Math.min(tenth((profile.actuation[control] ?? default_mm) + min_gap_mm), max_mm);
+  const min = Math.min(tenth(layerMm(profile, key, layer, default_mm) + min_gap_mm), max_mm);
 
   // Off removes the secondary function with its binding; on starts it at the deepest point, unbound.
   // A depth write still in its debounce would recreate it after the off, so off drops it.
@@ -73,7 +77,7 @@ export function SecondaryPage(props: {
   }
 
   return (
-    <SubPage title={`Secondary function · ${controlTitle(control)}`} onBack={onBack}>
+    <SubPage title={`Secondary function · ${controlTitle(key)}${layer === "hypershift" ? " · Hypershift" : ""}`} onBack={onBack}>
       <div style={{ maxWidth: 720 }}>
         <Card>
           <Row label="Secondary function" description="A second binding when the key is pressed deeper.">

@@ -5,6 +5,7 @@ import { BindingDict, errorText, ProfileState, setBindingText, State } from "../
 import { Card } from "./Card";
 import { CATEGORIES, Category, MODIFIERS } from "./categories";
 import { controlTitle } from "./Keypad";
+import { baseControl, bindingOf, HYPERSHIFT_KEYS } from "./layers";
 import { BUTTON, ERROR, PICK } from "./layout";
 import { SubPage } from "./SubPage";
 
@@ -17,6 +18,7 @@ type Choice = { category: string; key: string | null; mods: string[] };
 
 // Opens on the current binding when it's one key, maybe with modifiers, a Steam action or Disable.
 function choiceFor(b: BindingDict | undefined): Choice {
+  if (b?.type === "hypershift") return { category: "hypershift", key: null, mods: [] };
   if (b?.type === "disable") return { category: "disable", key: null, mods: [] };
   if (b?.type === "steam") return { category: "steam", key: `steam:${b.action}`, mods: [] };
   const keys = b?.keys ?? [];
@@ -35,7 +37,10 @@ export function ChoosePage(props: {
   onDone(): void;
 }) {
   const { control, state, profile, onChanged, onDone } = props;
-  const current = control.endsWith(".b") ? profile.secondary[control.slice(0, -2)]?.binding : profile.bindings[control]?.binding;
+  const current = bindingOf(profile, control);
+  const key = baseControl(control);
+  const secondaryFn = control.endsWith(".b");
+  const onHypershift = control.split(".").includes("h");
   const [choice, setChoice] = useState<Choice>(() => choiceFor(current));
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -63,9 +68,12 @@ export function ChoosePage(props: {
   const mods = category.modifiers ? MODIFIERS.filter((m) => choice.mods.includes(m) && m !== choice.key) : [];
   const result = choice.key === null ? null : [...mods, choice.key].join("+");
   const resultLabel = choice.key === null ? "pick a key" : [...mods, category.picks.find((p) => p.text === choice.key)?.label].join(" + ");
-  const title = control.endsWith(".b")
-    ? `Secondary function for ${controlTitle(control.slice(0, -2))}`
-    : `Binding for ${controlTitle(control)}`;
+  const title = secondaryFn
+    ? `Secondary function for ${controlTitle(key)}${onHypershift ? " (Hypershift)" : ""}`
+    : `${onHypershift ? "Hypershift binding" : "Binding"} for ${controlTitle(key)}`;
+  // Only a plain key on the standard layer can become the Hypershift key.
+  const categories = CATEGORIES.filter((c) => c.id !== "hypershift" || HYPERSHIFT_KEYS.includes(control));
+  const otherKey = profile.hypershift.key !== null && profile.hypershift.key !== control ? profile.hypershift.key : null;
 
   let body;
   if (category.id === "type") {
@@ -82,9 +90,26 @@ export function ChoosePage(props: {
   } else if (category.id === "disable") {
     body = (
       <Focusable flow-children="column" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <div>{controlTitle(control.replace(/\.b$/, ""))} does nothing when pressed.</div>
+        <div>
+          {controlTitle(key)} does nothing {onHypershift && !secondaryFn ? "while Hypershift is held." : "when pressed."}
+        </div>
         <DialogButton style={{ ...BUTTON, alignSelf: "flex-start" }} onClick={() => apply("disable")}>
           Disable
+        </DialogButton>
+      </Focusable>
+    );
+  } else if (category.id === "hypershift") {
+    const factory = otherKey === null ? undefined : profile.bindings[otherKey]?.factory;
+    body = (
+      <Focusable flow-children="column" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div>Hold {controlTitle(key)} to switch the other controls to their Hypershift bindings.</div>
+        {otherKey !== null && (
+          <div style={{ fontSize: 13, opacity: 0.7 }}>
+            {controlTitle(otherKey)} goes back to its factory default{factory ? ` (${factory})` : ""}.
+          </div>
+        )}
+        <DialogButton style={{ ...BUTTON, alignSelf: "flex-start" }} onClick={() => apply("hypershift")}>
+          Apply
         </DialogButton>
       </Focusable>
     );
@@ -131,7 +156,7 @@ export function ChoosePage(props: {
     <SubPage title={title} onBack={onDone}>
       <Focusable flow-children="row" style={{ display: "flex", gap: 12, alignItems: "flex-start", minHeight: 0 }}>
         <Focusable flow-children="column" style={{ width: 190, flexShrink: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-          {CATEGORIES.map((c) => (
+          {categories.map((c) => (
             <DialogButton
               key={c.id}
               style={on(CATEGORY, c.id === category.id)}

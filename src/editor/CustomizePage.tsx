@@ -1,11 +1,13 @@
 import { DialogButton, Focusable, SliderField, Toggle } from "@decky/ui";
 import { useEffect, useState } from "react";
 
-import { errorText, ProfileState, setActuation, setBindingText, State } from "../api";
+import { clearHypershiftEntry, errorText, ProfileState, setActuation, setBindingText, State } from "../api";
 import { Card, Row } from "./Card";
 import { ChoosePage } from "./ChoosePage";
 import { EditingRow } from "./EditingRow";
 import { controlTitle, Keypad } from "./Keypad";
+import { bindingOf, hasEntry, Layer, layerMm, layerSecondary, onLayer } from "./layers";
+import { LayerSwitch } from "./LayerSwitch";
 import { actuationNote, BUTTON, ERROR, mmText, PAGE_HEIGHT, tenth } from "./layout";
 import { RecordButton } from "./RecordButton";
 import { SecondaryPage } from "./SecondaryPage";
@@ -15,13 +17,15 @@ export function CustomizePage(props: {
   state: State;
   profile: ProfileState;
   selected: string;
+  layer: Layer;
+  onLayer(l: Layer): void;
   error: string | null;
   onSelect(c: string): void;
   onView(id: string): void;
   onDpad(eight: boolean): void;
   onChanged(s: State): void;
 }) {
-  const { state, profile, selected, error, onSelect, onView, onDpad, onChanged } = props;
+  const { state, profile, selected, layer, onLayer: onLayerChange, error, onSelect, onView, onDpad, onChanged } = props;
   const { default_mm, min_mm, max_mm } = state.actuation;
   const [sub, setSub] = useState<"choose" | "secondary" | null>(null);
   const [cardError, setCardError] = useState<string | null>(null);
@@ -34,7 +38,7 @@ export function CustomizePage(props: {
     setCardError(null);
     setDraft(null);
     return () => debounce.flush();
-  }, [selected, profile.id]);
+  }, [selected, profile.id, layer]);
 
   function reset(factory: string) {
     setBindingText(profile.id, selected, factory)
@@ -45,13 +49,22 @@ export function CustomizePage(props: {
       .catch((e) => setCardError(errorText(e)));
   }
 
+  function clearEntry() {
+    clearHypershiftEntry(profile.id, control)
+      .then((s) => {
+        setCardError(null);
+        onChanged(s);
+      })
+      .catch((e) => setCardError(errorText(e)));
+  }
+
   function changeActuation(v: number) {
     const mm = tenth(v);
     const profileId = profile.id;
-    const control = selected;
+    const target = control;
     setDraft(mm);
     debounce.schedule(() => {
-      setActuation(profileId, control, mm)
+      setActuation(profileId, target, mm)
         .then((s) => {
           setCardError(null);
           onChanged(s);
@@ -64,22 +77,28 @@ export function CustomizePage(props: {
     });
   }
 
+  // The control the card edits: the plain name on Standard, "k05.h" on Hypershift.
+  const control = onLayer(selected, layer);
+  const onHypershift = layer === "hypershift";
   const binding = profile.bindings[selected];
-  const secondary = profile.secondary[selected];
+  const entry = bindingOf(profile, control);
+  const entryLabel = onHypershift ? profile.hypershift.bindings[selected]?.label : binding?.label;
+  const secondary = layerSecondary(profile, selected, layer);
   const isKey = /^k\d\d$/.test(selected);
-  const actuation = draft ?? profile.actuation[selected] ?? default_mm;
+  const isHypershiftKey = profile.hypershift.key === selected;
+  const actuation = draft ?? layerMm(profile, selected, layer, default_mm);
 
   if (sub === "choose") {
     return (
       <div style={{ height: PAGE_HEIGHT }}>
-        <ChoosePage control={selected} state={state} profile={profile} onChanged={onChanged} onDone={() => setSub(null)} />
+        <ChoosePage control={control} state={state} profile={profile} onChanged={onChanged} onDone={() => setSub(null)} />
       </div>
     );
   }
   if (sub === "secondary") {
     return (
       <div style={{ height: PAGE_HEIGHT }}>
-        <SecondaryPage control={selected} state={state} profile={profile} onChanged={onChanged} onBack={() => setSub(null)} />
+        <SecondaryPage control={control} state={state} profile={profile} onChanged={onChanged} onBack={() => setSub(null)} />
       </div>
     );
   }
@@ -87,40 +106,66 @@ export function CustomizePage(props: {
   return (
     // The drawing takes the full page height; the Editing row sits above the card.
     <Focusable flow-children="row" style={{ height: PAGE_HEIGHT, display: "flex", gap: 16 }}>
-      <Keypad profile={profile} view="bindings" layer="standard" selected={[selected]} defaultMm={default_mm} onSelect={onSelect} />
+      <Keypad profile={profile} view="bindings" layer={layer} selected={[selected]} defaultMm={default_mm} onSelect={onSelect} />
       <Focusable flow-children="column" style={{ flex: 1, minWidth: 300, display: "flex", flexDirection: "column", gap: 8 }}>
         <EditingRow state={state} profile={profile} onView={onView} />
+        <LayerSwitch layer={layer} onChange={onLayerChange} />
         <Card title={controlTitle(selected)}>
-          <Row
-            label={
-              <>
-                Binding: <b>{binding?.label}</b>
-              </>
-            }
-          >
-            <DialogButton style={BUTTON} onClick={() => setSub("choose")}>
-              Choose…
-            </DialogButton>
-            <RecordButton control={selected} profile={profile} onChanged={onChanged} onError={setCardError} />
-          </Row>
-          {binding?.factory && (
+          {onHypershift && profile.hypershift.key === null && (
+            <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 6 }}>
+              No Hypershift key yet. On Standard, pick a key's Choose… → Hypershift.
+            </div>
+          )}
+          {onHypershift && isHypershiftKey ? (
+            <div>{controlTitle(selected)} is the Hypershift key. Hold it to use this layer.</div>
+          ) : (
+            <>
+              <Row
+                label={
+                  <>
+                    Binding:{" "}
+                    {onHypershift && !entry ? (
+                      <>
+                        <b>Same as Standard</b> ({binding?.label})
+                      </>
+                    ) : (
+                      <b>{entryLabel}</b>
+                    )}
+                  </>
+                }
+              >
+                <DialogButton style={BUTTON} onClick={() => setSub("choose")}>
+                  Choose…
+                </DialogButton>
+                <RecordButton control={control} profile={profile} onChanged={onChanged} onError={setCardError} />
+              </Row>
+          {onHypershift && hasEntry(profile, control) && (
+            <Row label="Hypershift binding">
+              <DialogButton style={BUTTON} onClick={clearEntry}>
+                Clear
+              </DialogButton>
+            </Row>
+          )}
+          {!onHypershift && binding?.factory && (
             <Row label={`Factory default (${binding.factory})`}>
               <DialogButton style={BUTTON} onClick={() => reset(binding.factory)}>
                 Reset
               </DialogButton>
             </Row>
           )}
-          {isKey && (
+          {isKey && (!onHypershift || entry) && (
             <Row label={`Actuation: ${mmText(actuation)}`} stacked>
               <SliderField value={actuation} min={min_mm} max={max_mm} step={0.1} bottomSeparator="none" onChange={changeActuation} />
             </Row>
           )}
-          {isKey && (
+          {isKey && !isHypershiftKey && (!onHypershift || entry) && (
             <Row label="Secondary function">
               <DialogButton style={BUTTON} onClick={() => setSub("secondary")}>
                 {secondary ? `${secondary.label} · ${mmText(secondary.actuation)} ›` : "Off ›"}
               </DialogButton>
             </Row>
+          )}
+            </>
           )}
           {selected.startsWith("dpad_") && (
             <Row label="8-way D-pad">

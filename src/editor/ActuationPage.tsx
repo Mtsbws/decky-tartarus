@@ -5,6 +5,7 @@ import { errorText, ProfileState, setActuationKeys, State } from "../api";
 import { Card, Row } from "./Card";
 import { EditingRow } from "./EditingRow";
 import { Keypad } from "./Keypad";
+import { Layer } from "./layers";
 import { actuationNote, BUTTON, ERROR, mmText, PAGE_HEIGHT, tenth } from "./layout";
 
 const KEYS = Array.from({ length: 20 }, (_, i) => `k${String(i + 1).padStart(2, "0")}`);
@@ -12,6 +13,8 @@ const KEYS = Array.from({ length: 20 }, (_, i) => `k${String(i + 1).padStart(2, 
 export function ActuationPage({ state, profile, onView, onChanged }: {
   state: State;
   profile: ProfileState;
+  layer: Layer;
+  onLayer(l: Layer): void;
   onView(id: string): void;
   onChanged(s: State): void;
 }) {
