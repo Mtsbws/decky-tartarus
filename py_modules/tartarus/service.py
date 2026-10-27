@@ -80,7 +80,8 @@ class TartarusService:
             self._lighting_reports()
         except ValueError as e:  # config.py doesn't know the effect names; a stored one may be stale
             self._log.warning("stored lighting is invalid (%s); using the default", e)
-            self._config.lighting = Lighting()
+            self._config.lighting = dataclasses.replace(Lighting(), hypershift=self._config.lighting.hypershift,
+                                                        hypershift_color=self._config.lighting.hypershift_color)
         self._running: Optional[Tuple[int, str]] = None  # (app id, name); never persisted
         self._emitter: Any = None
         self._engine: Optional[RemapEngine] = None
@@ -334,24 +335,41 @@ class TartarusService:
             lighting = self._config.lighting
             self._log.info("lighting applied: %s %s %s (status 0x02)", lighting.effect, lighting.color,
                            f"{lighting.brightness}%" if lighting.enabled else "off")
+        self._refresh_hypershift_lights(restored=True)
         self._apply_leds()
+
+    def _refresh_hypershift_lights(self, restored: bool = False) -> None:
+        """While the Hypershift key is held, keep the shown lights in step with the settings."""
+        if not self._hypershift_lit:
+            return
+        lighting = self._config.lighting
+        if lighting.enabled and lighting.hypershift:
+            self._show_hypershift_lights()
+            return
+        self._hypershift_lit = False
+        if not restored:  # the standard lights are not on the keypad yet
+            for report in self._lighting_reports():
+                self._send_command(report, "lighting", quiet=True)
 
     def _on_layer(self, active: bool) -> None:
         """The engine's Hypershift layer went active or standard: show or restore the lights."""
-        lighting = self._config.lighting
         try:
             if active:
-                if lighting.enabled and lighting.hypershift:
-                    reports = effect_reports("static", lighting.hypershift_color, lighting.brightness)
-                    self._hypershift_lit = True
-                    for report in reports:
-                        self._send_command(report, "Hypershift lighting", quiet=True)
+                self._show_hypershift_lights()
             elif self._hypershift_lit:
                 self._hypershift_lit = False
                 for report in self._lighting_reports():
                     self._send_command(report, "lighting", quiet=True)
-        except ValueError as e:
-            self._log.warning("Hypershift lighting not applied (%s)", e)
+        except Exception:  # never into the engine's key path
+            self._log.exception("Hypershift lighting not applied")
+
+    def _show_hypershift_lights(self) -> None:
+        lighting = self._config.lighting
+        if lighting.enabled and lighting.hypershift:
+            reports = effect_reports("static", lighting.hypershift_color, lighting.brightness)
+            self._hypershift_lit = True
+            for report in reports:
+                self._send_command(report, "Hypershift lighting", quiet=True)
 
     def _apply_leds(self) -> None:
         """Show the active profile's pattern on the three profile LEDs."""
@@ -788,6 +806,7 @@ class TartarusService:
         self._config.lighting.hypershift = enabled
         self._config.lighting.hypershift_color = color
         save_config(self._path, self._config)
+        self._refresh_hypershift_lights()
         self._notify()
 
     def set_lighting_enabled(self, enabled: bool) -> None:

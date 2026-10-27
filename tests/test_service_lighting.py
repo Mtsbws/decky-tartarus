@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 from tartarus.bindings import parse_binding_text
-from tartarus.config import NO_LEDS, load_config
+from tartarus.config import NO_LEDS, SCHEMA_VERSION, load_config
 from tartarus.devmap import FACTORY_CODES
 from tartarus.lighting import EFFECTS, effect_reports, leds_report
 from tartarus.linux import hidraw, ioctl
@@ -162,6 +162,54 @@ class LightingServiceTest(unittest.TestCase):
             await rig.service.stop()
 
         self.run_async(go())
+
+    def test_on_layer_never_raises_into_the_engine(self):
+        async def go():
+            sender = FakeSender()
+            rig = await self.hypershift_rig(sender)()
+            rig.service.set_hypershift_lights(True, "#ff6000")
+            sender.error = RuntimeError("bug")
+            with self.assertLogs("tartarus", level="ERROR"):
+                rig.service._engine.handle_key(K19, 1)
+            sender.error = None
+            sender.sent.clear()
+            rig.service._engine.handle_key(K19, 0)
+            self.assertEqual(sender.sent, [(HID, r) for r in rig.service._lighting_reports()])
+            await rig.service.stop()
+
+        self.run_async(go())
+
+    def test_hypershift_lights_change_while_held(self):
+        async def go():
+            sender = FakeSender()
+            rig = await self.hypershift_rig(sender)()
+            rig.service.set_lighting("wave", "#00ff00", 70)
+            rig.service.set_hypershift_lights(True, "#12ab34")
+            rig.service._engine.handle_key(K19, 1)
+            sender.sent.clear()
+            rig.service.set_hypershift_lights(True, "#aa0000")
+            self.assertEqual(sender.sent, [(HID, r) for r in effect_reports("static", "#aa0000", 70)])
+            sender.sent.clear()
+            rig.service.set_lighting("static", "#0000ff", 40)  # shown lights stay Hypershift
+            self.assertEqual(sender.sent[-1 - len(effect_reports("static", "#aa0000", 40)):-1],
+                             [(HID, r) for r in effect_reports("static", "#aa0000", 40)])  # then the LEDs
+            sender.sent.clear()
+            rig.service.set_hypershift_lights(False, "#aa0000")  # turned off: standard lights back
+            self.assertEqual(sender.sent, [(HID, r) for r in effect_reports("static", "#0000ff", 40)])
+            sender.sent.clear()
+            rig.service._engine.handle_key(K19, 0)
+            self.assertEqual(sender.sent, [])
+            await rig.service.stop()
+
+        self.run_async(go())
+
+    def test_invalid_stored_lighting_keeps_hypershift_lights(self):
+        self.path.write_text(json.dumps({"version": SCHEMA_VERSION, "profiles": [], "lighting": {"effect": "bogus",
+                             "hypershift": {"enabled": True, "color": "#12ab34"}}}))
+        rig = Rig(self.path, send_feature=FakeSender())
+        lighting = rig.service._config.lighting
+        self.assertEqual((lighting.effect, lighting.hypershift, lighting.hypershift_color),
+                         ("spectrum", True, "#12ab34"))
 
     def test_set_lighting_keeps_hypershift_lights(self):
         rig = Rig(self.path, send_feature=FakeSender())
