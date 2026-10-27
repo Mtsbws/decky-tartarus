@@ -12,7 +12,7 @@ from typing import Dict, List, Optional, Tuple
 
 from .actuation import DEFAULT_MM, gap_ok, valid_mm
 from .bindings import Binding, BindingError, binding_from_dict, binding_to_dict, parse_binding_text
-from .devmap import ACTUATION_KEYS, ALL_CONTROLS, FACTORY_OUTPUT
+from .devmap import ACTUATION_KEYS, ALL_CONTROLS, FACTORY_OUTPUT, HYPERSHIFT_KEYS
 
 SCHEMA_VERSION = 2
 DPAD_MODES = ("4way", "8way")
@@ -52,6 +52,17 @@ class Secondary:
 
 
 @dataclass
+class Hypershift:
+    """The layer a profile's Hypershift key switches to: its own bindings, actuation points and secondary functions."""
+    bindings: Dict[str, Binding] = field(default_factory=dict)
+    actuation: Dict[str, float] = field(default_factory=dict)
+    secondary: Dict[str, Secondary] = field(default_factory=dict)
+
+    def copy(self) -> "Hypershift":
+        return Hypershift(dict(self.bindings), dict(self.actuation), dict(self.secondary))
+
+
+@dataclass
 class Profile:
     id: str
     name: str
@@ -60,6 +71,16 @@ class Profile:
     leds: Tuple[bool, bool, bool] = NO_LEDS
     actuation: Dict[str, float] = field(default_factory=dict)  # mm, only keys away from DEFAULT_MM
     secondary: Dict[str, Secondary] = field(default_factory=dict)
+    hypershift: Hypershift = field(default_factory=Hypershift)
+
+
+def hypershift_key(p: Profile) -> Optional[str]:
+    """The control whose standard binding is Hypershift, if any."""
+    for control in ALL_CONTROLS:
+        b = p.bindings.get(control)
+        if b is not None and b.type == "hypershift":
+            return control
+    return None
 
 
 @dataclass
@@ -219,6 +240,12 @@ def _dump(c: Config) -> dict:
                 "actuation": dict(p.actuation),
                 "secondary": {control: {"binding": binding_to_dict(sec.binding), "actuation": sec.actuation}
                               for control, sec in p.secondary.items()},
+                "hypershift": {
+                    "bindings": {control: binding_to_dict(b) for control, b in p.hypershift.bindings.items()},
+                    "actuation": dict(p.hypershift.actuation),
+                    "secondary": {control: {"binding": binding_to_dict(sec.binding), "actuation": sec.actuation}
+                                  for control, sec in p.hypershift.secondary.items()},
+                },
             }
             for p in c.profiles
         ],
@@ -343,31 +370,77 @@ def _parse_bindings(raw) -> Dict[str, Binding]:
 
 def _parse_profile(raw: dict, pid: str) -> Profile:
     mode = raw.get("dpad_mode")
+    bindings = _parse_bindings(raw.get("bindings"))
+    key = _fix_hypershift_key(bindings)
     actuation = _parse_actuation(raw.get("actuation"))
-    return Profile(id=pid, name=pid, dpad_mode=mode if mode in DPAD_MODES else "4way",
-                   bindings=_parse_bindings(raw.get("bindings")), actuation=actuation,
-                   secondary=_parse_secondary(raw.get("secondary"), actuation))
+    secondary = _parse_secondary(raw.get("secondary"), actuation)
+    if key is not None and secondary.pop(key, None) is not None:
+        log.warning("dropping secondary function for %s: it is the Hypershift key", key)
+    return Profile(id=pid, name=pid, dpad_mode=mode if mode in DPAD_MODES else "4way", bindings=bindings,
+                   actuation=actuation, secondary=secondary, hypershift=_parse_hypershift(raw.get("hypershift"), key))
 
 
-def _parse_actuation(raw) -> Dict[str, float]:
+def _fix_hypershift_key(bindings: Dict[str, Binding]) -> Optional[str]:
+    """Keep the first Hypershift binding on a Hypershift-capable control; reset every other one."""
+    key = None
+    for control in ALL_CONTROLS:
+        if bindings[control].type != "hypershift":
+            continue
+        if key is None and control in HYPERSHIFT_KEYS:
+            key = control
+        else:
+            log.warning("%s cannot be the Hypershift key; using the factory binding", control)
+            bindings[control] = parse_binding_text(FACTORY_OUTPUT[control])
+    return key
+
+
+def _parse_hypershift(raw, key: Optional[str]) -> Hypershift:
+    layer = Hypershift()
+    if not isinstance(raw, dict):
+        return layer
+    raw_bindings = raw.get("bindings")
+    if isinstance(raw_bindings, dict):
+        for control, value in raw_bindings.items():
+            if control not in ALL_CONTROLS or control == key:
+                log.warning("dropping Hypershift binding for %r", control)
+                continue
+            try:
+                binding = binding_from_dict(value)
+            except BindingError as e:
+                log.warning("dropping Hypershift binding for %s (%s)", control, e)
+                continue
+            if binding.type == "hypershift":
+                log.warning("dropping Hypershift binding for %s: the layer cannot hold Hypershift", control)
+                continue
+            layer.bindings[control] = binding
+    layer.actuation = _parse_actuation(raw.get("actuation"), only=layer.bindings)
+    layer.secondary = _parse_secondary(raw.get("secondary"), layer.actuation, only=layer.bindings,
+                                       allow_hypershift=False)
+    return layer
+
+
+def _parse_actuation(raw, only=None) -> Dict[str, float]:
+    """`only`: when given, the controls that may hold an entry."""
     actuation: Dict[str, float] = {}
     if not isinstance(raw, dict):
         return actuation
     for control, mm in raw.items():
-        if control not in ACTUATION_KEYS or not valid_mm(mm):
+        if control not in ACTUATION_KEYS or (only is not None and control not in only) or not valid_mm(mm):
             log.warning("dropping actuation %r for %r", mm, control)
         elif round(mm, 1) != DEFAULT_MM:
             actuation[control] = round(mm, 1)
     return actuation
 
 
-def _parse_secondary(raw, actuation: Dict[str, float]) -> Dict[str, Secondary]:
-    """Checked against the parsed A points, so a dropped A counts as DEFAULT_MM."""
+def _parse_secondary(raw, actuation: Dict[str, float], only=None, allow_hypershift=True) -> Dict[str, Secondary]:
+    """Checked against the parsed A points, so a dropped A counts as DEFAULT_MM.
+    `only`: when given, the controls that may hold an entry."""
     secondary: Dict[str, Secondary] = {}
     if not isinstance(raw, dict):
         return secondary
     for control, value in raw.items():
-        if control not in ACTUATION_KEYS or not isinstance(value, dict):
+        if control not in ACTUATION_KEYS or (only is not None and control not in only) \
+                or not isinstance(value, dict):
             log.warning("dropping secondary function for %r", control)
             continue
         mm = value.get("actuation")
@@ -378,6 +451,9 @@ def _parse_secondary(raw, actuation: Dict[str, float]) -> Dict[str, Secondary]:
             binding = binding_from_dict(value.get("binding"))
         except BindingError as e:
             log.warning("dropping secondary function for %s (%s)", control, e)
+            continue
+        if binding.type == "hypershift" and not allow_hypershift:
+            log.warning("dropping secondary function for %s: Hypershift is not allowed here", control)
             continue
         secondary[control] = Secondary(binding, round(mm, 1))
     return secondary
