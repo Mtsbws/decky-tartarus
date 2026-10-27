@@ -230,8 +230,10 @@ function Picture() {
 type View = "bindings" | "actuation";
 
 const cornerStyle: CSSProperties = { display: "flex", gap: 4, fontSize: 11, lineHeight: 1 };
+// Steam's line height is taller than a key has room for, so labels set their own.
 const labelStyle: CSSProperties = {
   fontSize: 13,
+  lineHeight: 1.15,
   fontWeight: 600,
   whiteSpace: "nowrap",
   overflow: "hidden",
