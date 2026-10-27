@@ -1,7 +1,7 @@
 // The height of a page's content area under the editor's tabs,
 // sized so nothing reaches the Steam footer on the Deck's 1280×800 screen.
-// Measured on the Deck: Steam's tab panel leaves 316 of the 534 CSS px (60 + 58 above, 40 + 60 below).
-export const PAGE_HEIGHT = "calc(100vh - 218px)";
+// Measured on the Deck: Steam's tab panel leaves 356 of the 534 CSS px (40 + 58 above, 40 + 40 below).
+export const PAGE_HEIGHT = "calc(100vh - 178px)";
 
 export const ERROR = "#e05050";
 

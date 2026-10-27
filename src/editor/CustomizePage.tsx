@@ -112,10 +112,7 @@ export function CustomizePage(props: {
           )}
           {isKey && (
             <Row label={`Actuation: ${mmText(actuation)}`} stacked>
-              {/* Steam pads the slider generously; pull it closer to its label. */}
-              <div style={{ margin: "-8px 0 -6px" }}>
-                <SliderField value={actuation} min={min_mm} max={max_mm} step={0.1} bottomSeparator="none" onChange={changeActuation} />
-              </div>
+              <SliderField value={actuation} min={min_mm} max={max_mm} step={0.1} bottomSeparator="none" onChange={changeActuation} />
             </Row>
           )}
           {isKey && (

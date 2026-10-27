@@ -57,9 +57,9 @@ export function Editor() {
 
   const profile = viewedProfile(state);
 
-  // The route sits under Steam's header and above its footer, 60 px each.
+  // The route sits under Steam's header and above its footer, 40 px each (60 screen px on the Deck).
   return (
-    <div style={{ height: "100%", padding: "60px 0", boxSizing: "border-box" }}>
+    <div style={{ height: "100%", padding: "40px 0", boxSizing: "border-box" }}>
       <Tabs
         activeTab={page}
         onShowTab={(id: string) => setPage(id as Page)}
