@@ -36,7 +36,12 @@ export function SecondaryPage(props: {
   const min = Math.min(tenth((profile.actuation[control] ?? default_mm) + min_gap_mm), max_mm);
 
   // Off removes the secondary function with its binding; on starts it at the deepest point, unbound.
+  // A depth write still in its debounce would recreate it after the off, so off drops it.
   function toggle(on: boolean) {
+    if (!on) {
+      debounce.cancel();
+      setDraft(null);
+    }
     setSecondary(profile.id, control, on ? max_mm : null)
       .then((s) => {
         setError(null);

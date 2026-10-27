@@ -11,6 +11,11 @@ export function useDebounce(ms: number) {
     pending.current = null;
     p.run();
   };
+  // Drops the pending write, for when a newer action makes it wrong (Secondary function off).
+  const cancel = () => {
+    if (pending.current !== null) window.clearTimeout(pending.current.timer);
+    pending.current = null;
+  };
   const schedule = (run: () => void) => {
     if (pending.current !== null) window.clearTimeout(pending.current.timer);
     const timer = window.setTimeout(() => {
@@ -19,5 +24,5 @@ export function useDebounce(ms: number) {
     }, ms);
     pending.current = { timer, run };
   };
-  return { schedule, flush, isPending: () => pending.current !== null };
+  return { schedule, flush, cancel, isPending: () => pending.current !== null };
 }
