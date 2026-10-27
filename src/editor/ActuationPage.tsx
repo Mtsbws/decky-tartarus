@@ -31,9 +31,9 @@ export function ActuationPage({ state, profile, layer, onLayer, onView, onChange
   const keyMm = (p: ProfileState, c: string) => layerMm(p, c, layer, default_mm);
 
   // The slider starts at the first selected key's value when the selection goes from empty to
-  // non-empty and when the edited profile changes; adding or removing keys leaves it where it is.
+  // non-empty; adding or removing keys leaves it where it is. Another profile starts afresh.
   useEffect(() => {
-    if (selection.length > 0) setValue(keyMm(profile, selection[0]));
+    setSelection([]);
     setError(null);
   }, [profile.id]);
 
