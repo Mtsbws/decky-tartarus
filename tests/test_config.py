@@ -11,6 +11,7 @@ from tartarus.config import (
     SCHEMA_VERSION,
     Game,
     Profile,
+    Secondary,
     clean_name,
     default_config,
     default_profile,
@@ -21,6 +22,7 @@ from tartarus.config import (
     profile_for_app,
     save_config,
 )
+from tartarus.actuation import gap_ok
 from tartarus.devmap import ALL_CONTROLS, FACTORY_CODES, FACTORY_OUTPUT
 
 
@@ -161,6 +163,48 @@ class ConfigTest(unittest.TestCase):
             entry["actuation"] = raw
             self._write(_stored([entry]))
             self.assertEqual(default_profile(load_config(self.path)).actuation, {}, raw)
+
+    def test_secondary_round_trip(self):
+        c = default_config()
+        default_profile(c).secondary = {"k05": Secondary(parse_binding_text("Z"), 3.6)}
+        save_config(self.path, c)
+        stored = json.loads(self.path.read_text())["profiles"][0]["secondary"]
+        self.assertEqual(stored, {"k05": {"binding": binding_to_dict(parse_binding_text("Z")), "actuation": 3.6}})
+        self.assertEqual(load_config(self.path), c)
+
+    def test_v2_file_without_secondary_loads(self):
+        self._write(_stored({}))
+        self.assertEqual(default_profile(load_config(self.path)).secondary, {})
+
+    def test_bad_secondary_dropped(self):
+        z = binding_to_dict(parse_binding_text("Z"))
+        bad = {
+            "top_button": {"binding": z, "actuation": 3.6},
+            "k99": {"binding": z, "actuation": 3.6},
+            "k01": {"binding": {"type": "nope"}, "actuation": 3.6},
+            "k02": {"binding": z, "actuation": 3.7},
+            "k03": {"binding": z, "actuation": 2.0},  # A 1.6: gap 0.4
+            "k04": {"binding": z},
+            "k06": [z, 3.6],
+            "k07": {"binding": z, "actuation": 2.0},  # A 1.7 dropped as bad, so 1.5: kept
+            "k08": {"binding": z, "actuation": 1.9},  # A 1.4 dropped as bad, so 1.5: gap 0.4
+        }
+        entry = _entry("default", "Default")
+        entry["actuation"] = {"k03": 1.6, "k05": 1.6, "k07": 1.75, "k08": 1.4}
+        entry["secondary"] = dict(bad, k05={"binding": z, "actuation": 2.1000000000000005})
+        self._write(_stored([entry]))
+        with self.assertLogs("tartarus", "WARNING") as logs:
+            c = load_config(self.path)
+        p = default_profile(c)
+        self.assertTrue(gap_ok(1.6, 2.1))
+        self.assertEqual(p.secondary, {"k05": Secondary(parse_binding_text("Z"), 2.1),
+                                       "k07": Secondary(parse_binding_text("Z"), 2.0)})
+        secondary_logs = [r for r in logs.records if "secondary" in r.getMessage()]
+        self.assertEqual(len(secondary_logs), len(bad) - 1)
+        for raw in ([z], "k01", None):
+            entry["secondary"] = raw
+            self._write(_stored([entry]))
+            self.assertEqual(default_profile(load_config(self.path)).secondary, {}, raw)
 
     def test_corrupt_file_backed_up(self):
         self._write("{nope")

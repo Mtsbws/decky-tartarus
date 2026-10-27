@@ -609,7 +609,7 @@ class TartarusService:
         name = clean_name(self._config, name)
         profile = Profile(id=new_profile_id(self._config), name=name, dpad_mode=source.dpad_mode,
                           bindings=dict(source.bindings), leds=next_leds(self._config),
-                          actuation=dict(source.actuation))
+                          actuation=dict(source.actuation), secondary=dict(source.secondary))
         self._mutate(lambda: self._config.profiles.append(profile))
         return profile.id
 

@@ -30,6 +30,11 @@ def valid_mm(mm) -> bool:
     return MM_MIN <= mm <= MM_MAX and abs(mm * 10 - round(mm * 10)) < 1e-6
 
 
+def gap_ok(a_mm: float, b_mm: float) -> bool:
+    """B sits at least MIN_GAP_MM deeper than A (compared in tenths, never raw floats)."""
+    return tenths(b_mm) - tenths(a_mm) >= tenths(MIN_GAP_MM)
+
+
 def mm_to_depth(mm: float) -> int:
     """Piecewise linear through DEPTH_POINTS, clamped to its ends."""
     points = DEPTH_POINTS
