@@ -286,6 +286,57 @@ class ServiceTest(unittest.TestCase):
         rig = Rig(self.path)
         self.run_async(rig.service.stop())
 
+    def test_stop_finishes_without_yielding(self):
+        # Decky closes the plugin's socket during _unload, and its listener then spins on EOF without
+        # ever yielding: a stop() suspended at an await never resumes, and Decky SIGKILLs us 5 s later.
+        async def go():
+            rig = Rig(self.path)
+            rig.service.set_binding("default", "k01", parse_binding_text("Esc"))
+            await rig.service.start()
+            rig.nodes = TWO_NODES
+            await until(lambda: rig.service.state()["connected"])
+            order = []
+            key = rig.emitter.key
+            rig.emitter.key = lambda code, down: (order.append(("key", code, down)), key(code, down))
+            for dev in rig.devices:
+                dev.ungrab = lambda: order.append("ungrab")
+            rig.devices[0].push((EV_KEY, KEY_1, 1))
+            await until(lambda: ("key", KEY_ESC, True) in order)
+            supervisor = rig.service._supervisor
+
+            with self.assertRaises(StopIteration):
+                rig.service.stop().send(None)  # runs to the end in one step
+            self.assertEqual(order[1:], [("key", KEY_ESC, False), "ungrab", "ungrab"])
+            self.assertTrue(all(d.closed for d in rig.devices))
+            self.assertTrue(rig.emitter.closed)
+            await asyncio.sleep(0)
+            self.assertTrue(supervisor.cancelled())
+
+        self.run_async(go())
+
+    def test_stop_cancels_pending_emits(self):
+        async def go():
+            rig = Rig(self.path)
+            started = []
+
+            async def slow_emit(event, *args):
+                started.append(event)
+                await asyncio.sleep(10)
+
+            rig.service._emit = slow_emit
+            await rig.service.start()
+            rig.service.set_running_app(5, "X")  # notifies the frontend
+            await until(lambda: started)
+            pending = set(rig.service._pending)
+            self.assertTrue(pending)
+            with self.assertRaises(StopIteration):
+                rig.service.stop().send(None)
+            await asyncio.sleep(0)
+            self.assertTrue(all(t.cancelled() for t in pending))
+            self.assertEqual(rig.service._pending, set())
+
+        self.run_async(go())
+
 
 def load_main(fake_decky):
     sys.modules["decky"] = fake_decky
@@ -305,6 +356,21 @@ class PluginTest(unittest.TestCase):
                                       DECKY_PLUGIN_SETTINGS_DIR="/nonexistent")
         plugin = load_main(decky).Plugin()
         asyncio.run(plugin._unload())  # _main never ran: no service attribute
+        asyncio.run(plugin._uninstall())
+
+    def test_plugin_uninstall_stops_service(self):
+        import logging
+        decky = types.SimpleNamespace(logger=logging.getLogger("tartarus.test"),
+                                      DECKY_PLUGIN_SETTINGS_DIR="/nonexistent")
+        plugin = load_main(decky).Plugin()
+        stopped = []
+
+        async def stop():
+            stopped.append(True)
+
+        plugin.service = types.SimpleNamespace(stop=stop)
+        asyncio.run(plugin._uninstall())
+        self.assertEqual(stopped, [True])
 
     def test_plugin_profile_callables(self):
         import logging

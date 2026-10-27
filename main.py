@@ -27,7 +27,8 @@ class Plugin:
         decky.logger.info("Decky Tartarus unloaded")
 
     async def _uninstall(self):
-        pass
+        if self.service is not None:
+            await self.service.stop()  # Decky calls _unload first; stop is idempotent
 
     async def get_state(self) -> dict:
         return self.service.state()

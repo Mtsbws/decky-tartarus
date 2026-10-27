@@ -95,15 +95,20 @@ class TartarusService:
         self._supervisor = self._loop.create_task(self._supervise())
 
     async def stop(self) -> None:
-        """Safe after a failed or missing start, and safe to call twice."""
+        """Safe after a failed or missing start, and safe to call twice.
+
+        Never awaits: Decky closes the plugin's socket while _unload runs, and its listener then
+        spins on EOF without yielding. A stop() suspended at an await would never resume, and
+        Decky SIGKILLs the plugin 5 s later with the keypad still in our hands.
+        """
+        t0 = time.monotonic()
+        if self._engine is not None:
+            self._engine.release_all()
+        self._leave_driver_mode()
         if self._supervisor is not None:
+            if self._supervisor.done() and not self._supervisor.cancelled() and self._supervisor.exception():
+                self._log.error("supervisor failed", exc_info=self._supervisor.exception())
             self._supervisor.cancel()
-            try:
-                await self._supervisor
-            except asyncio.CancelledError:
-                pass
-            except Exception:
-                self._log.exception("supervisor failed")
             self._supervisor = None
         self._record_stop()
         self._disconnect(notify=False)
@@ -114,6 +119,10 @@ class TartarusService:
                 self._log.exception("destroying the virtual devices failed")
             self._emitter = None
         self._engine = None
+        for task in self._pending:
+            task.cancel()
+        self._pending.clear()
+        self._log.info("stopped in %d ms", (time.monotonic() - t0) * 1000)
 
     async def _supervise(self) -> None:
         loop = asyncio.get_running_loop()
@@ -182,6 +191,9 @@ class TartarusService:
         self._log.info("keypad disconnected")
         if notify:
             self._notify()
+
+    def _leave_driver_mode(self) -> None:
+        """Put the keypad back in normal mode (driver mode arrives in a later change)."""
 
     def _on_readable(self, dev: Any) -> None:
         try:
