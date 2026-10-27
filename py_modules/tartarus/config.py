@@ -414,8 +414,7 @@ def _parse_hypershift(raw, key: Optional[str]) -> Hypershift:
                 continue
             layer.bindings[control] = binding
     layer.actuation = _parse_actuation(raw.get("actuation"), only=layer.bindings)
-    layer.secondary = _parse_secondary(raw.get("secondary"), layer.actuation, only=layer.bindings,
-                                       allow_hypershift=False)
+    layer.secondary = _parse_secondary(raw.get("secondary"), layer.actuation, only=layer.bindings)
     return layer
 
 
@@ -432,7 +431,7 @@ def _parse_actuation(raw, only=None) -> Dict[str, float]:
     return actuation
 
 
-def _parse_secondary(raw, actuation: Dict[str, float], only=None, allow_hypershift=True) -> Dict[str, Secondary]:
+def _parse_secondary(raw, actuation: Dict[str, float], only=None) -> Dict[str, Secondary]:
     """Checked against the parsed A points, so a dropped A counts as DEFAULT_MM.
     `only`: when given, the controls that may hold an entry."""
     secondary: Dict[str, Secondary] = {}
@@ -452,8 +451,8 @@ def _parse_secondary(raw, actuation: Dict[str, float], only=None, allow_hypershi
         except BindingError as e:
             log.warning("dropping secondary function for %s (%s)", control, e)
             continue
-        if binding.type == "hypershift" and not allow_hypershift:
-            log.warning("dropping secondary function for %s: Hypershift is not allowed here", control)
+        if binding.type == "hypershift":
+            log.warning("dropping secondary function for %s: Hypershift cannot be a secondary function", control)
             continue
         secondary[control] = Secondary(binding, round(mm, 1))
     return secondary

@@ -289,6 +289,21 @@ class ConfigTest(unittest.TestCase):
         h2.bindings["k06"] = parse_binding_text("F2")
         self.assertEqual(set(h.bindings), {"k05"})
 
+    def test_hypershift_type_secondary_dropped(self):
+        hs = {"type": "hypershift"}
+        f1 = binding_to_dict(parse_binding_text("F1"))
+        entry = _entry("default", "Default", bindings={"k19": hs})
+        entry["secondary"] = {"k05": {"binding": hs, "actuation": 3.0}}
+        entry["hypershift"] = {"bindings": {"k06": f1},
+                               "secondary": {"k06": {"binding": hs, "actuation": 3.0}}}
+        self._write(_stored([entry]))
+        with self.assertLogs("tartarus", "WARNING") as logs:
+            q = load_config(self.path).profiles[0]
+        self.assertEqual(q.secondary, {})
+        self.assertEqual(q.hypershift.secondary, {})
+        self.assertEqual(q.hypershift.bindings, {"k06": parse_binding_text("F1")})
+        self.assertEqual(len(logs.records), 2)
+
     def test_corrupt_file_backed_up(self):
         self._write("{nope")
         with self.assertLogs("tartarus", "WARNING"):
