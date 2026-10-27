@@ -10,8 +10,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from .actuation import DEFAULT_MM, valid_mm
 from .bindings import Binding, BindingError, binding_from_dict, binding_to_dict, parse_binding_text
-from .devmap import ALL_CONTROLS, FACTORY_OUTPUT
+from .devmap import ACTUATION_KEYS, ALL_CONTROLS, FACTORY_OUTPUT
 
 SCHEMA_VERSION = 2
 DPAD_MODES = ("4way", "8way")
@@ -49,6 +50,7 @@ class Profile:
     dpad_mode: str  # "4way" | "8way"
     bindings: Dict[str, Binding]
     leds: Tuple[bool, bool, bool] = NO_LEDS
+    actuation: Dict[str, float] = field(default_factory=dict)  # mm, only keys away from DEFAULT_MM
 
 
 @dataclass
@@ -205,6 +207,7 @@ def _dump(c: Config) -> dict:
                 "leds": list(p.leds),
                 "dpad_mode": p.dpad_mode,
                 "bindings": {control: binding_to_dict(b) for control, b in p.bindings.items()},
+                "actuation": dict(p.actuation),
             }
             for p in c.profiles
         ],
@@ -329,7 +332,19 @@ def _parse_bindings(raw) -> Dict[str, Binding]:
 def _parse_profile(raw: dict, pid: str) -> Profile:
     mode = raw.get("dpad_mode")
     return Profile(id=pid, name=pid, dpad_mode=mode if mode in DPAD_MODES else "4way",
-                   bindings=_parse_bindings(raw.get("bindings")))
+                   bindings=_parse_bindings(raw.get("bindings")), actuation=_parse_actuation(raw.get("actuation")))
+
+
+def _parse_actuation(raw) -> Dict[str, float]:
+    actuation: Dict[str, float] = {}
+    if not isinstance(raw, dict):
+        return actuation
+    for control, mm in raw.items():
+        if control not in ACTUATION_KEYS or not valid_mm(mm):
+            log.warning("dropping actuation %r for %r", mm, control)
+        elif round(mm, 1) != DEFAULT_MM:
+            actuation[control] = round(mm, 1)
+    return actuation
 
 
 def _parse_adjustable_actuation(raw) -> bool:

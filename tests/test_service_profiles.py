@@ -18,7 +18,7 @@ def write_settings(path):
     mmo = factory_bindings()
     mmo["k01"] = parse_binding_text("Esc")
     c.profiles.append(Profile(id="p2", name="MMO", dpad_mode="4way", bindings=mmo,
-                            leds=(True, False, False)))
+                            leds=(True, False, False), actuation={"k02": 2.5}))
     c.games = {str(RUNESCAPE): Game(name="RuneScape", profile="p2")}
     save_config(path, c)
 
@@ -245,6 +245,7 @@ class ProfileSwitchTest(unittest.TestCase):
             self.assertEqual(fps.bindings, mmo.bindings)
             self.assertEqual(fps.dpad_mode, mmo.dpad_mode)
             self.assertEqual(fps.leds, (False, True, False))
+            self.assertEqual(fps.actuation, {"k02": 2.5})
             svc.set_binding(new_id, "k01", parse_binding_text("F5"))
             self.assertEqual(load_config(self.path).profiles[1].bindings["k01"], parse_binding_text("Esc"))
             for i in range(8 - len(load_config(self.path).profiles)):

@@ -571,7 +571,8 @@ class TartarusService:
             raise ValueError(f"At most {MAX_PROFILES} profiles")
         name = clean_name(self._config, name)
         profile = Profile(id=new_profile_id(self._config), name=name, dpad_mode=source.dpad_mode,
-                          bindings=dict(source.bindings), leds=next_leds(self._config))
+                          bindings=dict(source.bindings), leds=next_leds(self._config),
+                          actuation=dict(source.actuation))
         self._mutate(lambda: self._config.profiles.append(profile))
         return profile.id
 

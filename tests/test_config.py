@@ -137,6 +137,31 @@ class ConfigTest(unittest.TestCase):
             self.path.write_text(json.dumps(data))
             self.assertIs(load_config(self.path).adjustable_actuation, True, raw)
 
+    def test_actuation_round_trip(self):
+        c = default_config()
+        default_profile(c).actuation = {"k01": 2.5, "k20": 3.6}
+        save_config(self.path, c)
+        self.assertEqual(json.loads(self.path.read_text())["profiles"][0]["actuation"], {"k01": 2.5, "k20": 3.6})
+        self.assertEqual(load_config(self.path), c)
+
+    def test_v2_file_without_actuation_loads(self):
+        self._write(_stored({}))
+        self.assertEqual(default_profile(load_config(self.path)).actuation, {})
+
+    def test_bad_actuation_dropped(self):
+        bad = {"k01": 1.4, "k02": 2.55, "k03": "2", "top_button": 2.0, "k99": 2.0, "k04": True}
+        entry = _entry("default", "Default")
+        entry["actuation"] = dict(bad, k05=2.6000000000000005, k06=1.5)
+        self._write(_stored([entry]))
+        with self.assertLogs("tartarus", "WARNING") as logs:
+            c = load_config(self.path)
+        self.assertEqual(default_profile(c).actuation, {"k05": 2.6})
+        self.assertEqual(len(logs.records), len(bad))
+        for raw in ([2.5], "k01", None):
+            entry["actuation"] = raw
+            self._write(_stored([entry]))
+            self.assertEqual(default_profile(load_config(self.path)).actuation, {}, raw)
+
     def test_corrupt_file_backed_up(self):
         self._write("{nope")
         with self.assertLogs("tartarus", "WARNING"):
