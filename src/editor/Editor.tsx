@@ -1,4 +1,4 @@
-import { SidebarNavigation } from "@decky/ui";
+import { Tabs } from "@decky/ui";
 import { addEventListener, removeEventListener } from "@decky/api";
 import { useEffect, useState } from "react";
 
@@ -50,19 +50,16 @@ export function Editor() {
 
   const profile = viewedProfile(state);
 
-  // The route sits under Steam's header and above its footer, about 40 px each.
+  // The route sits under Steam's header and above its footer, 60 px each.
   return (
-    <div style={{ height: "100%", padding: "40px 0", boxSizing: "border-box" }}>
-      <SidebarNavigation
-        title="Tartarus"
-        showTitle
-        page={page}
-        onPageRequested={(p) => setPage(p as Page)}
-        pages={[
+    <div style={{ height: "100%", padding: "60px 0", boxSizing: "border-box" }}>
+      <Tabs
+        activeTab={page}
+        onShowTab={(id: string) => setPage(id as Page)}
+        tabs={[
           {
-            identifier: "customize",
+            id: "customize",
             title: "Customize",
-            padding: "compact",
             content: (
               <CustomizePage
                 state={state}
@@ -76,9 +73,9 @@ export function Editor() {
               />
             ),
           },
-          { identifier: "actuation", title: "Actuation", padding: "compact", content: <div /> },
-          { identifier: "lighting", title: "Lighting", padding: "compact", content: <div /> },
-          { identifier: "profiles", title: "Profiles", padding: "compact", content: <div /> },
+          { id: "actuation", title: "Actuation", content: <div /> },
+          { id: "lighting", title: "Lighting", content: <div /> },
+          { id: "profiles", title: "Profiles", content: <div /> },
         ]}
       />
     </div>
