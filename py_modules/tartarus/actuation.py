@@ -69,6 +69,11 @@ class KeyTracker:
         self._blocked = False
         self.last = 0
 
+    @property
+    def idle(self) -> bool:
+        """Nothing held, not latched, not waiting to re-arm: safe to change the fire points."""
+        return self._held is None and not self._latched and not self._blocked
+
     def feed(self, depth: int) -> List[Tuple[str, bool]]:
         self.last = depth
         release_a = self.fire_a - HYSTERESIS

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Awaitable, Callable, Dict, FrozenSet, List, Optional, Protocol, Sequence, Set
+from typing import Awaitable, Callable, Dict, FrozenSet, List, Optional, Protocol, Sequence, Set, Tuple
 
 from .actuation import DEFAULT_MM, KeyTracker, mm_to_depth
 from .bindings import Binding
@@ -45,6 +45,7 @@ class RemapEngine:
         self._dpad_active: FrozenSet[str] = frozenset()
         self._macros: Dict[str, asyncio.Task] = {}
         self._trackers: Dict[str, KeyTracker] = {}
+        self._key_layer: Dict[str, str] = {}  # depth key -> layer its current press belongs to
         self._build_trackers()
 
     # Record mode forwards raw events. Switching either way releases what is held,
@@ -95,9 +96,14 @@ class RemapEngine:
             tracker = self._trackers[control]
             if depth == tracker.last:
                 continue
+            if tracker.idle:  # a press keeps the layer (and fire points) it started in
+                layer = self._active_layer()
+                tracker.fire_a, tracker.fire_b = self._points(control, layer)
+                self._key_layer[control] = layer
+            layer = self._key_layer.get(control, STANDARD)
             for slot, is_down in tracker.feed(depth):
                 if not self._passthrough:  # still fed, so a key held into Record re-arms first
-                    self._trigger(control if slot == "a" else control + B_SUFFIX, is_down)
+                    self._trigger(control if slot == "a" else control + B_SUFFIX, is_down, layer)
         self._out.sync()
 
     def set_profile(self, profile: Profile) -> None:
@@ -117,6 +123,17 @@ class RemapEngine:
                 tracker.reset()
             self._trackers[control] = tracker
 
+    def _points(self, control: str, layer: str) -> Tuple[int, Optional[int]]:
+        """(fire_a, fire_b) depths for `control` in `layer`; a key the layer doesn't list uses the standard points."""
+        profile = self._profile
+        if layer == HYPERSHIFT and control in profile.hypershift.bindings:
+            actuation, secondary = profile.hypershift.actuation, profile.hypershift.secondary
+        else:
+            actuation, secondary = profile.actuation, profile.secondary
+        entry = secondary.get(control)
+        return (mm_to_depth(actuation.get(control, DEFAULT_MM)),
+                mm_to_depth(entry.actuation) if entry is not None else None)
+
     def release_all(self) -> None:
         for task in self._macros.values():
             task.cancel()
@@ -127,6 +144,7 @@ class RemapEngine:
         self._counts.clear()
         self._held.clear()
         self._pressed.clear()
+        self._key_layer.clear()
         self._hypershift_down = False
         self._hypershift_control = None
         self._dpad_pressed.clear()

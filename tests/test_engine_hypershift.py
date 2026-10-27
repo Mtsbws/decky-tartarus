@@ -5,7 +5,7 @@ import unittest
 
 from tartarus.bindings import parse_binding_text
 from tartarus.codes import code_for
-from tartarus.config import Hypershift
+from tartarus.config import Hypershift, Secondary
 from tartarus.devmap import FACTORY_CODES
 
 from tartarus.engine import RemapEngine
@@ -167,6 +167,9 @@ class HypershiftEngineTest(unittest.IsolatedAsyncioTestCase):
         e.handle_key(K19, 1)
         e.handle_key(K09, 1)
         self.assertEqual(self.out.events, [down(C), down(E)])
+        e.handle_key(K09, 0)
+        e.handle_key(K19, 0)
+        self.check_clean(e)
 
     async def test_top_button_as_hypershift_key(self):
         p = profile(top_button="hypershift")
@@ -178,3 +181,85 @@ class HypershiftEngineTest(unittest.IsolatedAsyncioTestCase):
         e.handle_key(TOP, 0)
         self.assertEqual(self.out.events, [down(F1), up(F1)])
         self.check_clean(e)
+
+    # --- depth (driver mode) ---
+
+    depths = staticmethod(__import__("tests.test_engine", fromlist=["EngineTest"]).EngineTest.depths)
+
+    def depth_engine(self, standard_secondary=None, standard_mm=None, entry_text="F1",
+                     entry_mm=None, entry_secondary=None):
+        p = hs_profile(k09=entry_text) if entry_text else hs_profile()
+        layer = p.hypershift
+        if entry_mm is not None:
+            layer.actuation["k09"] = entry_mm
+        if entry_secondary is not None:
+            layer.secondary["k09"] = Secondary(parse_binding_text(entry_secondary[0]), entry_secondary[1])
+        if standard_secondary is not None:
+            p.secondary["k09"] = Secondary(parse_binding_text(standard_secondary[0]), standard_secondary[1])
+        if standard_mm is not None:
+            p.actuation["k09"] = standard_mm
+        return self.engine(p)
+
+    async def test_layer_actuation_point(self):
+        e = self.depth_engine(entry_mm=2.5)
+        e.handle_depth(self.depths(k19=200))
+        e.handle_depth(self.depths(k19=200, k09=60))
+        self.assertEqual(self.out.events, [])
+        e.handle_depth(self.depths(k19=200, k09=130))
+        self.assertEqual(self.out.events, [down(F1)])
+
+    async def test_layer_secondary_function(self):
+        e = self.depth_engine(entry_secondary=("F3", 3.6))
+        e.handle_depth(self.depths(k19=200))
+        e.handle_depth(self.depths(k19=200, k09=130))
+        e.handle_depth(self.depths(k19=200, k09=255))
+        self.assertEqual(self.out.events, [down(F1), up(F1), down(F3)])
+
+    async def test_fall_through_keeps_standard_secondary(self):
+        Z = code_for("Z")
+        e = self.depth_engine(entry_text=None, standard_secondary=("Z", 3.6))
+        e.handle_depth(self.depths(k19=200))
+        e.handle_depth(self.depths(k19=200, k09=130))
+        e.handle_depth(self.depths(k19=200, k09=255))
+        self.assertEqual(self.out.events, [down(E), up(E), down(Z)])
+
+    async def test_entry_without_secondary_has_none(self):
+        e = self.depth_engine(standard_secondary=("Z", 3.6))
+        e.handle_depth(self.depths(k19=200))
+        e.handle_depth(self.depths(k19=200, k09=255))
+        self.assertEqual(self.out.events, [down(F1)])
+
+    async def test_depth_press_keeps_its_layer_points(self):
+        e = self.depth_engine(standard_mm=2.5, entry_mm=1.5)
+        e.handle_depth(self.depths(k09=60))
+        self.assertEqual(self.out.events, [])
+        e.handle_depth(self.depths(k09=60, k19=200))
+        self.assertEqual(self.out.events, [])
+        e.handle_depth(self.depths(k09=61, k19=200))
+        self.assertEqual(self.out.events, [down(F1)])
+
+    async def test_depth_press_started_standard_stays_standard(self):
+        e = self.depth_engine(standard_mm=2.5, entry_mm=1.5)
+        e.handle_depth(self.depths(k09=130))
+        self.assertEqual(self.out.events, [down(E)])
+        e.handle_depth(self.depths(k09=130, k19=200))
+        e.handle_depth(self.depths(k09=135, k19=200))
+        e.handle_depth(self.depths(k09=135, k19=0))
+        e.handle_depth(self.depths(k09=0, k19=0))
+        self.assertEqual(self.out.events, [down(E), up(E)])
+        self.check_clean(e)
+
+    async def test_set_profile_while_hypershift_held(self):
+        p = hs_profile(k09="F1")
+        e = self.engine(p)
+        e.handle_depth(self.depths(k19=200))
+        e.handle_depth(self.depths(k19=200, k09=200))
+        self.assertEqual(self.out.events, [down(F1)])
+        e.set_profile(p)
+        self.assertEqual(self.out.events, [down(F1), up(F1)])
+        e.handle_depth(self.depths(k19=200, k09=210))
+        self.assertEqual(self.out.events, [down(F1), up(F1)])
+        e.handle_depth(self.depths(k19=0, k09=0))
+        e.handle_depth(self.depths(k19=200, k09=0))
+        e.handle_depth(self.depths(k19=200, k09=200))
+        self.assertEqual(self.out.events, [down(F1), up(F1), down(F1)])
