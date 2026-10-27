@@ -122,6 +122,21 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(c.lighting.effect, "static")
         self.assertEqual(self._backups(), [])
 
+    def test_analog_round_trips_and_defaults_on(self):
+        self.assertTrue(load_config(self.path).analog)  # no file
+        c = default_config()
+        c.analog = False
+        save_config(self.path, c)
+        self.assertIs(load_config(self.path).analog, False)
+        for raw in (None, "yes"):
+            data = json.loads(self.path.read_text())
+            if raw is None:
+                del data["analog"]
+            else:
+                data["analog"] = raw
+            self.path.write_text(json.dumps(data))
+            self.assertIs(load_config(self.path).analog, True, raw)
+
     def test_corrupt_file_backed_up(self):
         self._write("{nope")
         with self.assertLogs("tartarus", "WARNING"):

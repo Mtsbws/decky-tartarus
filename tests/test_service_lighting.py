@@ -117,8 +117,9 @@ class LightingServiceTest(unittest.TestCase):
                     rig.nodes = TWO_NODES
                     await until(lambda: rig.service.state()["connected"])
                     rig.service.set_lighting("static", "#00ff00", 100)  # must not raise
-                # Connect and set_lighting each warn once for lighting and once for the LEDs.
-                self.assertEqual(len(logs.output), 4)
+                # Connect and set_lighting each warn once for lighting and once for the LEDs
+                # (TWO_NODES has no depth node, so connect also warns that analog keys are unavailable).
+                self.assertEqual(len([line for line in logs.output if "analog keys" not in line]), 4)
                 await rig.service.stop()
 
         self.run_async(go())

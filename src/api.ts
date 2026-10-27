@@ -11,6 +11,15 @@ export type ControlState = { binding: BindingDict; label: string; factory: strin
 
 export type LightingState = { effect: string; color: string; brightness: number };
 
+export type AnalogState = {
+  enabled: boolean;
+  status: "on" | "off" | "unavailable" | null;
+  default_mm: number;
+  min_mm: number;
+  max_mm: number;
+  min_gap_mm: number;
+};
+
 export type ProfileState = {
   id: string;
   name: string;
@@ -29,6 +38,7 @@ export type State = {
   device_id: string | null;
   steam_mode: string;
   lighting: LightingState;
+  analog: AnalogState;
   effects: string[];
   active_profile: string;
   running_app: RunningApp | null;
@@ -54,6 +64,7 @@ export const createProfile = callable<[name: string, copyFromId: string], State>
 export const renameProfile = callable<[profileId: string, name: string], State>("rename_profile");
 export const deleteProfile = callable<[profileId: string], State>("delete_profile");
 export const setLighting = callable<[effect: string, color: string, brightness: number], State>("set_lighting");
+export const setAnalog = callable<[enabled: boolean], State>("set_analog");
 export const setLeds = callable<[profileId: string, leds: boolean[]], State>("set_leds");
 export const recordStart = callable<[], void>("record_start");
 export const recordCancel = callable<[], void>("record_cancel");

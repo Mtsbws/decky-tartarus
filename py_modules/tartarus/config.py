@@ -63,6 +63,7 @@ class Config:
     profiles: List[Profile]  # Default is always first
     games: Dict[str, Game] = field(default_factory=dict)  # 32-bit app ID as a decimal string
     lighting: Lighting = field(default_factory=Lighting)
+    analog: bool = True  # driver mode (key depth) while the plugin has the keypad
 
 
 class _Corrupt(Exception):
@@ -209,6 +210,7 @@ def _dump(c: Config) -> dict:
         ],
         "games": {key: {"name": g.name, "profile": g.profile} for key, g in c.games.items()},
         "lighting": {"effect": c.lighting.effect, "color": c.lighting.color, "brightness": c.lighting.brightness},
+        "analog": c.analog,
     }
 
 
@@ -225,7 +227,7 @@ def _parse(data) -> Config:
         raise _Corrupt("no profiles")
     profiles = _parse_profiles(raw_profiles)
     return Config(version=SCHEMA_VERSION, profiles=profiles, games=_parse_games(data.get("games"), profiles),
-                  lighting=_parse_lighting(data.get("lighting")))
+                  lighting=_parse_lighting(data.get("lighting")), analog=_parse_analog(data.get("analog")))
 
 
 def _parse_profiles(raw_profiles: list) -> List[Profile]:
@@ -328,6 +330,10 @@ def _parse_profile(raw: dict, pid: str) -> Profile:
     mode = raw.get("dpad_mode")
     return Profile(id=pid, name=pid, dpad_mode=mode if mode in DPAD_MODES else "4way",
                    bindings=_parse_bindings(raw.get("bindings")))
+
+
+def _parse_analog(raw) -> bool:
+    return raw if isinstance(raw, bool) else True
 
 
 def _parse_lighting(raw) -> Lighting:

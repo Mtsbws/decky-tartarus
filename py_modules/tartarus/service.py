@@ -8,16 +8,18 @@ import time
 from pathlib import Path
 from typing import Any, Awaitable, Callable, List, Optional, Sequence, Set, Tuple
 
+from .analog import DEFAULT_MM, MIN_GAP_MM, MM_MAX, MM_MIN, parse_depth_report
 from .bindings import Binding, binding_label, binding_to_dict
 from .config import (DEFAULT_ID, DPAD_MODES, LED_ORDER, MAX_APP_ID, MAX_PROFILES, Game, Lighting, Profile, clean_name,
                      default_profile, find_profile, load_config, new_profile_id, next_leds, profile_for_app, save_config)
 from .codes import name_for
-from .devmap import ALL_CONTROLS, FACTORY_CODES, FACTORY_OUTPUT, SYSTEM_CODES
+from .devmap import ALL_CONTROLS, ANALOG_KEYS, FACTORY_CODES, FACTORY_OUTPUT, SYSTEM_CODES
+from .devmode import DRIVER_MODE, NORMAL_MODE, set_mode_report
 from .engine import RemapEngine
 from .lighting import EFFECTS, effect_reports, leds_report
 from .linux.discovery import PRODUCT, VENDOR, TartarusNodes, find_tartarus, list_keyboards
 from .linux.evdev import EV_KEY, EV_REL, REL_WHEEL, InputDevice
-from .linux.hidraw import send_feature
+from .linux.hidraw import HidrawReader, send_feature
 from .linux.uinput import UinputEmitter
 from .record import RecordCapture
 
@@ -57,7 +59,8 @@ class TartarusService:
                  open_device: Callable[[str], Any] = InputDevice,
                  make_emitter: Callable[[Callable[[str], None]], Any] = UinputEmitter,
                  list_keyboards: Callable[[], List[str]] = list_keyboards,
-                 send_feature: Callable[[str, bytes], int] = send_feature) -> None:
+                 send_feature: Callable[[str, bytes], int] = send_feature,
+                 open_hidraw: Callable[[str], Any] = HidrawReader) -> None:
         self._path = Path(settings_path)
         self._emit = emit
         self._log = log or logging.getLogger("tartarus")
@@ -66,6 +69,7 @@ class TartarusService:
         self._make_emitter = make_emitter
         self._list_keyboards = list_keyboards
         self._send_feature = send_feature
+        self._open_hidraw = open_hidraw
         self._config = load_config(self._path)
         try:
             self._lighting_reports()
@@ -77,6 +81,11 @@ class TartarusService:
         self._engine: Optional[RemapEngine] = None
         self._devices: List[Any] = []
         self._hidraw: Optional[str] = None
+        self._depth_path: Optional[str] = None  # interface 1's hidraw node
+        self._depth: Any = None  # its reader, while in driver mode
+        self._driver_mode = False  # the keypad is in driver mode because we put it there
+        self._analog: Optional[str] = None  # "on" | "off" | "unavailable"; None while disconnected
+        self._factory_key_logged = False
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._supervisor: Optional[asyncio.Task] = None
         self._resume = ResumeDetector()
@@ -166,9 +175,12 @@ class TartarusService:
             self._loop.add_reader(dev.fd, self._on_readable, dev)
         self._devices = opened
         self._hidraw = nodes.hidraw
+        self._depth_path = nodes.depth
+        self._factory_key_logged = False
         self._log.info("keypad connected: %s", ", ".join(nodes.event))
         if self._engine is not None:
             self._engine.set_profile(self._profile())
+        self._enter_driver_mode()
         self._apply_lighting()
         self._notify()
 
@@ -177,6 +189,7 @@ class TartarusService:
             self._engine.release_all()
         if not self._devices:
             return
+        self._leave_driver_mode()
         for dev in self._devices:
             if self._loop is not None:
                 self._loop.remove_reader(dev.fd)
@@ -187,13 +200,70 @@ class TartarusService:
             dev.close()
         self._devices = []
         self._hidraw = None
+        self._depth_path = None
+        self._analog = None
         self._last_seen = None
         self._log.info("keypad disconnected")
         if notify:
             self._notify()
 
+    # --- driver mode ---
+
+    def _enter_driver_mode(self) -> None:
+        """Switch keys 01-20 to depth reports; on any failure the keypad stays in normal mode."""
+        if not self._config.analog:
+            self._analog = "off"
+            return
+        self._analog = "unavailable"
+        if self._depth_path is None or self._hidraw is None:
+            self._log.warning("analog keys unavailable: no %s interface found",
+                              "depth" if self._depth_path is None else "command")
+            return
+        if not self._send_command(set_mode_report(DRIVER_MODE), "driver mode"):
+            self._log.warning("analog keys unavailable: driver mode failed")
+            return
+        self._driver_mode = True
+        try:
+            reader = self._open_hidraw(self._depth_path)
+        except OSError as e:
+            self._log.warning("analog keys unavailable: opening %s failed (%s)", self._depth_path, e)
+            self._leave_driver_mode()
+            self._analog = "unavailable"
+            return
+        assert self._loop is not None
+        self._depth = reader
+        self._loop.add_reader(reader.fd, self._on_depth_readable)
+        self._analog = "on"
+        self._log.info("driver mode: analog keys on")
+
     def _leave_driver_mode(self) -> None:
-        """Put the keypad back in normal mode (driver mode arrives in a later change)."""
+        """Stop reading depth and put the keypad back in normal mode, if we changed it."""
+        if self._depth is not None:
+            if self._loop is not None:
+                self._loop.remove_reader(self._depth.fd)
+            self._depth.close()
+            self._depth = None
+        if self._driver_mode:
+            self._driver_mode = False
+            if self._send_command(set_mode_report(NORMAL_MODE), "normal mode", quiet=True):
+                self._log.info("normal mode restored")
+
+    def _on_depth_readable(self) -> None:
+        reader, engine = self._depth, self._engine
+        if reader is None:
+            return
+        for _ in range(64):  # bounded, so a flood can't starve the loop
+            try:
+                data = reader.read_report()
+            except OSError as e:
+                self._log.info("depth read failed (%s)", e)
+                self._disconnect()
+                return
+            if data is None:
+                return
+            depths = parse_depth_report(data)
+            if depths is not None and engine is not None:
+                engine.handle_depth(depths)
 
     def _on_readable(self, dev: Any) -> None:
         try:
@@ -209,6 +279,11 @@ class TartarusService:
             if type_ == EV_KEY:
                 if code in SYSTEM_CODES:
                     continue
+                if self._driver_mode and FACTORY_CODES.get(code) in ANALOG_KEYS:
+                    if not self._factory_key_logged:
+                        self._factory_key_logged = True
+                        self._log.info("dropping factory key %d from a depth key in driver mode", code)
+                    continue
                 if self._capture is not None and value != 2:
                     control = FACTORY_CODES.get(code)
                     if control is not None:
@@ -223,18 +298,19 @@ class TartarusService:
         lighting = self._config.lighting
         return effect_reports(lighting.effect, lighting.color, lighting.brightness)
 
-    def _send_command(self, report: bytes, what: str) -> bool:
-        """Send one feature report; failures are logged and return False, never raised."""
+    def _send_command(self, report: bytes, what: str, quiet: bool = False) -> bool:
+        """Send one feature report; failures are logged (at info if quiet) and return False, never raised."""
+        level = logging.INFO if quiet else logging.WARNING
         if self._hidraw is None:
-            self._log.warning("no lighting interface found; %s not applied", what)
+            self._log.log(level, "no lighting interface found; %s not applied", what)
             return False
         try:
             status = self._send_feature(self._hidraw, report)
         except OSError as e:
-            self._log.warning("%s command failed on %s (%s)", what, self._hidraw, e)
+            self._log.log(level, "%s command failed on %s (%s)", what, self._hidraw, e)
             return False
         if status != 0x02:
-            self._log.warning("%s command %02x/%02x returned status 0x%02x", what, report[6], report[7], status)
+            self._log.log(level, "%s command %02x/%02x returned status 0x%02x", what, report[6], report[7], status)
             return False
         return True
 
@@ -414,6 +490,8 @@ class TartarusService:
             "device_id": f"{VENDOR}:{PRODUCT}" if self._devices else None,
             "steam_mode": STEAM_ACTION_MODE,
             "lighting": {"effect": lighting.effect, "color": lighting.color, "brightness": lighting.brightness},
+            "analog": {"enabled": self._config.analog, "status": self._analog, "default_mm": DEFAULT_MM,
+                       "min_mm": MM_MIN, "max_mm": MM_MAX, "min_gap_mm": MIN_GAP_MM},
             "effects": list(EFFECTS),
             "active_profile": self._profile().id,
             "running_app": {"app_id": self._running[0], "name": self._running[1]} if self._running else None,
@@ -519,6 +597,19 @@ class TartarusService:
         self._config.lighting = Lighting(effect=effect, color=color, brightness=brightness)
         save_config(self._path, self._config)
         self._apply_lighting()
+
+    def set_analog(self, enabled: bool) -> None:
+        """The panel's Analog keys switch: release what is held, then change the mode at once."""
+        if not isinstance(enabled, bool):
+            raise ValueError("enabled must be true or false")
+        self._config.analog = enabled
+        save_config(self._path, self._config)
+        if self._devices:
+            if self._engine is not None:
+                self._engine.release_all()
+            self._leave_driver_mode()
+            self._enter_driver_mode()
+        self._notify()
 
     def _save(self) -> None:
         """Persist only. Never touches the engine: set_profile releases keys the user may be holding."""
