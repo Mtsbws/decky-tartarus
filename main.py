@@ -96,6 +96,10 @@ class Plugin:
         self.service.set_secondary(profile_id, control, mm)
         return self.service.state()
 
+    async def clear_hypershift_entry(self, profile_id: str, control: str) -> dict:
+        self.service.clear_hypershift_entry(profile_id, control)
+        return self.service.state()
+
     async def set_leds(self, profile_id: str, leds: list) -> dict:
         self.service.set_leds(profile_id, leds)
         return self.service.state()
