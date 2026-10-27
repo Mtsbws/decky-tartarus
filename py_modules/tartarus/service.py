@@ -8,7 +8,8 @@ import time
 from pathlib import Path
 from typing import Any, Awaitable, Callable, List, Optional, Sequence, Set, Tuple
 
-from .actuation import DEFAULT_MM, MIN_GAP_MM, MM_MAX, MM_MIN, parse_depth_report, tenths, valid_mm
+from .actuation import (DEFAULT_MM, MIN_GAP_MM, MM_MAX, MM_MIN, KeyTracker, mm_to_depth, parse_depth_report, tenths,
+                        valid_mm)
 from .bindings import Binding, binding_label, binding_to_dict
 from .config import (DEFAULT_ID, DPAD_MODES, LED_ORDER, MAX_APP_ID, MAX_PROFILES, Game, Lighting, Profile, clean_name,
                      default_profile, find_profile, load_config, new_profile_id, next_leds, profile_for_app, save_config)
@@ -93,6 +94,9 @@ class TartarusService:
         self._pending: Set[asyncio.Task] = set()
         self._capture: Optional[RecordCapture] = None
         self._record_devices: List[Any] = []
+        # Record in driver mode: each key fires at the lightest point, and only the first key pressed counts.
+        self._record_trackers = {control: KeyTracker(mm_to_depth(MM_MIN)) for control in ACTUATION_KEYS}
+        self._record_key: Optional[str] = None
         self._record_timer: Optional[asyncio.TimerHandle] = None
 
     # --- lifecycle ---
@@ -262,8 +266,10 @@ class TartarusService:
             if data is None:
                 return
             depths = parse_depth_report(data)
-            if depths is not None and engine is not None:
-                engine.handle_depth(depths)
+            if depths is not None:
+                self._record_depth(depths)
+                if engine is not None:
+                    engine.handle_depth(depths)
 
     def _on_readable(self, dev: Any) -> None:
         try:
@@ -341,6 +347,8 @@ class TartarusService:
         """Capture the next key or shortcut, from the keypad (as its factory key) or any keyboard."""
         self._record_stop()
         self._capture = RecordCapture()
+        for tracker in self._record_trackers.values():
+            tracker.reset()
         if self._engine is not None:
             self._engine.passthrough = True
         if self._loop is None:
@@ -357,6 +365,15 @@ class TartarusService:
 
     def record_cancel(self) -> None:
         self._record_stop()
+
+    def _record_depth(self, depths: bytes) -> None:
+        """Always fed, so a key held when Record starts must re-arm before it counts."""
+        for control, depth in zip(ACTUATION_KEYS, depths):
+            for _slot, is_down in self._record_trackers[control].feed(depth):
+                if self._capture is None or self._record_key not in (None, control):
+                    continue
+                self._record_key = control if is_down else None
+                self._record_feed(FACTORY_OUTPUT[control], is_down)
 
     def _record_feed(self, name: str, down: bool) -> None:
         if self._capture is None:
@@ -392,6 +409,7 @@ class TartarusService:
             dev.close()
 
     def _record_stop(self) -> None:
+        self._record_key = None
         if self._record_timer is not None:
             self._record_timer.cancel()
             self._record_timer = None
