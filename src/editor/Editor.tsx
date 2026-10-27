@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { EV_STATE, activeProfile, errorText, getState, profileById, setDpadMode, State } from "../api";
 import { LightingControls } from "../LightingControls";
+import { HypershiftLights } from "./HypershiftLights";
 import { syncLighting } from "../lighting";
 import { ActuationPage } from "./ActuationPage";
 import { Layer } from "./layers";
@@ -108,6 +109,7 @@ export function Editor() {
               <div style={{ height: PAGE_HEIGHT, maxWidth: 560 }}>
                 <Card title="Lighting">
                   <LightingControls effects={state.effects} collapsible={false} />
+                  <HypershiftLights state={state} onChanged={setState} />
                 </Card>
               </div>
             ),

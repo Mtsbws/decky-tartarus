@@ -19,6 +19,8 @@ Razer Synapse does on Windows, without Synapse or OpenRazer.
   keys switch to a second set of bindings, each with its own depth and secondary function.
   Keys you leave alone keep their normal binding. Not the same as the secondary function,
   which is a deeper point on one key's press.
+- **Hypershift lights:** optionally colour the keypad while the Hypershift key is held. For now
+  the whole backlight turns that colour; per-key lights depend on a hardware check.
 - **Profiles per game:** up to 8 named layouts (Default, FPS, MMO, …). Assign a game while
   you play and the keypad switches whenever that game starts, including non-Steam shortcuts
   such as one Moonlight shortcut per streamed PC game.

@@ -5,7 +5,7 @@ import { useLighting } from "./lighting";
 
 // Effects that send no colour to the keypad (spike findings: spectrum and wave).
 const COLOURLESS = new Set(["spectrum", "wave"]);
-const SWATCHES = [
+export const SWATCHES = [
   "#ff0000", "#ff6000", "#ffff00", "#00ff00", "#00ffff", "#0000ff", "#8000ff", "#ff00ff", "#ffffff",
 ];
 

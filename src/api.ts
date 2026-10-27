@@ -9,7 +9,13 @@ export type BindingDict = {
 
 export type ControlState = { binding: BindingDict; label: string; factory: string };
 
-export type LightingState = { effect: string; color: string; brightness: number; enabled: boolean };
+export type LightingState = {
+  effect: string;
+  color: string;
+  brightness: number;
+  enabled: boolean;
+  hypershift: { enabled: boolean; color: string };
+};
 
 export type ActuationState = {
   enabled: boolean;
@@ -87,6 +93,7 @@ export const renameProfile = callable<[profileId: string, name: string], State>(
 export const deleteProfile = callable<[profileId: string], State>("delete_profile");
 export const setLighting = callable<[effect: string, color: string, brightness: number], State>("set_lighting");
 export const setLightingEnabled = callable<[enabled: boolean], State>("set_lighting_enabled");
+export const setHypershiftLights = callable<[enabled: boolean, color: string], State>("set_hypershift_lights");
 export const setActuation = callable<[profileId: string, control: string, mm: number], State>("set_actuation");
 export const setActuationKeys = callable<[profileId: string, controls: string[], mm: number], State>("set_actuation_keys");
 export const clearHypershiftEntry = callable<[profileId: string, control: string], State>("clear_hypershift_entry");
