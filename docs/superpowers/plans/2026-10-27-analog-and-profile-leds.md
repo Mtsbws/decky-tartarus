@@ -480,4 +480,4 @@ All editor controls must work with the D-pad and A button (wrap groups in `Focus
 
 ### Deck check M5 (user runs)
 
-Deploy. Using only the D-pad and A: select key 05, set actuation 2.5, see the badge; turn on the secondary function, record B, set B 3.4; apply All keys 2.0 → B stays ≥ 2.5; pick another LED pattern for a profile → LEDs change if it's active; Adjustable actuation off → the note shows. Then the final whole-branch review with an `opus` subagent.
+Superseded by Deck check M5e in docs/superpowers/plans/2026-10-27-synapse-style-ui.md.
