@@ -1,9 +1,23 @@
 import { ConfirmModal, DialogButton, Dropdown, showModal } from "@decky/ui";
 import { useState } from "react";
 
-import { activeProfile, createProfile, deleteProfile, profileById, renameProfile, State } from "../api";
+import { activeProfile, createProfile, deleteProfile, profileById, renameProfile, setLeds, State } from "../api";
 import { errorText } from "../Panel";
 import { NameModal } from "./NameModal";
+
+// LED patterns as dropdown keys and labels, top light first.
+const ledKey = (leds: boolean[]) => leds.map((on) => (on ? "1" : "0")).join("");
+const ledLabel = (leds: boolean[]) => leds.map((on) => (on ? "●" : "○")).join("");
+
+function LedDots({ leds }: { leds: boolean[] }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      {leds.map((on, i) => (
+        <div key={i} style={{ width: 6, height: 6, borderRadius: 3, background: on ? "#dfe3e6" : "#434b57" }} />
+      ))}
+    </div>
+  );
+}
 
 type Props = { state: State; viewing: string; onView(id: string): void; onChanged(s: State): void };
 
@@ -15,6 +29,22 @@ export function ProfileBar({ state, viewing, onView, onChanged }: Props) {
   const usedBy = profile.is_default
     ? "Used by every game without its own profile" + (games ? `: ${games}` : "")
     : `Used by: ${games || "no games"}`;
+
+  // The viewed profile's own pattern plus the ones no other profile uses.
+  const ledOptions = state.led_patterns.filter(
+    (leds) => ledKey(leds) === ledKey(profile.leds) || !state.profiles.some((p) => p.id !== profile.id && ledKey(p.leds) === ledKey(leds)),
+  );
+
+  function pickLeds(key: string) {
+    const leds = ledOptions.find((l) => ledKey(l) === key);
+    if (!leds) return;
+    setLeds(viewing, leds)
+      .then((s) => {
+        setError(null);
+        onChanged(s);
+      })
+      .catch((e) => setError(errorText(e)));
+  }
 
   function create() {
     showModal(
@@ -76,6 +106,16 @@ export function ProfileBar({ state, viewing, onView, onChanged }: Props) {
             onChange={(o) => onView(o.data)}
           />
         </div>
+        <LedDots leds={profile.leds} />
+        {!profile.is_default && (
+          <div style={{ minWidth: 110 }}>
+            <Dropdown
+              rgOptions={ledOptions.map((l) => ({ data: ledKey(l), label: `LEDs ${ledLabel(l)}` }))}
+              selectedOption={ledKey(profile.leds)}
+              onChange={(o) => pickLeds(o.data)}
+            />
+          </div>
+        )}
         <DialogButton style={{ width: "auto", minWidth: 0 }} disabled={state.profiles.length >= state.max_profiles} onClick={create}>New</DialogButton>
         <DialogButton style={{ width: "auto", minWidth: 0 }} onClick={rename}>Rename</DialogButton>
         <DialogButton style={{ width: "auto", minWidth: 0 }} disabled={profile.is_default} onClick={remove}>Delete</DialogButton>
