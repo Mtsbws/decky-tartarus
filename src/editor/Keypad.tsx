@@ -2,6 +2,7 @@ import { Focusable } from "@decky/ui";
 import type { CSSProperties } from "react";
 
 import { ProfileState } from "../api";
+import { LED_COLOURS } from "../StatusLights";
 
 // Our own drawing of the Tartarus Pro (no Razer images), traced from a
 // top-down photo: five key columns with the pinky column dropped half a key,
@@ -166,7 +167,7 @@ function Picture() {
       {/* Thumb wing: the stem with the status lights, then the stick module */}
       <rect x={456} y={118} width={70} height={232} rx={26} fill="url(#tt-wing)" stroke="#434b57" strokeWidth={2} />
       {[230, 254, 278].map((y, i) => (
-        <circle key={y} cx={514} cy={y} r={3} fill={["#ffb02e", "#5cff3b", "#2ec5ff"][i]} />
+        <circle key={y} cx={514} cy={y} r={3} fill={LED_COLOURS[i]} />
       ))}
       <rect x={440} y={316} width={158} height={192} rx={44} fill="url(#tt-wing)" stroke="#434b57" strokeWidth={2} />
       {/* Arm that holds the thumb key */}

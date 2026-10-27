@@ -2,8 +2,7 @@ import { DialogButton, Focusable, TextField } from "@decky/ui";
 import { addEventListener, removeEventListener } from "@decky/api";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 
-import { BindingDict, EV_RECORD, recordCancel, ProfileState, recordStart, setBinding, setBindingText, State } from "../api";
-import { errorText } from "../Panel";
+import { BindingDict, EV_RECORD, errorText, recordCancel, ProfileState, recordStart, setBinding, setBindingText, State } from "../api";
 import { isMoreKey, isSteamPick, QUICK_PICKS } from "./quickPicks";
 
 type RecordStatus = "idle" | "recording" | "nothing";

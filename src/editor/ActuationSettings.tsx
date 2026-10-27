@@ -1,8 +1,7 @@
 import { DialogButton, Focusable, SliderField, ToggleField } from "@decky/ui";
 import { useEffect, useRef, useState } from "react";
 
-import { ProfileState, setActuation, setAllActuation, setSecondary, State } from "../api";
-import { errorText } from "../Panel";
+import { errorText, ProfileState, setActuation, setAllActuation, setSecondary, State } from "../api";
 import { BindingPicker } from "./BindingPicker";
 
 const DEBOUNCE_MS = 300;

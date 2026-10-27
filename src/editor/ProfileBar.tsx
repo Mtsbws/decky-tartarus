@@ -1,8 +1,7 @@
 import { ConfirmModal, DialogButton, Dropdown, showModal } from "@decky/ui";
 import { useState } from "react";
 
-import { activeProfile, createProfile, deleteProfile, profileById, renameProfile, setLeds, State } from "../api";
-import { errorText } from "../Panel";
+import { activeProfile, createProfile, deleteProfile, errorText, profileById, renameProfile, setLeds, State } from "../api";
 import { NameModal } from "./NameModal";
 
 // LED patterns as dropdown keys and labels, top light first.

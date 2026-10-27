@@ -2,8 +2,7 @@ import { Tabs } from "@decky/ui";
 import { addEventListener, removeEventListener } from "@decky/api";
 import { useEffect, useState } from "react";
 
-import { EV_STATE, activeProfile, getState, profileById, setDpadMode, State } from "../api";
-import { errorText } from "../Panel";
+import { EV_STATE, activeProfile, errorText, getState, profileById, setDpadMode, State } from "../api";
 import { CustomizePage } from "./CustomizePage";
 
 type Page = "customize" | "actuation" | "lighting" | "profiles";

@@ -9,7 +9,7 @@ export type BindingDict = {
 
 export type ControlState = { binding: BindingDict; label: string; factory: string };
 
-export type LightingState = { effect: string; color: string; brightness: number };
+export type LightingState = { effect: string; color: string; brightness: number; enabled: boolean };
 
 export type ActuationState = {
   enabled: boolean;
@@ -52,6 +52,12 @@ export type State = {
   led_patterns: boolean[][];
 };
 
+// The backend raises ValueError on bad input; the callable rejects with its message.
+export function errorText(e: unknown): string {
+  const text = e instanceof Error ? e.message : String(e);
+  return text.replace(/^[\s\S]*ValueError:\s*/, "").trim() || "Rejected";
+}
+
 export const profileById = (state: State, id: string) => state.profiles.find((p) => p.id === id);
 
 // The backend keeps active_profile pointing at an existing profile.
@@ -69,6 +75,7 @@ export const createProfile = callable<[name: string, copyFromId: string], State>
 export const renameProfile = callable<[profileId: string, name: string], State>("rename_profile");
 export const deleteProfile = callable<[profileId: string], State>("delete_profile");
 export const setLighting = callable<[effect: string, color: string, brightness: number], State>("set_lighting");
+export const setLightingEnabled = callable<[enabled: boolean], State>("set_lighting_enabled");
 export const setAdjustableActuation = callable<[enabled: boolean], State>("set_adjustable_actuation");
 export const setActuation = callable<[profileId: string, control: string, mm: number], State>("set_actuation");
 export const setAllActuation = callable<[profileId: string, mm: number], State>("set_all_actuation");

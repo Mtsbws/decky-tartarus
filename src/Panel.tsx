@@ -1,56 +1,20 @@
-import { ButtonItem, DropdownItem, Focusable, Navigation, PanelSection, PanelSectionRow, SliderField, ToggleField } from "@decky/ui";
+import { ButtonItem, DropdownItem, Navigation, PanelSection, PanelSectionRow, ToggleField } from "@decky/ui";
 import { addEventListener, removeEventListener } from "@decky/api";
 import { useEffect, useState } from "react";
 
-import { activeProfile, assignRunningGame, EV_STATE, getState, LightingState, setAdjustableActuation, setLighting, State } from "./api";
+import { activeProfile, assignRunningGame, errorText, EV_STATE, getState, setAdjustableActuation, State } from "./api";
+import { LightingControls } from "./LightingControls";
+import { syncLighting } from "./lighting";
 
 export const EDITOR_ROUTE = "/decky-tartarus/editor";
 
-// Effects that send no colour to the keypad (spike findings: spectrum and wave).
-const COLOURLESS = new Set(["spectrum", "wave"]);
-const DEBOUNCE_MS = 250;
-const SWATCHES = [
-  "#ff0000", "#ff6000", "#ffff00", "#00ff00", "#00ffff", "#0000ff", "#8000ff", "#ff00ff", "#ffffff",
-];
-
-// The backend raises ValueError on bad input; the callable rejects with its message.
-export function errorText(e: unknown): string {
-  const text = e instanceof Error ? e.message : String(e);
-  return text.replace(/^[\s\S]*ValueError:\s*/, "").trim() || "Rejected";
-}
-
-// Steam remounts the whole panel each time a dropdown menu opens, and the pick
-// arrives in the old instance. The lighting draft lives out here so the mounted
-// panel sees it.
-let lighting: LightingState | null = null;
-let lightingError: string | null = null;
+// Errors live out here: Steam remounts the whole panel each time a dropdown menu opens.
 let assignError: string | null = null;
 let actuationError: string | null = null;
-let timer: number | undefined;
-let writing = 0;
 const listeners = new Set<() => void>();
 
 function publish() {
   listeners.forEach((l) => l());
-}
-
-function changeLighting(patch: Partial<LightingState>) {
-  if (!lighting) return;
-  const next = { ...lighting, ...patch };
-  lighting = next;
-  publish();
-  window.clearTimeout(timer);
-  timer = window.setTimeout(() => {
-    timer = undefined;
-    writing++;
-    setLighting(next.effect, next.color, next.brightness)
-      .then(() => (lightingError = null))
-      .catch((e) => (lightingError = errorText(e)))
-      .finally(() => {
-        writing--;
-        publish();
-      });
-  }, DEBOUNCE_MS);
 }
 
 // The switch shows the backend's value; the state event after the call updates it.
@@ -82,19 +46,18 @@ export function Panel() {
     listeners.add(listener);
     getState().then((s) => {
       setState(s);
-      if (timer === undefined && writing === 0) lighting = s.lighting; // a pending edit is newer
-      publish();
+      syncLighting(s);
     });
-    const stateListener = addEventListener<[State]>(EV_STATE, setState);
+    const stateListener = addEventListener<[State]>(EV_STATE, (s) => {
+      setState(s);
+      syncLighting(s);
+    });
     return () => {
       listeners.delete(listener);
       removeEventListener(EV_STATE, stateListener);
     };
   }, []);
 
-  const draft = lighting;
-  const error = lightingError;
-  const change = changeLighting;
   const profile = state ? activeProfile(state) : null;
 
   function openEditor() {
@@ -149,57 +112,9 @@ export function Panel() {
           </ButtonItem>
         </PanelSectionRow>
       </PanelSection>
-      {state && draft && state.effects.length > 0 && (
+      {state && state.effects.length > 0 && (
         <PanelSection title="Lighting">
-          <PanelSectionRow>
-            <DropdownItem
-              label="Effect"
-              rgOptions={state.effects.map((e) => ({ data: e, label: e[0].toUpperCase() + e.slice(1) }))}
-              selectedOption={draft.effect}
-              onChange={(o) => change({ effect: o.data })}
-            />
-          </PanelSectionRow>
-          {!COLOURLESS.has(draft.effect) && (
-            <PanelSectionRow>
-              <Focusable flow-children="horizontal" style={{ display: "flex", justifyContent: "space-between" }}>
-                {SWATCHES.map((c) => (
-                  <Focusable
-                    key={c}
-                    onActivate={() => change({ color: c })}
-                    onClick={() => change({ color: c })}
-                    style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: 4,
-                      background: c,
-                      cursor: "pointer",
-                      outline: draft.color.toLowerCase() === c ? "2px solid #dfe3e6" : "none",
-                      outlineOffset: 2,
-                    }}
-                  >
-                    {null}
-                  </Focusable>
-                ))}
-              </Focusable>
-            </PanelSectionRow>
-          )}
-          <PanelSectionRow>
-            <SliderField
-              label="Brightness"
-              value={draft.brightness}
-              min={0}
-              max={100}
-              step={5}
-              showValue
-              valueSuffix="%"
-              onChange={(v) => change({ brightness: v })}
-            />
-          </PanelSectionRow>
-          {error && (
-            <PanelSectionRow>
-              <div style={{ color: "#e05050" }}>Not applied: {error}</div>
-            </PanelSectionRow>
-          )}
+          <LightingControls effects={state.effects} collapsible />
         </PanelSection>
       )}
     </>
