@@ -124,6 +124,8 @@ Extended-matrix effect commands: class `0x0F`, command `0x02`, args `01 05 <effe
 
 **Never send set-device-mode (class `0x00`, command `0x04`).** OpenRazer skips it for this PID because "Tartarus Pro resets when it receives this command". The daemon also runs this device with `DRIVER_MODE=False`.
 
+> **Superseded (2026-10-27):** on this firmware `00/04 03 00` and `00/04 00 00` switch modes without a reset, on Windows and on the Deck. See `synapse-capture-findings.md`. The analog design (`specs/2026-10-27-analog-and-profile-leds-design.md`) uses them.
+
 Breathing, wave, reactive and starlight are from the source only and weren't sent in the spike. Task 11's Deck check is their first run.
 
 ## Things that contradict or change the plan

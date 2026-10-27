@@ -71,22 +71,78 @@ the Tartarus Pro resets on it. Here it didn't, at least under Windows with this 
 Other startup queries: `00/82` (serial number, ASCII), `00/81`, `00/86`, `00/87`; `07/8B`
 answered "not supported".
 
+## Deck and Windows checks (2026-10-27, afternoon)
+
+Tools: `scripts/read-depth.py` (read-only hidraw logger) and `scripts/deck-probe.py` (fixed
+commands: `getmode`, `setmode 03|00`, `led R G B`, `read N`), each send approved by the user.
+Windows timing came from a USBPcap capture next to a key-log window, matched by timestamp.
+
+**Normal mode (Deck):**
+
+- No `0x06` depth reports. Keys 01-20 arrive only as on/off boot-keyboard reports (report ID 1,
+  interface 1), as evdev keys.
+- Interface 1's descriptor declares report IDs 1-6:
+  - 2 is consumer control.
+  - 3 is system control (usages `0x81`-`0x83`: power down, sleep, wake up).
+  - 4, 5 and 6 are 23-byte vendor-like fields (GD usage `0x03`, 0-255).
+- **The profile-LED command works in normal mode.** `led 00 00 FF` turned the top LED off and
+  the bottom LED on, status `0x02`.
+
+**Driver mode (`00/04 03 00`) on the Deck:**
+
+- Reply status `0x02`; `00/84` then reads `0x03`.
+- Keys 01-20 send no evdev events. Interface 1 streams `0x06` depth reports for all of them:
+  - byte n is key n for keys 01-19
+  - the thumb key is byte 20
+  - bytes 21-23 stayed `0x00`
+- The button above the D-pad (`KEY_LEFTALT`, interface 0), the D-pad (interface 0) and the
+  wheel (interface 2) behave exactly as in normal mode.
+- `00/04 00 00` returns to normal mode at once: key 01 types `1` again.
+- **No reset or re-enumeration from either switch.** The disconnects seen on the Deck were the
+  whole USB hub (`05e3:0608`, together with the Realtek LAN adapter). The same hub drop also
+  happened on Oct 25 and on Oct 27 at 09:53, with the keypad in normal mode.
+- **A replug resets the keypad to normal mode.** After the hub drop with the keypad in driver
+  mode, `00/84` read `0x00`.
+- About 3 s after the first `setmode 03`, the Deck suspended. Steam requested it (`dbus-send`
+  from the user session). The plugin was running and passes unknown key codes through. A
+  system-control sleep key from report 3 reaching Steam is a possible cause, unconfirmed: with
+  the probe grabbing the nodes, no sleep key was seen while pressing keys in driver mode.
+  systemd-logind also watches the keypad's keyboard node for system buttons.
+
+**Depth to millimetres (Windows, Synapse, single function on key 01):**
+
+| Setting | Fires at depth | Released at depth |
+|---|---|---|
+| 1.5 mm | about 16 | 14-17 |
+| 2.5 mm | about 120 | 112-114 |
+| 3.6 mm | about 251 | 245-246 |
+
+The gap between firing and releasing is about the key-log latency, so Synapse uses little or no
+hysteresis. The curve is close to linear but not quite (linear 1.5 → 0, 3.6 → 255 would put
+2.5 mm at 121).
+
+**Synapse secondary function (A at 1.5 mm, B at 3.6 mm):**
+
+- A fired at depth about 4. This is a Synapse quirk; the setting was saved at 1.5 mm.
+- B fired at about 252, **with A still held**.
+- On the way up, B released at about 250-253 and A at about 4.
+
+**Prior art:** InputPlumber PR #518 (ShadowBlip, open, not merged) implements Tartarus Pro analog
+mode host-side:
+
+- linear actuation 1.4-3.6 mm over depth 0-255
+- dual function
+- a "retrigger" (rapid trigger) option
+- device mode managed outside it
+
+Read for ideas only; it's GPL.
+
 ## Still a guess
 
-- Whether the profile-LED command works in **normal mode** (no `00/04`), the mode the plugin
-  uses. Every capture was in driver mode.
-- Whether the key-depth reports (`0x06` on interface 1) are sent in **normal mode** too, or only in
-  driver mode. If only in driver mode, analog features need `00/04 03 00`. Then the keypad
-  sends no plain keyboard input, which clashes with the anti-goal "the keypad stays usable when the
-  plugin stops". This can be checked on the Deck by reading interface 1's hidraw node,
-  read-only, while pressing a key slowly.
-- Byte order of the other keys in the depth report. Key 01 = byte 1 is confirmed, and the
-  profile-switch key in `19b` (key 14, from the user's memory) showed up as byte 14. So byte n is
-  probably key n for keys 01-20; bytes 21-23 (thumb key? D-pad?) are unknown.
-- How depth maps to millimetres (presumably 0x00-0xFF over the 1.5-3.6 mm range or the full travel).
-- Whether the profile LED stays as set when the plugin changes backlight effects or brightness, and
-  whether values between `00` and `FF` dim it.
+- Whether the profile LED works in driver mode, survives backlight effect and brightness
+  changes, and whether values between `00` and `FF` dim it.
 - What `args[4] = 0x01` means (OpenRazer and the plugin send `0x00` for static).
+- The cause of the suspend after the first `setmode 03`.
 
 ## Terms (user)
 
@@ -94,4 +150,5 @@ answered "not supported".
   second at another, e.g. `A` at 1.5 mm and `B` at 3.6 mm. Actuation can be set per key or for all
   keys.
 - **Hypershift**: a key (e.g. 01) that, while held, switches keys 02-20 to a second set of bindings.
-  Not captured (USB-wise it is probably host-side too); the user wants it added later.
+  Not captured (USB-wise it is probably host-side too). Deferred until the secondary function
+  works (user, 2026-10-27).
