@@ -105,7 +105,7 @@ class RemapEngine:
     def _build_trackers(self) -> None:
         """One tracker per actuation key; a new one inherits the old one's depth and re-arm wait."""
         for control in ACTUATION_KEYS:
-            tracker = KeyTracker(mm_to_depth(DEFAULT_MM))
+            tracker = KeyTracker(mm_to_depth(self._profile.actuation.get(control, DEFAULT_MM)))
             old = self._trackers.get(control)
             if old is not None:
                 tracker.last = old.last

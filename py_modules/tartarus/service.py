@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from typing import Any, Awaitable, Callable, List, Optional, Sequence, Set, Tuple
 
-from .actuation import DEFAULT_MM, MIN_GAP_MM, MM_MAX, MM_MIN, parse_depth_report
+from .actuation import DEFAULT_MM, MIN_GAP_MM, MM_MAX, MM_MIN, parse_depth_report, tenths, valid_mm
 from .bindings import Binding, binding_label, binding_to_dict
 from .config import (DEFAULT_ID, DPAD_MODES, LED_ORDER, MAX_APP_ID, MAX_PROFILES, Game, Lighting, Profile, clean_name,
                      default_profile, find_profile, load_config, new_profile_id, next_leds, profile_for_app, save_config)
@@ -483,7 +483,7 @@ class TartarusService:
             games = sorted((g.name for g in self._config.games.values() if g.profile == p.id), key=str.lower)
             profiles.append({"id": p.id, "name": p.name, "is_default": p is self._config.profiles[0],
                              "games": games, "dpad_mode": p.dpad_mode, "leds": list(p.leds),
-                             "bindings": bindings})
+                             "actuation": dict(p.actuation), "bindings": bindings})
         return {
             "connected": bool(self._devices),
             "device": self._device_name(),
@@ -523,6 +523,25 @@ class TartarusService:
         if mode not in DPAD_MODES:
             raise ValueError(f"unknown d-pad mode {mode!r}")
         profile.dpad_mode = mode
+        self._edited(profile)
+
+    def set_actuation(self, profile_id: str, control: str, mm: float) -> None:
+        profile = self._edit_target(profile_id)
+        if control not in ACTUATION_KEYS:
+            raise ValueError(f"{control!r} has no adjustable actuation")
+        self._apply_actuation(profile, (control,), mm)
+
+    def set_all_actuation(self, profile_id: str, mm: float) -> None:
+        self._apply_actuation(self._edit_target(profile_id), ACTUATION_KEYS, mm)
+
+    def _apply_actuation(self, profile: Profile, controls: Sequence[str], mm: float) -> None:
+        if not valid_mm(mm):
+            raise ValueError(f"actuation must be {MM_MIN}-{MM_MAX} mm in 0.1 mm steps")
+        for control in controls:
+            if tenths(mm) == tenths(DEFAULT_MM):
+                profile.actuation.pop(control, None)
+            else:
+                profile.actuation[control] = round(mm, 1)
         self._edited(profile)
 
     def set_leds(self, profile_id: str, leds: Sequence[bool]) -> None:

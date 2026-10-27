@@ -76,6 +76,14 @@ class Plugin:
         self.service.set_adjustable_actuation(enabled)
         return self.service.state()
 
+    async def set_actuation(self, profile_id: str, control: str, mm: float) -> dict:
+        self.service.set_actuation(profile_id, control, mm)
+        return self.service.state()
+
+    async def set_all_actuation(self, profile_id: str, mm: float) -> dict:
+        self.service.set_all_actuation(profile_id, mm)
+        return self.service.state()
+
     async def set_leds(self, profile_id: str, leds: list) -> dict:
         self.service.set_leds(profile_id, leds)
         return self.service.state()

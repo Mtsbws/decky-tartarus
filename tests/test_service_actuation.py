@@ -235,6 +235,46 @@ class ActuationServiceTest(unittest.TestCase):
 
         self.run_async(go())
 
+    def test_set_actuation(self):
+        async def go():
+            rig = await self.connected()
+            svc = rig.service
+            svc.set_actuation("default", "k01", 2.5)
+            self.assertEqual(json.loads(self.path.read_text())["profiles"][0]["actuation"], {"k01": 2.5})
+            self.assertEqual(svc.state()["profiles"][0]["actuation"], {"k01": 2.5})
+            self.readers[0].push(depth_report(k01=119))
+            self.readers[0].push(depth_report(k01=120))
+            await until(lambda: rig.emitter.out)
+            self.assertEqual(rig.emitter.out, [("key", KEY_ESC, True)])
+            svc.set_actuation("default", "k02", 2.6000000000000005)
+            self.assertEqual(svc.state()["profiles"][0]["actuation"], {"k01": 2.5, "k02": 2.6})
+            svc.set_actuation("default", "k01", 1.5)
+            self.assertEqual(json.loads(self.path.read_text())["profiles"][0]["actuation"], {"k02": 2.6})
+            before = self.path.read_bytes()
+            for args in (("default", "k01", 3.7), ("default", "k21", 2.0), ("default", "top_button", 2.0),
+                         ("default", "k01", 2.55), ("default", "k01", True), ("nope", "k01", 2.0)):
+                with self.assertRaises(ValueError, msg=args):
+                    svc.set_actuation(*args)
+            self.assertEqual(self.path.read_bytes(), before)
+            await svc.stop()
+
+        self.run_async(go())
+
+    def test_set_all_actuation(self):
+        async def go():
+            rig = await self.connected()
+            svc = rig.service
+            svc.set_all_actuation("default", 2.0)
+            self.assertEqual(json.loads(self.path.read_text())["profiles"][0]["actuation"],
+                             {f"k{i:02d}": 2.0 for i in range(1, 21)})
+            with self.assertRaises(ValueError):
+                svc.set_all_actuation("default", 1.4)
+            svc.set_all_actuation("default", 1.5)
+            self.assertEqual(json.loads(self.path.read_text())["profiles"][0]["actuation"], {})
+            await svc.stop()
+
+        self.run_async(go())
+
     def test_actuation_off_at_connect(self):
         async def go():
             data = json.loads(self.path.read_text())

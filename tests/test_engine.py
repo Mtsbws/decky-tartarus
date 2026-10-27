@@ -278,6 +278,18 @@ class EngineTest(unittest.IsolatedAsyncioTestCase):
         e.handle_depth(self.depths(k01=16))
         self.assertEqual(self.out.events, [down(ESC), up(ESC), down(ESC)])
 
+    async def test_actuation_point_from_profile(self):
+        prof = profile(k01="Esc")
+        prof.actuation = {"k01": 2.5}
+        e = self.engine(prof)
+        e.handle_depth(self.depths(k01=119))
+        self.assertEqual(self.out.events, [])
+        e.handle_depth(self.depths(k01=120))
+        e.handle_depth(self.depths(k01=112))
+        self.assertEqual(self.out.events, [down(ESC)])
+        e.handle_depth(self.depths(k01=111))
+        self.assertEqual(self.out.events, [down(ESC), up(ESC)])
+
     async def test_unchanged_bytes_do_nothing(self):
         e = self.engine(profile(k01="Esc"))
         e.handle_depth(self.depths(k01=100))

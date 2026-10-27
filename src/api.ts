@@ -27,6 +27,7 @@ export type ProfileState = {
   games: string[];
   dpad_mode: "4way" | "8way";
   leds: [boolean, boolean, boolean];
+  actuation: Record<string, number>;
   bindings: Record<string, ControlState>;
 };
 
@@ -65,6 +66,8 @@ export const renameProfile = callable<[profileId: string, name: string], State>(
 export const deleteProfile = callable<[profileId: string], State>("delete_profile");
 export const setLighting = callable<[effect: string, color: string, brightness: number], State>("set_lighting");
 export const setAdjustableActuation = callable<[enabled: boolean], State>("set_adjustable_actuation");
+export const setActuation = callable<[profileId: string, control: string, mm: number], State>("set_actuation");
+export const setAllActuation = callable<[profileId: string, mm: number], State>("set_all_actuation");
 export const setLeds = callable<[profileId: string, leds: boolean[]], State>("set_leds");
 export const recordStart = callable<[], void>("record_start");
 export const recordCancel = callable<[], void>("record_cancel");
