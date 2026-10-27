@@ -106,11 +106,8 @@ export function CustomizePage(props: {
             </Row>
           )}
           {isKey && (
-            <Row label={`Actuation: ${mmText(actuation)}`}>
-              {/* The knob overhangs the track's end by its radius. */}
-              <div style={{ flex: 1.4, minWidth: 0, paddingRight: 14 }}>
-                <SliderField value={actuation} min={min_mm} max={max_mm} step={0.1} bottomSeparator="none" onChange={changeActuation} />
-              </div>
+            <Row label={`Actuation: ${mmText(actuation)}`} stacked>
+              <SliderField value={actuation} min={min_mm} max={max_mm} step={0.1} bottomSeparator="none" onChange={changeActuation} />
             </Row>
           )}
           {isKey && (

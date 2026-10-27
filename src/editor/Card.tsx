@@ -15,23 +15,26 @@ export function Card({ title, children }: { title?: ReactNode; children: ReactNo
 }
 
 // A slim settings row: Steam's Field is about 78 px tall, too tall for a card that must fit the page.
-export function Row({ label, description, children }: { label: ReactNode; description?: ReactNode; children?: ReactNode }) {
+// Stacked puts the children under the label: Steam's slider track is a fixed 250 px wide.
+export function Row(props: { label: ReactNode; description?: ReactNode; stacked?: boolean; children?: ReactNode }) {
+  const { label, description, stacked, children } = props;
   return (
     <Focusable
-      flow-children="row"
+      flow-children={stacked ? "column" : "row"}
       style={{
         display: "flex",
-        alignItems: "center",
-        gap: 10,
+        flexDirection: stacked ? "column" : "row",
+        alignItems: stacked ? "stretch" : "center",
+        gap: stacked ? 0 : 10,
         minHeight: 44,
-        padding: "4px 12px",
+        padding: stacked ? "8px 12px 0" : "4px 12px",
         marginTop: 4,
         borderRadius: 4,
         background: "rgba(255, 255, 255, 0.06)",
         boxSizing: "border-box",
       }}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: stacked ? undefined : 1, minWidth: 0 }}>
         <div>{label}</div>
         {description && <div style={{ fontSize: 12, opacity: 0.7 }}>{description}</div>}
       </div>
