@@ -1,6 +1,6 @@
 # Decky Tartarus
 
-**Razer Synapse for the Steam Deck.** A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader)
+**Razer Synapse for SteamOS.** A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader)
 plugin that remaps the **Razer Tartarus Pro** keypad in Game Mode, with adjustable actuation,
 a secondary function per key, Hypershift, per-game profiles and lighting. No Windows, no
 Synapse, no OpenRazer, and nothing is stored on the keypad.
@@ -11,7 +11,11 @@ Synapse, no OpenRazer, and nothing is stored on the keypad.
 ![Customize tab: a key selected, with its binding, actuation and secondary function](docs/screenshots/customize.jpg)
 
 **Supported keypad:** Razer Tartarus Pro (2019, USB `1532:0244`), the one with analog
-optical switches. Other Tartarus models (V2, Chroma) are untested and not detected. Tested on a Steam Deck with SteamOS and Decky Loader 3.
+optical switches. Other Tartarus models (V2, Chroma) are untested and not detected.
+
+**Supported systems:** anything that runs SteamOS in Game Mode with Decky Loader: a Steam
+Deck, a Steam Machine, or a PC with SteamOS. It was built and tested on a Steam Deck (SteamOS,
+Decky Loader 3); reports from other machines are welcome.
 
 ## Features
 
@@ -44,8 +48,8 @@ optical switches. Other Tartarus models (V2, Chroma) are untested and not detect
 - **Works with streaming:** remapped input goes out through a virtual keyboard and mouse
   (`Decky Tartarus Keyboard`, `Decky Tartarus Mouse`), so Moonlight forwards it like any
   keyboard.
-- **Made for the Deck:** every page fits the 1280×800 screen without scrolling and works with
-  the D-pad and A/B.
+- **Made for a controller:** every page fits a 1280×800 screen without scrolling and works
+  with the D-pad and A/B, on a handheld or a TV.
 
 ## Using it
 
@@ -102,7 +106,7 @@ edit, and it says which profile the keypad uses now. Changes apply at once.
 
 ## Install
 
-Needs a Steam Deck in Game Mode with [Decky Loader](https://decky.xyz/). The plugin isn't
+Needs SteamOS in Game Mode with [Decky Loader](https://decky.xyz/). The plugin isn't
 in the Decky Plugin Store yet, so it installs from a URL:
 
 1. Decky → Settings (gear) → General → turn on **Developer mode**.
@@ -230,7 +234,7 @@ when the keypad is plugged back in and after sleep.
   second, because at least one depth report lands between the two points. Synapse does the
   same. A fast, hard press sends only the second.
 - **Steam menu keys** use Steam's own navigation, not the Ctrl+1 / Ctrl+2 shortcuts: under
-  fullscreen Moonlight those keystrokes go to the PC and nothing opens on the Deck.
+  fullscreen Moonlight those keystrokes go to the PC and nothing opens on the SteamOS machine.
 - **Record** can't capture wheel ticks; pick them under Mouse or type `WheelUp` /
   `WheelDown`.
 - Only lighting effects the keypad runs itself are offered. Ripple needs software-streamed
@@ -259,9 +263,9 @@ Needs `pnpm` and Python 3.
 
 ```sh
 pnpm install
-scripts/package.sh                              # → out/decky-tartarus.zip
-PYTHONPATH=py_modules python3 -m unittest       # backend tests
-scripts/deploy.sh deck@steamdeck.local          # build and stage on a Deck over ssh
+scripts/package.sh                          # → out/decky-tartarus.zip
+PYTHONPATH=py_modules python3 -m unittest   # backend tests
+scripts/deploy.sh deck@<host>               # build and stage on a SteamOS machine over ssh
 ```
 
 Install the zip with Decky → Settings → Developer → **Install Plugin from ZIP File**.

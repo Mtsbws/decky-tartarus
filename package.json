@@ -1,7 +1,7 @@
 {
   "name": "decky-tartarus",
   "version": "1.0.0",
-  "description": "Razer Synapse for the Steam Deck: remap a Razer Tartarus Pro with actuation, Hypershift, per-game profiles and lighting",
+  "description": "Razer Synapse for SteamOS: remap a Razer Tartarus Pro with actuation, Hypershift, per-game profiles and lighting",
   "type": "module",
   "scripts": {
     "build": "rollup -c",
@@ -12,6 +12,7 @@
     "decky",
     "plugin",
     "steam-deck",
+    "steamos",
     "razer",
     "tartarus"
   ],
