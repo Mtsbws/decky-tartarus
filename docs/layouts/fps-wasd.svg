@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="456" viewBox="0 0 800 456" font-family="Helvetica, Arial, sans-serif">
+  <rect x="0" y="0" width="800" height="456" rx="0" fill="#e6e8ec" stroke="#e6e8ec"/>
+  <rect x="16" y="16" width="768" height="424" rx="16" fill="#1d2027" stroke="#1d2027"/>
+  <text x="40" y="52" font-size="18" fill="#eef0f3" text-anchor="start" font-weight="bold">FPS – WASD</text>
+  <rect x="40" y="72" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="48" y="87" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">01</text>
+  <text x="88" y="110" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">Esc</text>
+  <rect x="144" y="72" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="152" y="87" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">02</text>
+  <text x="192" y="110" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">1</text>
+  <rect x="248" y="72" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="256" y="87" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">03</text>
+  <text x="296" y="110" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">2</text>
+  <rect x="352" y="72" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="360" y="87" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">04</text>
+  <text x="400" y="110" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">T</text>
+  <rect x="456" y="72" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="464" y="87" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">05</text>
+  <text x="504" y="110" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">F</text>
+  <rect x="40" y="136" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="48" y="151" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">06</text>
+  <text x="88" y="174" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">Tab</text>
+  <rect x="144" y="136" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="152" y="151" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">07</text>
+  <text x="192" y="174" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">Q</text>
+  <rect x="248" y="136" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="256" y="151" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">08</text>
+  <text x="296" y="174" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">W</text>
+  <rect x="352" y="136" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="360" y="151" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">09</text>
+  <text x="400" y="174" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">E</text>
+  <rect x="456" y="136" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="464" y="151" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">10</text>
+  <text x="504" y="174" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">R</text>
+  <rect x="40" y="200" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="48" y="215" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">11</text>
+  <text x="88" y="238" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">Shift</text>
+  <rect x="144" y="200" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="152" y="215" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">12</text>
+  <text x="192" y="238" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">A</text>
+  <rect x="248" y="200" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="256" y="215" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">13</text>
+  <text x="296" y="238" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">S</text>
+  <rect x="352" y="200" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="360" y="215" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">14</text>
+  <text x="400" y="238" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">D</text>
+  <rect x="456" y="200" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="464" y="215" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">15</text>
+  <text x="504" y="238" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">Y</text>
+  <rect x="40" y="264" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="48" y="279" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">16</text>
+  <text x="88" y="302" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">M</text>
+  <rect x="144" y="264" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="152" y="279" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">17</text>
+  <text x="192" y="302" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">Z</text>
+  <rect x="248" y="264" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="256" y="279" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">18</text>
+  <text x="296" y="302" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">G</text>
+  <rect x="352" y="264" width="96" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="360" y="279" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">19</text>
+  <text x="400" y="302" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">C</text>
+  <rect x="584" y="72" width="176" height="88" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="594" y="94" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">wheel ▲</text>
+  <text x="750" y="94" font-size="13" fill="#eef0f3" text-anchor="end" font-weight="bold">H</text>
+  <text x="594" y="120" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">click</text>
+  <text x="750" y="120" font-size="13" fill="#eef0f3" text-anchor="end" font-weight="bold">N</text>
+  <text x="594" y="146" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">wheel ▼</text>
+  <text x="750" y="146" font-size="13" fill="#eef0f3" text-anchor="end" font-weight="bold">V</text>
+  <rect x="584" y="172" width="176" height="44" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="592" y="187" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">top</text>
+  <text x="672" y="204" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">Alt</text>
+  <rect x="644" y="228" width="56" height="40" rx="6" fill="#2b3039" stroke="#3a404b"/>
+  <text x="672" y="253" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">3</text>
+  <rect x="588" y="268" width="56" height="40" rx="6" fill="#2b3039" stroke="#3a404b"/>
+  <text x="616" y="293" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">6</text>
+  <rect x="700" y="268" width="56" height="40" rx="6" fill="#2b3039" stroke="#3a404b"/>
+  <text x="728" y="293" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">4</text>
+  <rect x="644" y="308" width="56" height="40" rx="6" fill="#2b3039" stroke="#3a404b"/>
+  <text x="672" y="333" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">5</text>
+  <rect x="644" y="268" width="56" height="40" rx="6" fill="#3a404b" stroke="#3a404b"/>
+  <rect x="584" y="368" width="176" height="56" rx="8" fill="#2b3039" stroke="#3a404b"/>
+  <text x="592" y="383" font-size="10" fill="#8b93a1" text-anchor="start" font-weight="normal">20</text>
+  <text x="672" y="406" font-size="13" fill="#eef0f3" text-anchor="middle" font-weight="bold">Space</text>
+</svg>

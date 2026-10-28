@@ -1,7 +1,7 @@
 import { ConfirmModal, DialogButton, Focusable, showModal } from "@decky/ui";
 import { useState } from "react";
 
-import { activeProfile, createProfile, deleteProfile, errorText, profileById, ProfileState, renameProfile, State } from "../api";
+import { activeProfile, deleteProfile, errorText, profileById, ProfileState, renameProfile, State } from "../api";
 import { StatusLights } from "../StatusLights";
 import { Card } from "./Card";
 import { useKeypadGlow } from "./glow";
@@ -9,30 +9,8 @@ import { Keypad } from "./Keypad";
 import { BUTTON, ERROR, PAGE_HEIGHT } from "./layout";
 import { LightsModal } from "./LightsModal";
 import { NameModal } from "./NameModal";
-
-// A profile in the list: a slim row, as the Rows on the other pages, that selects the profile.
-const ROW = {
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  width: "100%",
-  minWidth: 0,
-  minHeight: 36,
-  padding: "4px 12px",
-  margin: 0,
-  textAlign: "left" as const,
-  borderRadius: 4,
-  flexShrink: 0,
-};
-// The row colours live in a stylesheet, not inline, so they give way to Steam's focus style:
-// an inline background stayed put on focus while Steam darkened the text, hiding the name.
-const ROW_CLASS = "Tartarus_ProfileRow";
-const ROW_CSS = `
-.${ROW_CLASS}:not(.gpfocus):not(:focus) { background: rgba(255, 255, 255, 0.06) !important; color: #dfe3e6 !important; }
-.${ROW_CLASS}.Tartarus_Selected:not(.gpfocus):not(:focus) { background: rgba(91, 209, 74, 0.22) !important; }
-.${ROW_CLASS}.Tartarus_Selected { box-shadow: inset 3px 0 0 #5bd14a !important; }
-`;
-const IN_USE = { fontSize: 11, padding: "1px 6px", borderRadius: 8, background: "#5bd14a", color: "#0e141b", flexShrink: 0 };
+import { NewProfileModal } from "./NewProfileModal";
+import { IN_USE, ROW, ROW_CLASS, ROW_CSS } from "./profileRows";
 
 export function ProfilesPage({ state, viewing, onEdit, onView, onChanged }: {
   state: State;
@@ -44,14 +22,13 @@ export function ProfilesPage({ state, viewing, onEdit, onView, onChanged }: {
   const [error, setError] = useState<string | null>(null);
 
   function create() {
-    // A new profile copies the one being edited, as before.
+    // The copy source starts on the profile being viewed, as before.
     const source = profileById(state, viewing) ?? activeProfile(state);
     showModal(
-      <NameModal
-        title="New profile"
-        initial=""
-        onSubmit={async (name) => {
-          const s = await createProfile(name, source.id);
+      <NewProfileModal
+        state={state}
+        initialSourceId={source.id}
+        onCreated={(s, name) => {
           const made = s.profiles.find((p) => p.name.toLowerCase() === name.trim().toLowerCase());
           setError(null);
           onChanged(s);

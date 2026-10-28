@@ -82,6 +82,13 @@ class TartarusService:
             self._log.warning("stored lighting is invalid (%s); using the default", e)
             self._config.lighting = dataclasses.replace(Lighting(), hypershift=self._config.lighting.hypershift,
                                                         hypershift_color=self._config.lighting.hypershift_color)
+        if not self._path.exists():
+            # A fresh install, or a corrupt file moved aside: write the starters now, so a later release
+            # with different starter definitions never reaches this install.
+            try:
+                self._save()
+            except OSError as e:
+                self._log.warning("writing the first settings failed (%s); will retry on the next change", e)
         self._running: Optional[Tuple[int, str]] = None  # (app id, name); never persisted
         self._emitter: Any = None
         self._engine: Optional[RemapEngine] = None

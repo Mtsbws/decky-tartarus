@@ -10,6 +10,8 @@ Razer Synapse does on Windows, without Synapse or OpenRazer.
 
 - **Ready for SteamOS out of the box:** the Default profile gets you around Game Mode with one
   hand and no mouse (see [Default layout](#default-layout)). Give games their own profiles.
+- **Starter profiles:** a fresh install also has `FPS – WASD`, `FPS – D-pad` and `MMO`, ready to
+  play or to edit (see [Starter profiles](#starter-profiles)).
 - **Remap every control:** keys 01-20 (20 is the big thumb key), the button above the D-pad,
   scroll up/down, wheel click and the D-pad (4-way or 8-way). Keys, shortcuts, held combos,
   macros, mouse buttons, media keys, or nothing.
@@ -100,7 +102,10 @@ backend runs as root (`/dev/input`, `/dev/uinput`, `/dev/hidraw*`).
 
 ## Default layout
 
-A fresh install starts with a Default profile for getting around SteamOS Game Mode. The D-pad
+![Default layout: the keys, wheel, button above the D-pad and D-pad, each labelled with its binding](docs/layouts/default.svg)
+
+A fresh install starts with a Default profile for getting around SteamOS Game Mode, plus the three
+[starter profiles](#starter-profiles). On the Default profile the D-pad
 moves, the button above it selects (Enter), Esc and Backspace sit at the ends of the top row,
 and the keys under your fingers do what a controller's buttons do: Steam reads them as its own
 controller buttons (F3 = X, F4 = Y, F6/F7 = L1/R1, F8 = View, F9 = Menu).
@@ -117,6 +122,27 @@ wheel: volume up / down, click: play / pause
 Each function is on one key only; keys 06, 09, 11, 15, 16-19 and 20 keep their factory keys.
 **Factory default** on a key puts back what the keypad sends on its own. An install that
 already has settings keeps its own Default.
+
+![Customize tab on the Default profile: every key labelled with its binding](docs/screenshots/default-customize.jpg)
+
+## Starter profiles
+
+Next to Default, a fresh install has three starter profiles: `FPS – WASD` (movement on the keys),
+`FPS – D-pad` (movement on the D-pad) and `MMO` (a twelve-key hotbar with a Hypershift layer for a
+second bar). The FPS starters are made for Call of Duty, Battlefield and Wardogs, the MMO for
+World of Warcraft and RuneScape 3. They are ordinary profiles: edit, rename or delete them. To change a
+copy and keep the original, choose **New profile**, open **Copy from** and pick the profile.
+
+Starters are added only when the plugin first creates its settings and are never re-applied: an
+existing install keeps its own profiles, and a deleted starter stays deleted.
+[docs/starter-profiles.md](docs/starter-profiles.md) has a picture and a table for each one.
+
+| | |
+|---|---|
+| ![Profiles tab: Default, FPS – WASD, FPS – D-pad and MMO](docs/screenshots/starters-profiles.jpg) | ![New profile: Copy from lists the profiles, MMO selected](docs/screenshots/starters-copy-from.jpg) |
+| **Profiles**: Default and the three starters on a fresh install | **New profile**: copy any profile, starters included |
+| ![Quick Access panel while Brotato runs: Brotato uses MMO](docs/screenshots/starters-panel-game.jpg) | ![Profiles tab: Brotato listed under MMO](docs/screenshots/starters-profiles-game.jpg) |
+| **In a game**: "Brotato uses:" assigns it a profile | **Profiles**: the game is listed under its profile |
 
 ## Binding text
 
@@ -176,7 +202,7 @@ The code was written with [Claude Code](https://claude.com/claude-code).
 
 One JSON file: `~/homebrew/settings/decky-tartarus/settings.json`. It survives reboots and
 plugin updates. A file that can't be read is kept as `settings.json.corrupt-<time>` and the
-plugin starts with factory keys. Bindings, lighting and the profile lights are reapplied
+plugin starts as a fresh install does: Default plus the starter profiles. Bindings, lighting and the profile lights are reapplied
 when the keypad is plugged back in and after sleep.
 
 ## Notes

@@ -3,10 +3,12 @@ import dataclasses
 import itertools
 import unittest
 
+from tartarus.actuation import mm_to_depth
 from tartarus.bindings import parse_binding_text
 from tartarus.codes import code_for
-from tartarus.config import Hypershift, Secondary
+from tartarus.config import Hypershift, Secondary, profile_from_starter
 from tartarus.devmap import FACTORY_CODES
+from tartarus.starters import STARTERS
 
 from tartarus.engine import RemapEngine
 from tests.test_engine import FakeEmitter, C, E, W, A, B, F5, profile, down, up, KEY_UP, KEY_RIGHT
@@ -276,3 +278,38 @@ class HypershiftEngineTest(unittest.IsolatedAsyncioTestCase):
         e.handle_depth(self.depths(k19=200, k09=0))
         e.handle_depth(self.depths(k19=200, k09=200))
         self.assertEqual(self.out.events, [down(F1), up(F1), down(F1)])
+
+    # --- the MMO starter's layer ---
+
+    def mmo(self):
+        return profile_from_starter(next(s for s in STARTERS if s.slug == "mmo"), "p4", "MMO", (True, False, False))
+
+    async def test_mmo_hypershift_layer_sends_ctrl_number(self):
+        CTRL, ONE, K02 = code_for("Ctrl"), code_for("1"), PHYS["k02"]
+        e = self.engine(self.mmo())
+        e.handle_key(K19, 1)
+        e.handle_key(K02, 1)
+        e.handle_key(K02, 0)
+        self.assertEqual(self.out.events, [down(CTRL), down(ONE), up(ONE), up(CTRL)])
+        e.handle_key(K19, 0)
+        e.handle_key(K02, 1)
+        e.handle_key(K02, 0)
+        self.assertEqual(self.out.events[4:], [down(ONE), up(ONE)])
+        self.check_clean(e)
+
+    async def test_mmo_k18_secondary_falls_through_on_the_layer(self):
+        M, B_KEY = code_for("M"), code_for("B")
+        shallow, deep = mm_to_depth(1.5), mm_to_depth(3.0)
+        for held in (0, 200):
+            with self.subTest(hypershift_held=bool(held)):
+                self.out = FakeEmitter()
+                e = self.engine(self.mmo())
+                e.handle_depth(self.depths(k19=held))
+                e.handle_depth(self.depths(k19=held, k18=shallow))
+                self.assertEqual(self.out.events, [down(M)])
+                e.handle_depth(self.depths(k19=held, k18=deep))
+                self.assertEqual(self.out.events, [down(M), up(M), down(B_KEY)])
+
+    def test_mmo_k19_has_no_secondary(self):
+        self.assertNotIn("k19", self.mmo().secondary)
+

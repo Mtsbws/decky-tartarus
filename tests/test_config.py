@@ -16,6 +16,7 @@ from tartarus.config import (
     clean_name,
     default_config,
     default_profile,
+    first_run_config,
     factory_bindings,
     steamos_bindings,
     hypershift_key,
@@ -94,7 +95,37 @@ class ConfigTest(unittest.TestCase):
         p = default_profile(c)
         self.assertEqual(set(p.bindings), set(ALL_CONTROLS))
         self.assertEqual(p.dpad_mode, "4way")
-        self.assertEqual(c, default_config())
+        self.assertEqual(c, first_run_config())
+
+    def test_missing_file_gives_the_starters(self):
+        c = load_config(self.path)
+        self.assertEqual([p.name for p in c.profiles], ["Default", "FPS \u2013 WASD", "FPS \u2013 D-pad", "MMO"])
+        self.assertEqual([p.id for p in c.profiles], ["default", "p2", "p3", "p4"])
+        leds = [p.leds for p in c.profiles]
+        self.assertEqual(len(set(leds)), 4)
+        self.assertEqual(leds[0], NO_LEDS)
+        self.assertEqual(c, first_run_config())
+
+    def test_corrupt_file_is_moved_aside_and_gets_the_starters(self):
+        self._write("{nope")
+        with self.assertLogs("tartarus", "WARNING"):
+            c = load_config(self.path)
+        self.assertEqual(len(self._backups()), 1)
+        self.assertEqual([p.name for p in c.profiles], ["Default", "FPS \u2013 WASD", "FPS \u2013 D-pad", "MMO"])
+
+    def test_existing_file_gets_no_starters(self):
+        save_config(self.path, default_config())
+        c = load_config(self.path)
+        self.assertEqual([p.name for p in c.profiles], ["Default"])
+        save_config(self.path, c)
+        self.assertEqual([p.name for p in load_config(self.path).profiles], ["Default"])
+
+    def test_deleted_starter_stays_deleted(self):
+        c = first_run_config()
+        c.profiles = [p for p in c.profiles if p.name != "MMO"]
+        save_config(self.path, c)
+        self.assertEqual([p.name for p in load_config(self.path).profiles],
+                         ["Default", "FPS \u2013 WASD", "FPS \u2013 D-pad"])
 
     def test_default_profile_is_made_for_steamos(self):
         p = default_profile(default_config())
@@ -342,7 +373,7 @@ class ConfigTest(unittest.TestCase):
     def test_corrupt_file_backed_up(self):
         self._write("{nope")
         with self.assertLogs("tartarus", "WARNING"):
-            self.assertEqual(load_config(self.path), default_config())
+            self.assertEqual(load_config(self.path), first_run_config())
         self.assertEqual(len(self._backups()), 1)
         self.assertFalse(self.path.exists())
 
@@ -351,7 +382,7 @@ class ConfigTest(unittest.TestCase):
         data["version"] = 3
         self._write(data)
         with self.assertLogs("tartarus", "WARNING"):
-            self.assertEqual(load_config(self.path), default_config())
+            self.assertEqual(load_config(self.path), first_run_config())
         self.assertEqual(len(self._backups()), 1)
         self.assertFalse(self.path.exists())
 
@@ -418,10 +449,17 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(json.loads(self.path.read_text())["version"], 1)
         self.assertTrue(any("disk full" in line for line in logs.output))
 
+    def test_v1_file_gets_no_starters(self):
+        self._write(self._v1())
+        with self.assertLogs("tartarus", "INFO"):
+            c = load_config(self.path)
+        self.assertEqual(len(c.profiles), 1)
+        self.assertEqual(len(load_config(self.path).profiles), 1)
+
     def test_v1_without_profiles_is_corrupt(self):
         self._write(self._v1(profiles=[]))
         with self.assertLogs("tartarus", "WARNING"):
-            self.assertEqual(load_config(self.path), default_config())
+            self.assertEqual(load_config(self.path), first_run_config())
         self.assertEqual(len(self._backups()), 1)
         self.assertFalse(self.path.exists())
 

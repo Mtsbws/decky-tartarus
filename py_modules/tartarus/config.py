@@ -14,6 +14,7 @@ from typing import Dict, List, Optional, Tuple
 from .actuation import DEFAULT_MM, gap_ok, valid_mm
 from .bindings import Binding, BindingError, binding_from_dict, binding_to_dict, parse_binding_text
 from .devmap import ACTUATION_KEYS, ALL_CONTROLS, FACTORY_OUTPUT, HYPERSHIFT_KEYS
+from .starters import STARTERS, Starter
 
 SCHEMA_VERSION = 2
 DPAD_MODES = ("4way", "8way")
@@ -133,6 +134,24 @@ def default_config() -> Config:
     return Config(version=SCHEMA_VERSION, profiles=[_factory_default()], games={}, lighting=Lighting())
 
 
+def first_run_config() -> Config:
+    """A fresh install: Default plus one profile per starter. Only for a missing or corrupt settings file."""
+    c = default_config()
+    for s in STARTERS:
+        c.profiles.append(profile_from_starter(s, new_profile_id(c), s.name, next_leds(c)))
+    return c
+
+
+def profile_from_starter(s: Starter, profile_id: str, name: str, leds: Tuple[bool, bool, bool]) -> Profile:
+    """A new profile holding a copy of a starter; it shares no dict with the starter."""
+    bindings = factory_bindings()
+    bindings.update({control: parse_binding_text(text) for control, text in s.bindings.items()})
+    secondary = {control: Secondary(parse_binding_text(text), mm) for control, (text, mm) in s.secondary.items()}
+    layer = Hypershift(bindings={control: parse_binding_text(text) for control, text in s.hypershift.items()})
+    return Profile(id=profile_id, name=name, dpad_mode="4way", bindings=bindings, leds=leds,
+                   actuation=dict(s.actuation), secondary=secondary, hypershift=layer)
+
+
 def _factory_default() -> Profile:
     return Profile(id=DEFAULT_ID, name="Default", dpad_mode="4way", bindings=steamos_bindings(), leds=NO_LEDS)
 
@@ -187,7 +206,7 @@ def new_profile_id(c: Config) -> str:
 def load_config(path: Path) -> Config:
     path = Path(path)
     if not path.exists():
-        return default_config()
+        return first_run_config()
     try:
         text = path.read_text()
         data = json.loads(text)
@@ -198,7 +217,7 @@ def load_config(path: Path) -> Config:
         backup = path.with_name(f"{path.name}.corrupt-{int(time.time())}")
         log.warning("settings file unusable (%s); moved to %s, using defaults", e, backup.name)
         os.replace(path, backup)
-        return default_config()
+        return first_run_config()
 
 
 def _migrate_v1_file(path: Path, text: str, data: dict) -> Config:
