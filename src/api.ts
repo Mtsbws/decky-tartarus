@@ -52,6 +52,8 @@ export type ProfileState = {
   hypershift: HypershiftState;
 };
 
+export type StarterInfo = { id: string; name: string };
+
 export type RunningApp = { app_id: number; name: string };
 
 export type State = {
@@ -66,6 +68,7 @@ export type State = {
   running_app: RunningApp | null;
   max_profiles: number;
   profiles: ProfileState[];
+  starters: StarterInfo[];
   led_patterns: boolean[][];
 };
 
