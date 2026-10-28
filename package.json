@@ -1,12 +1,12 @@
 {
   "name": "decky-tartarus",
-  "version": "0.0.1",
-  "description": "Remap a Razer Tartarus Pro and set its lighting in SteamOS Game Mode",
+  "version": "1.0.0",
+  "description": "Razer Synapse for the Steam Deck: remap a Razer Tartarus Pro with actuation, Hypershift, per-game profiles and lighting",
   "type": "module",
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c -w",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "PYTHONPATH=py_modules python3 -m unittest"
   },
   "keywords": [
     "decky",
@@ -16,6 +16,10 @@
     "tartarus"
   ],
   "author": "Matisse Bauwens",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mtsbws/decky-tartarus"
+  },
   "license": "MIT",
   "devDependencies": {
     "@decky/rollup": "^1.0.2",

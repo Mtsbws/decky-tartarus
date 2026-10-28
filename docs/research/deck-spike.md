@@ -1,13 +1,13 @@
-# Spike findings (M0)
+# Deck spike findings
 
 Date: 2026-10-25. Deck: SteamOS kernel `7.2.7-valve2`, Decky Loader v3.3.0, system Python 3.14 (Decky runs its own bundled Python). Keypad: Razer Tartarus Pro `1532:0244`, plugged in through a USB hub. Spike code and raw logs are on the `spike` branch (`spike/`, `spike/data/`). That branch is never merged.
 
-All four spike questions passed. The plan goes ahead as written, with the amendments marked `(amended from spike)`.
+Before any plugin code was written, a spike on the Deck answered four questions: which evdev nodes carry which controls, whether the keypad can be grabbed and re-emitted through uinput, how the lighting reports work, and how deploys behave. All four passed.
 
 ## Access and deploy loop
 
-- SSH: `Host deck` in `~/.ssh/config` → `steamdeck.local` (it was 192.168.0.245), user `deck`, key `~/.ssh/id_ed25519`. The user enabled `sshd` on the Deck.
-- Root: the user types `ssh -t deck sudo …` in their own terminal. Claude has no sudo on the Deck, and sudoers is not edited.
+- SSH: enable `sshd` on the Deck and log in as `deck` with a key.
+- Root: run `ssh -t deck sudo …` from your own terminal. Sudoers is not edited.
 - **Decky live-reloads.** It watches `~/homebrew/plugins/` with inotify. Copying changed files into a plugin folder unloads the backend and frontend and loads them again within about a second, with no restart. One `cp` burst can trigger two reloads, which is harmless.
 - **Never `systemctl restart plugin_loader` for a deploy.** Doing that right after a copy left the old plugin process running ("Unit process … remains running after unit stopped"). It still held the grab, so the new copy's `EVIOCGRAB` failed with `EBUSY`, and Game Mode hung on load until the user rebooted.
 - Decky re-owns plugin folders as root, so a `deck`-owned plugin folder doesn't stay that way. Deploys need one sudo copy.

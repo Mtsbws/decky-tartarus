@@ -1,10 +1,17 @@
 # Decky Tartarus
 
-A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin for the
-**Razer Tartarus Pro** (2019, USB `1532:0244`) on a Steam Deck in Game Mode. It does what
-Razer Synapse does on Windows, without Synapse or OpenRazer.
+**Razer Synapse for the Steam Deck.** A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader)
+plugin that remaps the **Razer Tartarus Pro** keypad in Game Mode, with adjustable actuation,
+a secondary function per key, Hypershift, per-game profiles and lighting. No Windows, no
+Synapse, no OpenRazer, and nothing is stored on the keypad.
 
-![Customize tab: key 05 selected, with its binding, actuation and secondary function](docs/screenshots/customize.jpg)
+[![Latest release](https://img.shields.io/github/v/release/Mtsbws/decky-tartarus)](https://github.com/Mtsbws/decky-tartarus/releases/latest)
+[![MIT licence](https://img.shields.io/github/license/Mtsbws/decky-tartarus)](LICENSE)
+
+![Customize tab: a key selected, with its binding, actuation and secondary function](docs/screenshots/customize.jpg)
+
+**Supported keypad:** Razer Tartarus Pro (2019, USB `1532:0244`), the one with analog
+optical switches. Other Tartarus models (V2, Chroma) are untested and not detected. Tested on a Steam Deck with SteamOS and Decky Loader 3.
 
 ## Features
 
@@ -95,14 +102,18 @@ edit, and it says which profile the keypad uses now. Changes apply at once.
 
 ## Install
 
-Needs a Steam Deck (SteamOS, Game Mode) with [Decky Loader](https://decky.xyz/). The
-backend runs as root (`/dev/input`, `/dev/uinput`, `/dev/hidraw*`).
+Needs a Steam Deck in Game Mode with [Decky Loader](https://decky.xyz/). The plugin isn't
+in the Decky Plugin Store yet, so it installs from a URL:
 
-- **From the zip:** build it with `scripts/package.sh` (needs `pnpm`), copy
-  `out/decky-tartarus.zip` to the Deck, then in Decky → Settings → enable Developer Mode →
-  Developer → Install Plugin from ZIP File (or from a URL to the zip).
-- **By hand:** copy the plugin folder to `~/homebrew/plugins/decky-tartarus/`
-  (needs `sudo`), then reload Decky or reboot.
+1. Decky → Settings (gear) → General → turn on **Developer mode**.
+2. Decky → Settings → **Developer** → **Install Plugin from URL**, and enter
+   `https://github.com/Mtsbws/decky-tartarus/releases/latest/download/decky-tartarus.zip`
+3. Plug in the keypad and open Quick Access → Tartarus.
+
+To update, install from the same URL again. Your settings are kept.
+
+The backend runs as root, because it reads `/dev/input` and `/dev/hidraw*` and creates the
+virtual keyboard and mouse through `/dev/uinput`.
 
 ## Default layout
 
@@ -198,7 +209,11 @@ Razer documents none of this, so the protocol was worked out step by step:
    The plugin only sends commands confirmed this way.
 5. **Build and test on the hardware.** Each feature was written up as a design, built in
    small steps with automated tests for the backend, and checked on a Deck with a
-   checklist before moving on. The notes are in `docs/superpowers/`.
+   checklist before moving on.
+
+The protocol notes are in [`docs/research/`](docs/research/): the Deck spike (event nodes,
+grabbing, deploys) and the Synapse captures (driver mode, depth reports, the depth-to-mm
+table, profile lights).
 
 The code was written with [Claude Code](https://claude.com/claude-code).
 
@@ -221,6 +236,15 @@ when the keypad is plugged back in and after sleep.
 - Only lighting effects the keypad runs itself are offered. Ripple needs software-streamed
   frames and is left out.
 
+## Troubleshooting
+
+- **"Not connected" while the keypad is plugged in:** unplug it and plug it back in. Through
+  a USB hub, check the hub has power.
+- **Keys do the wrong thing in one game:** check which profile the panel says the keypad
+  uses; the game may have a profile assigned.
+- **Logs:** `~/homebrew/logs/decky-tartarus/` and `journalctl -u plugin_loader`. Attach them
+  when you [open an issue](https://github.com/Mtsbws/decky-tartarus/issues).
+
 ## Roadmap
 
 - **Per-game lighting:** lighting is the same for every profile today.
@@ -228,6 +252,19 @@ when the keypad is plugged back in and after sleep.
   point feels a little past halfway; Synapse feels the same.
 - **Plugin Store:** a release zip and a listing in the Decky Plugin Store.
 - Being considered, not planned: rapid trigger, and key depth as an analog stick axis.
+
+## Building from source
+
+Needs `pnpm` and Python 3.
+
+```sh
+pnpm install
+scripts/package.sh                              # → out/decky-tartarus.zip
+PYTHONPATH=py_modules python3 -m unittest       # backend tests
+scripts/deploy.sh deck@steamdeck.local          # build and stage on a Deck over ssh
+```
+
+Install the zip with Decky → Settings → Developer → **Install Plugin from ZIP File**.
 
 ## Uninstall
 
