@@ -48,8 +48,8 @@ Decky Loader 3); reports from other machines are welcome.
 - **Works with streaming:** remapped input goes out through a virtual keyboard and mouse
   (`Decky Tartarus Keyboard`, `Decky Tartarus Mouse`), so Moonlight forwards it like any
   keyboard.
-- **Made for a controller:** every page fits a 1280×800 screen without scrolling and works
-  with the D-pad and A/B, on a handheld or a TV.
+- **Made for the Deck:** every page fits the 1280×800 screen without scrolling and works with
+  the D-pad and A/B.
 
 ## Using it
 
@@ -254,7 +254,7 @@ when the keypad is plugged back in and after sleep.
 - **Per-game lighting:** lighting is the same for every profile today.
 - **Actuation calibration:** check the mm scale against the physical key travel. The 3.6 mm
   point feels a little past halfway; Synapse feels the same.
-- **Plugin Store:** a release zip and a listing in the Decky Plugin Store.
+- **Plugin Store:** a listing in the Decky Plugin Store.
 - Being considered, not planned: rapid trigger, and key depth as an analog stick axis.
 
 ## Building from source
