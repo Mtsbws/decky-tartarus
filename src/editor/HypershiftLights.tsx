@@ -3,11 +3,16 @@ import { useState } from "react";
 
 import { errorText, setHypershiftLights, State } from "../api";
 import { ColourField } from "../ColourField";
+import { useLighting } from "../lighting";
+import { COLOURLESS } from "../LightingControls";
 
 // Colour of the keys with a Hypershift binding while the Hypershift key is held. Writes go straight through, no debounce.
 export function HypershiftLights({ state, onChanged }: { state: State; onChanged: (s: State) => void }) {
   const [error, setError] = useState<string | null>(null);
   const { enabled, color } = state.lighting.hypershift;
+  // The backlight's colour can't double as the Hypershift colour, or the lit keys wouldn't stand out.
+  const backlight = useLighting().draft ?? state.lighting;
+  const taken = COLOURLESS.has(backlight.effect) ? undefined : backlight.color.toLowerCase();
 
   const write = (nextEnabled: boolean, nextColor: string) => {
     setError(null);
@@ -28,7 +33,12 @@ export function HypershiftLights({ state, onChanged }: { state: State; onChanged
       </PanelSectionRow>
       {enabled && (
         <PanelSectionRow>
-          <ColourField color={color} onChange={(c) => write(enabled, c)} />
+          <ColourField color={color} exclude={taken} onChange={(c) => write(enabled, c)} />
+        </PanelSectionRow>
+      )}
+      {enabled && color.toLowerCase() === taken && (
+        <PanelSectionRow>
+          <div style={{ color: "#e05050" }}>This is also the backlight colour. Pick another one so the keys stand out.</div>
         </PanelSectionRow>
       )}
       {error && (

@@ -41,14 +41,28 @@ function parseHex(text: string): string | null {
   return m ? `#${m[1].toLowerCase()}` : null;
 }
 
-function ColourModal({ initial, onApply, closeModal }: { initial: string; onApply(hex: string): void; closeModal?(): void }) {
-  const [text, setText] = useState(initial);
-  const [invalid, setInvalid] = useState(false);
+function ColourModal({
+  initial,
+  exclude,
+  onApply,
+  closeModal,
+}: {
+  initial: string;
+  exclude?: string;
+  onApply(hex: string): void;
+  closeModal?(): void;
+}) {
+  const [text, setText] = useState(initial === exclude ? "" : initial);
+  const [problem, setProblem] = useState<string | null>(null);
   const preview = parseHex(text);
 
   function apply() {
     if (!preview) {
-      setInvalid(true);
+      setProblem("Use six hex digits, like #ff6000.");
+      return;
+    }
+    if (preview === exclude) {
+      setProblem("That's the backlight colour. Pick another one.");
       return;
     }
     onApply(preview);
@@ -64,7 +78,7 @@ function ColourModal({ initial, onApply, closeModal }: { initial: string; onAppl
             value={text}
             onChange={(e) => {
               setText(e.target.value);
-              setInvalid(false);
+              setProblem(null);
             }}
           />
         </div>
@@ -79,7 +93,7 @@ function ColourModal({ initial, onApply, closeModal }: { initial: string; onAppl
         />
       </div>
       <div style={{ opacity: 0.6, marginTop: 8 }}>Six hex digits, like #ff6000.</div>
-      {invalid && <div style={{ color: "#e05050", marginTop: 8 }}>Use six hex digits, like #ff6000.</div>}
+      {problem && <div style={{ color: "#e05050", marginTop: 8 }}>{problem}</div>}
       <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
         <DialogButton onClick={apply}>Apply</DialogButton>
         <DialogButton onClick={() => closeModal?.()}>Cancel</DialogButton>
@@ -89,12 +103,23 @@ function ColourModal({ initial, onApply, closeModal }: { initial: string; onAppl
 }
 
 // The colour picker shared by the lighting rows: named colours, then any #rrggbb through a modal.
-export function ColourField({ color, onChange }: { color: string; onChange: (hex: string) => void }) {
+// `exclude` is a colour that can't be picked (Hypershift lights leave out the backlight's colour).
+export function ColourField({
+  color,
+  exclude,
+  onChange,
+}: {
+  color: string;
+  exclude?: string;
+  onChange: (hex: string) => void;
+}) {
   const current = color.toLowerCase();
-  const named = COLOURS.some((c) => c.hex === current);
+  const blocked = exclude?.toLowerCase();
+  const listed = COLOURS.filter((c) => c.hex !== blocked);
+  const named = listed.some((c) => c.hex === current);
   const options = [
     ...(named ? [] : [{ data: current, label: withDot(current, current) }]),
-    ...COLOURS.map((c) => ({ data: c.hex, label: withDot(c.hex, c.name) })),
+    ...listed.map((c) => ({ data: c.hex, label: withDot(c.hex, c.name) })),
     { data: CUSTOM, label: "Custom colour…" },
   ];
 
@@ -104,7 +129,7 @@ export function ColourField({ color, onChange }: { color: string; onChange: (hex
       rgOptions={options}
       selectedOption={current}
       onChange={(o) => {
-        if (o.data === CUSTOM) showModal(<ColourModal initial={current} onApply={onChange} />);
+        if (o.data === CUSTOM) showModal(<ColourModal initial={current} exclude={blocked} onApply={onChange} />);
         else onChange(o.data);
       }}
     />

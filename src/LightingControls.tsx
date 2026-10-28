@@ -5,7 +5,7 @@ import { ColourField } from "./ColourField";
 import { useLighting } from "./lighting";
 
 // Effects that send no colour to the keypad (spike findings: spectrum and wave).
-const COLOURLESS = new Set(["spectrum", "wave"]);
+export const COLOURLESS = new Set(["spectrum", "wave"]);
 
 const capitalise = (s: string) => s[0].toUpperCase() + s.slice(1);
 
