@@ -15,7 +15,7 @@ type Props = {
 const HEADING = { fontSize: 12, opacity: 0.6, textTransform: "uppercase" as const, margin: "8px 0 2px" };
 const NAME = { flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const };
 
-// A name plus the profile or starter to copy. Selecting a row only picks the source; Save creates.
+// A name plus the profile to copy. Selecting a row only picks the source; Save creates.
 export function NewProfileModal({ state, initialSourceId, onCreated, closeModal }: Props) {
   const [name, setName] = useState("");
   const [sourceId, setSourceId] = useState(initialSourceId);
@@ -35,7 +35,7 @@ export function NewProfileModal({ state, initialSourceId, onCreated, closeModal 
       });
   }
 
-  function row(id: string, label: string, leds?: boolean[]) {
+  function row(id: string, label: string, leds: boolean[]) {
     return (
       <DialogButton
         key={id}
@@ -43,7 +43,7 @@ export function NewProfileModal({ state, initialSourceId, onCreated, closeModal 
         onClick={() => setSourceId(id)}
         style={ROW}
       >
-        {leds && <StatusLights leds={leds} size={7} />}
+        <StatusLights leds={leds} size={7} />
         <span style={NAME}>{label}</span>
       </DialogButton>
     );
@@ -57,8 +57,6 @@ export function NewProfileModal({ state, initialSourceId, onCreated, closeModal 
       <div style={{ ...HEADING, marginTop: 12 }}>Copy from</div>
       <Focusable flow-children="column" style={{ maxHeight: 260, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
         {state.profiles.map((p) => row(p.id, p.name, p.leds))}
-        <div style={HEADING}>Starter profiles</div>
-        {state.starters.map((s) => row(s.id, s.name))}
       </Focusable>
       {error && <div style={{ color: "#e05050", marginTop: 8 }}>{error}</div>}
       <div style={{ display: "flex", gap: 8, marginTop: 16 }}>

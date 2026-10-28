@@ -15,8 +15,7 @@ from .bindings import Binding, binding_label, binding_to_dict, parse_binding_tex
 from .config import (DEFAULT_ID, DPAD_MODES, LED_ORDER, MAX_APP_ID, MAX_PROFILES, Game, Lighting, Profile, Secondary,
                      hypershift_key,
                      clean_name,
-                     default_profile, find_profile, load_config, new_profile_id, next_leds, profile_for_app,
-                     profile_from_starter, save_config)
+                     default_profile, find_profile, load_config, new_profile_id, next_leds, profile_for_app, save_config)
 from .codes import name_for
 from .devmap import ALL_CONTROLS, ACTUATION_KEYS, FACTORY_CODES, FACTORY_OUTPUT, HYPERSHIFT_KEYS, SYSTEM_CODES
 from .devmode import DRIVER_MODE, NORMAL_MODE, set_mode_report
@@ -28,7 +27,6 @@ from .linux.evdev import EV_KEY, EV_REL, REL_WHEEL, InputDevice
 from .linux.hidraw import HidrawReader, send_feature
 from .linux.uinput import UinputEmitter
 from .record import RecordCapture
-from .starters import STARTER_PREFIX, STARTERS, find_starter
 
 STEAM_ACTION_MODE = "api"  # S3: Navigation API with a toggle; "keys" goes nowhere under Moonlight
 
@@ -569,7 +567,6 @@ class TartarusService:
             "running_app": {"app_id": self._running[0], "name": self._running[1]} if self._running else None,
             "max_profiles": MAX_PROFILES,
             "profiles": profiles,
-            "starters": [{"id": st.id, "name": st.name} for st in STARTERS],
             "led_patterns": [list(leds) for leds in LED_ORDER],
         }
 
@@ -771,24 +768,14 @@ class TartarusService:
         self._mutate(change)
 
     def create_profile(self, name: str, copy_from_id: str) -> str:
-        """A new profile copied from a profile id or a `starter:<slug>` id."""
-        starter = source = None
-        if copy_from_id.startswith(STARTER_PREFIX):
-            starter = find_starter(copy_from_id)
-            if starter is None:
-                raise ValueError(f"unknown starter {copy_from_id!r}")
-        else:
-            source = self._edit_target(copy_from_id)
+        source = self._edit_target(copy_from_id)
         if len(self._config.profiles) >= MAX_PROFILES:
             raise ValueError(f"At most {MAX_PROFILES} profiles")
         name = clean_name(self._config, name)
-        if starter:
-            profile = profile_from_starter(starter, new_profile_id(self._config), name, next_leds(self._config))
-        else:
-            profile = Profile(id=new_profile_id(self._config), name=name, dpad_mode=source.dpad_mode,
-                              bindings=dict(source.bindings), leds=next_leds(self._config),
-                              actuation=dict(source.actuation), secondary=dict(source.secondary),
-                              hypershift=source.hypershift.copy())
+        profile = Profile(id=new_profile_id(self._config), name=name, dpad_mode=source.dpad_mode,
+                          bindings=dict(source.bindings), leds=next_leds(self._config),
+                          actuation=dict(source.actuation), secondary=dict(source.secondary),
+                          hypershift=source.hypershift.copy())
         self._mutate(lambda: self._config.profiles.append(profile))
         return profile.id
 
