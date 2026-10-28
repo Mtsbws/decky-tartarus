@@ -446,5 +446,28 @@ class CopyStarterTest(unittest.TestCase):
 
         self.run_async(go())
 
+    def test_fresh_install_writes_the_starters_once(self):
+        Rig(self.path)
+        written = load_config(self.path)
+        self.assertEqual([p.name for p in written.profiles], ["Default", "FPS – WASD", "FPS – D-pad", "MMO"])
+        before = self.path.read_bytes()
+        # A later release with different starters must not reach an install that already has a file.
+        with mock.patch("tartarus.config.STARTERS", ()):
+            Rig(self.path)
+        self.assertEqual(self.path.read_bytes(), before)
+
+    def test_corrupt_file_recovery_writes_the_starters(self):
+        self.path.write_text("{not json")
+        Rig(self.path)
+        self.assertTrue(self.path.exists())
+        self.assertEqual(len(load_config(self.path).profiles), 4)
+        self.assertEqual(len(list(self.path.parent.glob("settings.json.corrupt-*"))), 1)
+
+    def test_failed_first_write_still_starts(self):
+        with mock.patch("tartarus.service.save_config", side_effect=OSError("read-only")):
+            rig = Rig(self.path)
+        self.assertEqual(len(rig.service.state()["profiles"]), 4)
+        self.assertFalse(self.path.exists())
+
     def run_async(self, coro):
         return asyncio.run(asyncio.wait_for(coro, 5))

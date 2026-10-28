@@ -27,9 +27,9 @@ All three starters use the 4-way D-pad, put Esc on key 01 with an actuation of 2
 than the default, so the menu does not open by accident), and keep every other key at the default
 depth.
 
-Starters are added once, when the plugin first creates its settings. They are never re-applied: an
-install that already has settings keeps its own profiles, and a starter you delete stays deleted on
-that install.
+Starters are added once, when the plugin first starts and writes its settings. They are never
+re-applied, not even by a plugin update: an install that already has settings keeps its own profiles
+as you left them, and a starter you delete stays deleted on that install.
 
 ## Default
 
