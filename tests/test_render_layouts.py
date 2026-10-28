@@ -61,6 +61,18 @@ class RenderLayoutsTest(unittest.TestCase):
         self.assertNotIn("Ctrl+1", texts(self.pictures["mmo.svg"]))
         self.assertIn("Hypershift", texts(self.pictures["mmo-hypershift.svg"]))
 
+    def test_reference_doc_covers_every_starter(self):
+        doc = (ROOT / "docs" / "starter-profiles.md").read_text(encoding="utf-8")
+        for name in self.pictures:
+            self.assertTrue(f"layouts/{name}" in doc, name)
+        for phrase in ("Made for", "starting points", "not been tested in a game"):
+            self.assertTrue(phrase in doc, phrase)
+        for s in STARTERS:
+            self.assertTrue(s.name in doc, s.name)
+            for control in s.bindings:
+                row = control.split("_")[0] if control.startswith(("dpad", "wheel")) else control
+                self.assertTrue(row in doc, f"{s.name} {control}")
+
 
 if __name__ == "__main__":
     unittest.main()
