@@ -1,5 +1,9 @@
 # Starter Profiles Implementation Plan
 
+> **Superseded in part (2026-10-28, user decision during S2):** the starters are only preinstalled profiles on a fresh
+> install, edited or deleted like any other. There are no `starter:` ids, no "Starter profiles" section in the New
+> profile modal, and "Copy from" lists the user's own profiles only. Text below that says otherwise is out of date.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A fresh install starts with Default plus three editable starter profiles (`FPS – WASD`, `FPS – D-pad`, `MMO`); "New profile" can copy any starter; the repo documents each starter with a table and a generated picture.

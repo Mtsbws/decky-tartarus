@@ -1,5 +1,9 @@
 # Starter profiles: design
 
+> **Superseded in part (2026-10-28, user decision during S2):** the starters are only preinstalled profiles on a fresh
+> install, edited or deleted like any other. There are no `starter:` ids, no "Starter profiles" section in the New
+> profile modal, and "Copy from" lists the user's own profiles only. Text below that says otherwise is out of date.
+
 Status: approved by the user on 2026-10-28. Decisions by the user are marked as theirs;
 everything marked **(my call)** was chosen by the assistant and is open to change.
 
