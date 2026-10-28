@@ -111,9 +111,9 @@ class _Corrupt(Exception):
 # Game Mode with one hand. The D-pad moves; Steam reads these keys as its controller buttons
 # (F3 = X, F4 = Y, F6/F7 = L1/R1, F8 = View, F9 = Menu). Unlisted controls keep their factory key.
 STEAMOS_DEFAULT = {
-    "k01": "steam:menu", "k02": "steam:qam", "k03": "steam:keyboard", "k04": "F8", "k05": "F9",
-    "k07": "F6", "k08": "F4", "k09": "F7",
-    "k11": "Shift", "k12": "F3", "k13": "Enter", "k14": "Esc", "k15": "Backspace",
+    "k01": "Esc", "k02": "steam:menu", "k03": "steam:qam", "k04": "steam:keyboard", "k05": "Backspace",
+    "k07": "F8", "k08": "F4", "k10": "F9",
+    "k11": "Shift", "k12": "F6", "k13": "F3", "k14": "F7", "k15": "Enter",
     "k20": "Enter", "top_button": "Esc",
     "wheel_up": "Vol+", "wheel_down": "Vol-", "wheel_click": "Play",
 }

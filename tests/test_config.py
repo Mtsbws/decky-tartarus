@@ -99,10 +99,10 @@ class ConfigTest(unittest.TestCase):
     def test_default_profile_is_made_for_steamos(self):
         p = default_profile(default_config())
         text = {control: binding_label(b) for control, b in p.bindings.items()}
-        self.assertEqual(text["k01"], "Steam menu")
-        self.assertEqual(text["k03"], "Keyboard")
-        self.assertEqual((text["k07"], text["k09"]), ("F6", "F7"))
-        self.assertEqual((text["k13"], text["k14"], text["top_button"]), ("Enter", "Esc", "Esc"))
+        self.assertEqual((text["k01"], text["k05"]), ("Esc", "Backspace"))
+        self.assertEqual((text["k02"], text["k04"]), ("Steam menu", "Keyboard"))
+        self.assertEqual((text["k12"], text["k14"]), ("F6", "F7"))
+        self.assertEqual((text["k15"], text["k20"], text["top_button"]), ("Enter", "Enter", "Esc"))
         self.assertEqual(p.bindings["wheel_up"], Binding("media", ("Vol+",)))
         self.assertEqual(p.bindings["dpad_up"], Binding("key", ("Up",)))  # unlisted: factory key
         self.assertEqual(p.bindings["k17"], Binding("key", ("Z",)))
@@ -563,7 +563,7 @@ class ConfigTest(unittest.TestCase):
         self.assertTrue(self.path.exists())
         self.assertEqual(list(self.dir.glob("*.tmp")), [])
         stored = json.loads(self.path.read_text())
-        self.assertEqual(stored["profiles"][0]["bindings"]["k01"], binding_to_dict(parse_binding_text("steam:menu")))
+        self.assertEqual(stored["profiles"][0]["bindings"]["k01"], binding_to_dict(parse_binding_text("Esc")))
 
 
 if __name__ == "__main__":

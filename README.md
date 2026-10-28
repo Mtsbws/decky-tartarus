@@ -100,20 +100,21 @@ backend runs as root (`/dev/input`, `/dev/uinput`, `/dev/hidraw*`).
 
 ## Default layout
 
-A fresh install starts with a Default profile for getting around SteamOS Game Mode: the D-pad
-moves, the keys under your fingers do what a controller's buttons do. Steam reads these keys
-as its own controller buttons (F3 = X, F4 = Y, F6/F7 = L1/R1, F8 = View, F9 = Menu).
+A fresh install starts with a Default profile for getting around SteamOS Game Mode. The D-pad
+moves, Esc / Enter / Backspace sit where they are on a keyboard, and the keys under your fingers
+do what a controller's buttons do: Steam reads them as its own controller buttons (F3 = X,
+F4 = Y, F6/F7 = L1/R1, F8 = View, F9 = Menu).
 
 ```
-01 Steam menu   02 Quick Access   03 Keyboard     04 F8 (View)    05 F9 (Menu)
-06 Tab          07 F6 (prev tab)  08 F4 (options) 09 F7 (next tab) 10 R
-11 Shift        12 F3 (filter)    13 Enter (select) 14 Esc (back) 15 Backspace
-16 Shift        17 Z              18 X            19 C
+01 Esc          02 Steam menu     03 Quick Access   04 Keyboard       05 Backspace
+06 Tab          07 F8 (View)      08 F4 (options)   09 E              10 F9 (Menu)
+11 Shift        12 F6 (prev tab)  13 F3 (filter)    14 F7 (next tab)  15 Enter
+16 Shift        17 Z              18 X              19 C
 D-pad: arrows   20 (thumb): Enter   button above the D-pad: Esc
 wheel: volume up / down, click: play / pause
 ```
 
-Keys 06, 10 and 16-19 keep their factory keys. **Factory default** on a key puts back what
+Keys 06, 09 and 16-19 keep their factory keys. **Factory default** on a key puts back what
 the keypad sends on its own; an install that already has settings keeps its own Default.
 
 ## Binding text
