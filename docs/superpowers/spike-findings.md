@@ -138,3 +138,15 @@ Breathing, wave, reactive and starlight are from the source only and weren't sen
 6. **Virtual device IDs:** `BUS_USB 0x1209:0x0001` is the combination tested through Moonlight. The plan's `BUS_VIRTUAL 0:0` is untested. → Task 6 uses the tested IDs.
 7. **Wheel:** the keypad sends `REL_WHEEL_HI_RES` next to `REL_WHEEL`. The engine acts on `REL_WHEEL` only and ignores HI_RES. → Task 4, Task 6.
 8. **Python version:** the Deck's system Python is 3.14, but the plugin runs under Decky's bundled interpreter, which the spike didn't check. The 3.11 limit stays.
+
+## Hypershift lights: custom frame
+
+Probed on the Deck (2026-10-28). Report pair, sent in this order, both answered status `02`: `0F/02` args `00 00 08 00 00 00` (select the custom frame), then `0F/03` args `00 00 00 00 14` + 21 RGB triplets.
+
+| Cell | Control |
+|---|---|
+| 0-18 | keys 01-19 |
+| 19 | scroll wheel (one LED: up, down and click share it) |
+| 20 | key 20 |
+
+The top button and the D-pad never lit, so they are not in the map. Timing over 20 switches: static effect + brightness mean 11.8 ms / max 12.0 ms; custom frame mean 12.0 ms / max 12.0 ms. Verdict: **per-key**. `lighting.FRAME_INDEX` holds the table; the frame carries no brightness, so the brightness set by the standard lights stays.

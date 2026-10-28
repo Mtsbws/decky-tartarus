@@ -72,6 +72,10 @@ class Plugin:
         self.service.set_lighting(effect, color, brightness)
         return self.service.state()
 
+    async def set_hypershift_lights(self, enabled: bool, color: str) -> dict:
+        self.service.set_hypershift_lights(enabled, color)
+        return self.service.state()
+
     async def set_lighting_enabled(self, enabled: bool) -> dict:
         self.service.set_lighting_enabled(enabled)
         return self.service.state()
@@ -94,6 +98,10 @@ class Plugin:
 
     async def set_secondary(self, profile_id: str, control: str, mm: Optional[float]) -> dict:
         self.service.set_secondary(profile_id, control, mm)
+        return self.service.state()
+
+    async def clear_hypershift_entry(self, profile_id: str, control: str) -> dict:
+        self.service.clear_hypershift_entry(profile_id, control)
         return self.service.state()
 
     async def set_leds(self, profile_id: str, leds: list) -> dict:

@@ -10,12 +10,14 @@ from tartarus.config import (
     NO_LEDS,
     SCHEMA_VERSION,
     Game,
+    Hypershift,
     Profile,
     Secondary,
     clean_name,
     default_config,
     default_profile,
     factory_bindings,
+    hypershift_key,
     load_config,
     new_profile_id,
     next_leds,
@@ -150,6 +152,27 @@ class ConfigTest(unittest.TestCase):
         self.assertIs(json.loads(self.path.read_text())["lighting"]["enabled"], False)
         self.assertIs(load_config(self.path).lighting.enabled, False)
 
+    def test_hypershift_lights_round_trip_and_defaults(self):
+        self._write(_stored([_entry("default", "Default")]))
+        lighting = load_config(self.path).lighting
+        self.assertEqual((lighting.hypershift, lighting.hypershift_color), (False, "#ff6000"))
+        c = default_config()
+        c.lighting.hypershift = True
+        c.lighting.hypershift_color = "#00ff80"
+        save_config(self.path, c)
+        self.assertEqual(json.loads(self.path.read_text())["lighting"]["hypershift"],
+                         {"enabled": True, "color": "#00ff80"})
+        lighting = load_config(self.path).lighting
+        self.assertEqual((lighting.hypershift, lighting.hypershift_color), (True, "#00ff80"))
+
+    def test_hypershift_lights_bad_values_mean_defaults(self):
+        for raw in ("x", {"enabled": "yes", "color": "red"}, {"enabled": 1, "color": 5}):
+            data = _stored([_entry("default", "Default")])
+            data["lighting"]["hypershift"] = raw
+            self._write(data)
+            lighting = load_config(self.path).lighting
+            self.assertEqual((lighting.hypershift, lighting.hypershift_color), (False, "#ff6000"), raw)
+
     def test_lighting_enabled_not_bool_means_true(self):
         data = _stored([_entry("default", "Default")])
         data["lighting"]["enabled"] = "no"
@@ -224,6 +247,83 @@ class ConfigTest(unittest.TestCase):
             entry["secondary"] = raw
             self._write(_stored([entry]))
             self.assertEqual(default_profile(load_config(self.path)).secondary, {}, raw)
+
+    def test_hypershift_round_trip(self):
+        c = default_config()
+        p = c.profiles[0]
+        p.bindings["k19"] = Binding("hypershift")
+        p.hypershift.bindings.update({"k05": parse_binding_text("F1"), "dpad_up": parse_binding_text("F2")})
+        p.hypershift.actuation["k05"] = 2.0
+        p.hypershift.secondary["k05"] = Secondary(parse_binding_text("F3"), 3.0)
+        save_config(self.path, c)
+        q = load_config(self.path).profiles[0]
+        self.assertEqual(hypershift_key(q), "k19")
+        self.assertEqual(q.hypershift, p.hypershift)
+
+    def test_file_without_hypershift_loads_empty(self):
+        # a v2 file written before this change: no "hypershift" key anywhere
+        entry = _entry("default", "Default", bindings={"k01": binding_to_dict(parse_binding_text("Q"))})
+        entry["actuation"] = {"k01": 2.0}
+        self._write(_stored([entry]))
+        q = load_config(self.path).profiles[0]
+        self.assertEqual(q.hypershift, Hypershift())
+        self.assertIsNone(hypershift_key(q))
+
+    def test_parse_extra_hypershift_keys_reset(self):
+        hs = {"type": "hypershift"}
+        self._write(_stored({"wheel_up": hs, "k03": hs, "k07": hs}))
+        with self.assertLogs("tartarus", "WARNING"):
+            q = load_config(self.path).profiles[0]
+        self.assertEqual(hypershift_key(q), "k03")
+        self.assertEqual(q.bindings["k07"], parse_binding_text("Q"))
+        self.assertEqual(q.bindings["wheel_up"], parse_binding_text("WheelUp"))
+
+    def test_parse_drops_bad_layer_entries(self):
+        f1 = binding_to_dict(parse_binding_text("F1"))
+        entry = _entry("default", "Default", bindings={"k19": {"type": "hypershift"}})
+        entry["hypershift"] = {
+            "bindings": {"k19": f1, "k02": {"type": "hypershift"}, "k99": f1, "k05": f1},
+            "actuation": {"k06": 2.0, "k05": 1.55},
+            "secondary": {"k05": {"binding": f1, "actuation": 1.7}},  # 0.2 mm deeper than the layer point
+        }
+        self._write(_stored([entry]))
+        with self.assertLogs("tartarus", "WARNING"):
+            q = load_config(self.path).profiles[0]
+        self.assertEqual(hypershift_key(q), "k19")
+        self.assertEqual(set(q.hypershift.bindings), {"k05"})
+        self.assertEqual(q.hypershift.actuation, {})
+        self.assertEqual(q.hypershift.secondary, {})
+
+    def test_hypershift_key_loses_its_secondary(self):
+        z = binding_to_dict(parse_binding_text("Z"))
+        entry = _entry("default", "Default", bindings={"k19": {"type": "hypershift"}})
+        entry["secondary"] = {"k19": {"binding": z, "actuation": 3.6}}
+        self._write(_stored([entry]))
+        with self.assertLogs("tartarus", "WARNING"):
+            q = load_config(self.path).profiles[0]
+        self.assertEqual(hypershift_key(q), "k19")
+        self.assertNotIn("k19", q.secondary)
+
+    def test_hypershift_copy_is_independent(self):
+        h = Hypershift(bindings={"k05": parse_binding_text("F1")})
+        h2 = h.copy()
+        h2.bindings["k06"] = parse_binding_text("F2")
+        self.assertEqual(set(h.bindings), {"k05"})
+
+    def test_hypershift_type_secondary_dropped(self):
+        hs = {"type": "hypershift"}
+        f1 = binding_to_dict(parse_binding_text("F1"))
+        entry = _entry("default", "Default", bindings={"k19": hs})
+        entry["secondary"] = {"k05": {"binding": hs, "actuation": 3.0}}
+        entry["hypershift"] = {"bindings": {"k06": f1},
+                               "secondary": {"k06": {"binding": hs, "actuation": 3.0}}}
+        self._write(_stored([entry]))
+        with self.assertLogs("tartarus", "WARNING") as logs:
+            q = load_config(self.path).profiles[0]
+        self.assertEqual(q.secondary, {})
+        self.assertEqual(q.hypershift.secondary, {})
+        self.assertEqual(q.hypershift.bindings, {"k06": parse_binding_text("F1")})
+        self.assertEqual(len(logs.records), 2)
 
     def test_corrupt_file_backed_up(self):
         self._write("{nope")

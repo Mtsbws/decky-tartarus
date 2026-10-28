@@ -7,7 +7,7 @@ devmode.py.
 from __future__ import annotations
 
 import re
-from typing import List, Tuple
+from typing import Dict, Iterable, List, Sequence, Tuple
 
 TRANSACTION_ID = 0x1F
 BREATHING_TRANSACTION_ID = 0x3F
@@ -25,6 +25,16 @@ _PROFILE_LED = 0x0B  # one RGB LED to the firmware: R = top, G = middle, B = bot
 _WAVE_DIRECTION = 1  # left -> right
 _REACTIVE_SPEED = 2
 _STARLIGHT_SPEED = 2
+
+_SET_FRAME = 0x03
+_FRAME_SELECT = bytes([0x00, 0x00, 0x08, 0x00, 0x00, 0x00])
+_FRAME_CELLS = 21
+
+# Custom-frame cell of each lit control (Deck probe, 2026-10-28). The scroll wheel has one LED;
+# the top button and the D-pad have none, so they are not here.
+FRAME_INDEX: Dict[str, int] = {**{"k%02d" % n: n - 1 for n in range(1, 20)},
+                               "wheel_up": 19, "wheel_down": 19, "wheel_click": 19, "k20": 20}
+FAINT = "#262626"
 
 _COLOR = re.compile(r"#[0-9a-fA-F]{6}")
 
@@ -88,3 +98,24 @@ def leds_report(leds: Tuple[bool, bool, bool]) -> bytes:
     rgb = bytes(0xFF if on else 0x00 for on in leds)
     return build_report(_EXTENDED_MATRIX, _SET_EFFECT,
                         bytes([_VARSTORE, _PROFILE_LED, 0x01, 0x00, 0x01, 0x01]) + rgb)
+
+
+def custom_frame_reports(colors: Sequence[str]) -> List[bytes]:
+    """Select the custom frame (0F/02), then send its 21 cells (0F/03); no brightness change."""
+    if len(colors) != _FRAME_CELLS:
+        raise ValueError("a frame needs %d colours, got %d" % (_FRAME_CELLS, len(colors)))
+    rgb = b"".join(_rgb(c) for c in colors)
+    return [
+        build_report(_EXTENDED_MATRIX, _SET_EFFECT, _FRAME_SELECT),
+        build_report(_EXTENDED_MATRIX, _SET_FRAME, bytes([0, 0, 0, 0, _FRAME_CELLS - 1]) + rgb),
+    ]
+
+
+def hypershift_frame(lit: Iterable[str], color: str) -> List[str]:
+    """The 21 cell colours: lit controls in `color`, the rest faint. Controls without an LED are ignored."""
+    cells = [FAINT] * _FRAME_CELLS
+    for control in lit:
+        index = FRAME_INDEX.get(control)
+        if index is not None:
+            cells[index] = color
+    return cells

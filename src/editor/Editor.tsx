@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 
 import { EV_STATE, activeProfile, errorText, getState, profileById, setDpadMode, State } from "../api";
 import { LightingControls } from "../LightingControls";
+import { HypershiftLights } from "./HypershiftLights";
 import { syncLighting } from "../lighting";
 import { ActuationPage } from "./ActuationPage";
+import { Layer } from "./layers";
 import { Card } from "./Card";
 import { CustomizePage } from "./CustomizePage";
 import { PAGE_HEIGHT } from "./layout";
@@ -19,6 +21,8 @@ export function Editor() {
   const [error, setError] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
   const [page, setPage] = useState<Page>("customize");
+  // Which layer Customize and Actuation show; not stored anywhere, so it is Standard each time the editor opens.
+  const [layer, setLayer] = useState<Layer>("standard");
 
   useEffect(() => {
     getState().then((s) => {
@@ -82,6 +86,8 @@ export function Editor() {
                 state={state}
                 profile={profile}
                 selected={selected}
+                layer={layer}
+                onLayer={setLayer}
                 error={error}
                 onSelect={select}
                 onView={switchView}
@@ -93,7 +99,7 @@ export function Editor() {
           {
             id: "actuation",
             title: "Actuation",
-            content: <ActuationPage state={state} profile={profile} onView={switchView} onChanged={setState} />,
+            content: <ActuationPage state={state} profile={profile} layer={layer} onLayer={setLayer} onView={switchView} onChanged={setState} />,
           },
           {
             id: "lighting",
@@ -103,6 +109,7 @@ export function Editor() {
               <div style={{ height: PAGE_HEIGHT, maxWidth: 560 }}>
                 <Card title="Lighting">
                   <LightingControls effects={state.effects} collapsible={false} />
+                  <HypershiftLights state={state} onChanged={setState} />
                 </Card>
               </div>
             ),

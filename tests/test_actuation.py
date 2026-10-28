@@ -71,6 +71,22 @@ class TrackerTest(unittest.TestCase):
         t.reset()
         self.assertEqual(self.feed(t, 255, 7, 251), [[], [], [("b", True)]])
 
+    def test_idle(self):
+        t = KeyTracker(16, 120)
+        self.assertTrue(t.idle)
+        t.feed(20)
+        self.assertFalse(t.idle)  # A held
+        t.feed(130)
+        t.feed(100)
+        self.assertFalse(t.idle)  # latched after B
+        t.feed(0)
+        self.assertTrue(t.idle)
+        t.feed(200)
+        t.reset()
+        self.assertFalse(t.idle)  # blocked
+        t.feed(0)
+        self.assertTrue(t.idle)
+
 
 if __name__ == "__main__":
     unittest.main()

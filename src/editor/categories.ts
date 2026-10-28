@@ -62,6 +62,7 @@ export const CATEGORIES: Category[] = [
     picks: named([["Vol+", "Volume up"], ["Vol-", "Volume down"], ["Mute", "Mute"], ["Play", "Play / Pause"], ["Next", "Next track"], ["Prev", "Previous track"]]),
   },
   { id: "steam", label: "Steam", modifiers: false, picks: named([["steam:menu", "Steam menu"], ["steam:qam", "Quick Access"]]) },
+  { id: "hypershift", label: "Hypershift", modifiers: false, picks: [] },
   { id: "disable", label: "Disable", modifiers: false, picks: [] },
   { id: "type", label: "Type a binding", modifiers: false, picks: [] },
 ];

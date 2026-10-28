@@ -2,23 +2,26 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import errno
 import logging
 import time
 from pathlib import Path
-from typing import Any, Awaitable, Callable, List, Optional, Sequence, Set, Tuple
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 from .actuation import (DEFAULT_MM, MIN_GAP_MM, MM_MAX, MM_MIN, KeyTracker, gap_ok, mm_to_depth, parse_depth_report,
                         tenths, valid_mm)
-from .bindings import Binding, binding_label, binding_to_dict
+from .bindings import Binding, binding_label, binding_to_dict, parse_binding_text
 from .config import (DEFAULT_ID, DPAD_MODES, LED_ORDER, MAX_APP_ID, MAX_PROFILES, Game, Lighting, Profile, Secondary,
+                     hypershift_key,
                      clean_name,
                      default_profile, find_profile, load_config, new_profile_id, next_leds, profile_for_app, save_config)
 from .codes import name_for
-from .devmap import ALL_CONTROLS, ACTUATION_KEYS, FACTORY_CODES, FACTORY_OUTPUT, SYSTEM_CODES
+from .devmap import ALL_CONTROLS, ACTUATION_KEYS, FACTORY_CODES, FACTORY_OUTPUT, HYPERSHIFT_KEYS, SYSTEM_CODES
 from .devmode import DRIVER_MODE, NORMAL_MODE, set_mode_report
-from .engine import B_SUFFIX, RemapEngine
-from .lighting import EFFECTS, effect_reports, leds_report
+from .engine import RemapEngine
+from .layers import HYPERSHIFT, STANDARD, parse_control
+from .lighting import EFFECTS, _rgb, custom_frame_reports, effect_reports, hypershift_frame, leds_report
 from .linux.discovery import PRODUCT, VENDOR, TartarusNodes, find_tartarus, list_keyboards
 from .linux.evdev import EV_KEY, EV_REL, REL_WHEEL, InputDevice
 from .linux.hidraw import HidrawReader, send_feature
@@ -77,7 +80,8 @@ class TartarusService:
             self._lighting_reports()
         except ValueError as e:  # config.py doesn't know the effect names; a stored one may be stale
             self._log.warning("stored lighting is invalid (%s); using the default", e)
-            self._config.lighting = Lighting()
+            self._config.lighting = dataclasses.replace(Lighting(), hypershift=self._config.lighting.hypershift,
+                                                        hypershift_color=self._config.lighting.hypershift_color)
         self._running: Optional[Tuple[int, str]] = None  # (app id, name); never persisted
         self._emitter: Any = None
         self._engine: Optional[RemapEngine] = None
@@ -98,6 +102,7 @@ class TartarusService:
         # Record in driver mode: each key fires at the lightest point, and only the first key pressed counts.
         self._record_trackers = {control: KeyTracker(mm_to_depth(MM_MIN)) for control in ACTUATION_KEYS}
         self._record_key: Optional[str] = None
+        self._hypershift_lit = False  # the keypad shows the Hypershift lights
         self._record_timer: Optional[asyncio.TimerHandle] = None
 
     # --- lifecycle ---
@@ -105,7 +110,8 @@ class TartarusService:
     async def start(self) -> None:
         self._loop = asyncio.get_running_loop()
         self._emitter = self._make_emitter(self._on_steam)
-        self._engine = RemapEngine(self._emitter, self._profile(), steam_mode=STEAM_ACTION_MODE)
+        self._engine = RemapEngine(self._emitter, self._profile(), steam_mode=STEAM_ACTION_MODE,
+                                   on_layer=self._on_layer)
         self._supervisor = self._loop.create_task(self._supervise())
 
     async def stop(self) -> None:
@@ -329,7 +335,46 @@ class TartarusService:
             lighting = self._config.lighting
             self._log.info("lighting applied: %s %s %s (status 0x02)", lighting.effect, lighting.color,
                            f"{lighting.brightness}%" if lighting.enabled else "off")
+        self._refresh_hypershift_lights(restored=True)
         self._apply_leds()
+
+    def _refresh_hypershift_lights(self, restored: bool = False) -> None:
+        """While the Hypershift key is held, keep the shown lights in step with the settings."""
+        if not self._hypershift_lit:
+            return
+        lighting = self._config.lighting
+        if lighting.enabled and lighting.hypershift:
+            self._show_hypershift_lights()
+            return
+        self._hypershift_lit = False
+        if not restored:  # the standard lights are not on the keypad yet
+            for report in self._lighting_reports():
+                self._send_command(report, "lighting", quiet=True)
+
+    def _on_layer(self, active: bool) -> None:
+        """The engine's Hypershift layer went active or standard: show or restore the lights."""
+        try:
+            if active:
+                self._show_hypershift_lights()
+            elif self._hypershift_lit:
+                self._hypershift_lit = False
+                for report in self._lighting_reports():
+                    self._send_command(report, "lighting", quiet=True)
+        except Exception:  # never into the engine's key path
+            self._log.exception("Hypershift lighting not applied")
+
+    def _show_hypershift_lights(self) -> None:
+        lighting = self._config.lighting
+        if lighting.enabled and lighting.hypershift:
+            profile = self._profile()
+            lit = set(profile.hypershift.bindings)  # plain control names
+            key = hypershift_key(profile)
+            if key is not None:
+                lit.add(key)
+            reports = custom_frame_reports(hypershift_frame(lit, lighting.hypershift_color))
+            self._hypershift_lit = True
+            for report in reports:
+                self._send_command(report, "Hypershift lighting", quiet=True)
 
     def _apply_leds(self) -> None:
         """Show the active profile's pattern on the three profile LEDs."""
@@ -505,14 +550,16 @@ class TartarusService:
                          for control, sec in p.secondary.items()}
             profiles.append({"id": p.id, "name": p.name, "is_default": p is self._config.profiles[0],
                              "games": games, "dpad_mode": p.dpad_mode, "leds": list(p.leds),
-                             "actuation": dict(p.actuation), "secondary": secondary, "bindings": bindings})
+                             "actuation": dict(p.actuation), "secondary": secondary, "bindings": bindings,
+                             "hypershift": self._hypershift_state(p)})
         return {
             "connected": bool(self._devices),
             "device": self._device_name(),
             "device_id": f"{VENDOR}:{PRODUCT}" if self._devices else None,
             "steam_mode": STEAM_ACTION_MODE,
             "lighting": {"effect": lighting.effect, "color": lighting.color, "brightness": lighting.brightness,
-                         "enabled": lighting.enabled},
+                         "enabled": lighting.enabled,
+                         "hypershift": {"enabled": lighting.hypershift, "color": lighting.hypershift_color}},
             "actuation": {"enabled": self._config.adjustable_actuation, "status": self._actuation, "default_mm": DEFAULT_MM,
                        "min_mm": MM_MIN, "max_mm": MM_MAX, "min_gap_mm": MIN_GAP_MM},
             "effects": list(EFFECTS),
@@ -522,6 +569,17 @@ class TartarusService:
             "profiles": profiles,
             "led_patterns": [list(leds) for leds in LED_ORDER],
         }
+
+    @staticmethod
+    def _hypershift_state(p: Profile) -> dict:
+        layer = p.hypershift
+        return {"key": hypershift_key(p),
+                "bindings": {c: {"binding": binding_to_dict(b), "label": binding_label(b)}
+                             for c, b in layer.bindings.items()},
+                "actuation": dict(layer.actuation),
+                "secondary": {c: {"binding": binding_to_dict(sec.binding), "label": binding_label(sec.binding),
+                                  "actuation": sec.actuation}
+                              for c, sec in layer.secondary.items()}}
 
     def _edit_target(self, profile_id: str) -> Profile:
         profile = find_profile(self._config, profile_id)
@@ -536,16 +594,68 @@ class TartarusService:
 
     def set_binding(self, profile_id: str, control: str, b: Binding) -> None:
         profile = self._edit_target(profile_id)
-        if control.endswith(B_SUFFIX):
-            key = control[:-len(B_SUFFIX)]
-            secondary = profile.secondary.get(key)
-            if secondary is None:
-                raise ValueError(f"{key!r} has no secondary function")
-            profile.secondary[key] = Secondary(b, secondary.actuation)
-        elif control in ALL_CONTROLS:
-            profile.bindings[control] = b
+        ref = parse_control(control)
+        key = hypershift_key(profile)
+        if b.type == "hypershift":
+            if ref.layer != STANDARD or ref.slot != "a" or ref.base not in HYPERSHIFT_KEYS:
+                raise ValueError("Only keys 01-20 and the top button can be the Hypershift key")
+            if key is not None and key != ref.base:
+                profile.bindings[key] = parse_binding_text(FACTORY_OUTPUT[key])
+            # The key itself has no secondary function and no layer entry.
+            profile.secondary.pop(ref.base, None)
+            self._drop_entry(profile, ref.base)
+            profile.bindings[ref.base] = b
+        elif ref.layer == STANDARD:
+            if ref.slot == "a":
+                profile.bindings[ref.base] = b
+            else:
+                secondary = profile.secondary.get(ref.base)
+                if ref.base == key or secondary is None:
+                    raise ValueError(f"{ref.base!r} has no secondary function")
+                profile.secondary[ref.base] = Secondary(b, secondary.actuation)
+        elif ref.slot == "a":
+            if ref.base == key:
+                raise ValueError("The Hypershift key has no Hypershift binding")
+            layer = profile.hypershift
+            if ref.base not in layer.bindings and ref.base in ACTUATION_KEYS:
+                mm = profile.actuation.get(ref.base, DEFAULT_MM)
+                if tenths(mm) != tenths(DEFAULT_MM):
+                    layer.actuation[ref.base] = mm
+            layer.bindings[ref.base] = b
         else:
-            raise ValueError(f"unknown control {control!r}")
+            self._require_entry(profile, ref.base)
+            secondary = profile.hypershift.secondary.get(ref.base)
+            if secondary is None:
+                raise ValueError(f"{ref.base!r} has no secondary function")
+            profile.hypershift.secondary[ref.base] = Secondary(b, secondary.actuation)
+        self._edited(profile)
+
+    @staticmethod
+    def _drop_entry(profile: Profile, base: str) -> None:
+        layer = profile.hypershift
+        layer.bindings.pop(base, None)
+        layer.actuation.pop(base, None)
+        layer.secondary.pop(base, None)
+
+    @staticmethod
+    def _require_entry(profile: Profile, base: str) -> None:
+        if base not in profile.hypershift.bindings:
+            raise ValueError(f"{base} has no Hypershift binding")
+
+    @staticmethod
+    def _layer_maps(profile: Profile, layer: str) -> Tuple[Dict[str, float], Dict[str, Secondary]]:
+        """The actuation and secondary maps of one layer of the profile."""
+        if layer == HYPERSHIFT:
+            return profile.hypershift.actuation, profile.hypershift.secondary
+        return profile.actuation, profile.secondary
+
+    def clear_hypershift_entry(self, profile_id: str, control: str) -> None:
+        """Remove control X.h's binding, actuation point and secondary function from the layer."""
+        profile = self._edit_target(profile_id)
+        ref = parse_control(control)
+        if ref.layer != HYPERSHIFT or ref.slot != "a":
+            raise ValueError(f"{control!r} is not a Hypershift entry")
+        self._drop_entry(profile, ref.base)
         self._edited(profile)
 
     def set_dpad_mode(self, profile_id: str, mode: str) -> None:
@@ -556,56 +666,65 @@ class TartarusService:
         self._edited(profile)
 
     def set_actuation(self, profile_id: str, control: str, mm: float) -> None:
-        profile = self._edit_target(profile_id)
-        if control not in ACTUATION_KEYS:
-            raise ValueError(f"{control!r} has no adjustable actuation")
-        self._apply_actuation(profile, (control,), mm)
+        self.set_actuation_keys(profile_id, [control], mm)
 
     def set_all_actuation(self, profile_id: str, mm: float) -> None:
-        self._apply_actuation(self._edit_target(profile_id), ACTUATION_KEYS, mm)
+        self._apply_actuation(self._edit_target(profile_id), ACTUATION_KEYS, mm, STANDARD)
 
     def set_actuation_keys(self, profile_id: str, controls: Sequence[str], mm: float) -> None:
-        """Set keys' actuation together: if one key's B can't move, nothing changes."""
+        """Set keys' actuation together: if one key's B can't move, nothing changes. All in one layer."""
         profile = self._edit_target(profile_id)
-        if (not isinstance(controls, (list, tuple)) or not controls
-                or not all(isinstance(c, str) and c in ACTUATION_KEYS for c in controls)):
+        if not isinstance(controls, (list, tuple)) or not controls or not all(isinstance(c, str) for c in controls):
             raise ValueError("controls must be keys 01-20")
-        self._apply_actuation(profile, tuple(controls), mm)
+        refs = [parse_control(c) for c in controls]
+        if any(r.slot != "a" or r.base not in ACTUATION_KEYS for r in refs) or len({r.layer for r in refs}) != 1:
+            raise ValueError("controls must be keys 01-20")
+        self._apply_actuation(profile, tuple(r.base for r in refs), mm, refs[0].layer)
 
     def set_secondary(self, profile_id: str, control: str, mm: Optional[float]) -> None:
         """Turn key control's B on at mm (new B does nothing until bound), move it, or remove it (None)."""
         profile = self._edit_target(profile_id)
-        if control not in ACTUATION_KEYS:
+        ref = parse_control(control)
+        if ref.slot != "a" or ref.base not in ACTUATION_KEYS:
             raise ValueError(f"{control!r} has no adjustable actuation")
+        if ref.layer == STANDARD and ref.base == hypershift_key(profile):
+            raise ValueError("The Hypershift key has no secondary function")
+        if ref.layer == HYPERSHIFT:
+            self._require_entry(profile, ref.base)
+        actuation, secondary_map = self._layer_maps(profile, ref.layer)
         if mm is None:
-            profile.secondary.pop(control, None)
+            secondary_map.pop(ref.base, None)
         else:
             if not valid_mm(mm):
                 raise ValueError(f"actuation must be {MM_MIN}-{MM_MAX} mm in 0.1 mm steps")
-            if not gap_ok(profile.actuation.get(control, DEFAULT_MM), mm):
+            if not gap_ok(actuation.get(ref.base, DEFAULT_MM), mm):
                 raise ValueError(f"the secondary function must be at least {MIN_GAP_MM} mm deeper than the key")
-            old = profile.secondary.get(control)
-            profile.secondary[control] = Secondary(old.binding if old is not None else Binding("disable"), round(mm, 1))
+            old = secondary_map.get(ref.base)
+            secondary_map[ref.base] = Secondary(old.binding if old is not None else Binding("disable"), round(mm, 1))
         self._edited(profile)
 
-    def _apply_actuation(self, profile: Profile, controls: Sequence[str], mm: float) -> None:
+    def _apply_actuation(self, profile: Profile, controls: Sequence[str], mm: float, layer: str) -> None:
         if not valid_mm(mm):
             raise ValueError(f"actuation must be {MM_MIN}-{MM_MAX} mm in 0.1 mm steps")
+        if layer == HYPERSHIFT:
+            for control in controls:
+                self._require_entry(profile, control)
+        actuation, secondary_map = self._layer_maps(profile, layer)
         # A B that would end up too close moves deeper with A; if it can't, nothing changes.
         moved = {}
         for control in controls:
-            secondary = profile.secondary.get(control)
+            secondary = secondary_map.get(control)
             if secondary is not None and not gap_ok(mm, secondary.actuation):
                 b_tenths = tenths(mm) + tenths(MIN_GAP_MM)
                 if b_tenths > tenths(MM_MAX):
                     raise ValueError(f"{control}'s secondary function would pass {MM_MAX} mm")
                 moved[control] = Secondary(secondary.binding, b_tenths / 10)
-        profile.secondary.update(moved)
+        secondary_map.update(moved)
         for control in controls:
             if tenths(mm) == tenths(DEFAULT_MM):
-                profile.actuation.pop(control, None)
+                actuation.pop(control, None)
             else:
-                profile.actuation[control] = round(mm, 1)
+                actuation[control] = round(mm, 1)
         self._edited(profile)
 
     def set_leds(self, profile_id: str, leds: Sequence[bool]) -> None:
@@ -655,7 +774,8 @@ class TartarusService:
         name = clean_name(self._config, name)
         profile = Profile(id=new_profile_id(self._config), name=name, dpad_mode=source.dpad_mode,
                           bindings=dict(source.bindings), leds=next_leds(self._config),
-                          actuation=dict(source.actuation), secondary=dict(source.secondary))
+                          actuation=dict(source.actuation), secondary=dict(source.secondary),
+                          hypershift=source.hypershift.copy())
         self._mutate(lambda: self._config.profiles.append(profile))
         return profile.id
 
@@ -678,10 +798,21 @@ class TartarusService:
 
     def set_lighting(self, effect: str, color: str, brightness: int) -> None:
         effect_reports(effect, color, brightness)  # raises ValueError before anything changes
-        self._config.lighting = Lighting(effect=effect, color=color, brightness=brightness,
-                                         enabled=self._config.lighting.enabled)
+        self._config.lighting = dataclasses.replace(self._config.lighting, effect=effect, color=color,
+                                                    brightness=brightness)
         save_config(self._path, self._config)
         self._apply_lighting()
+
+    def set_hypershift_lights(self, enabled: bool, color: str) -> None:
+        """Light the keypad in `color` while the Hypershift key is held."""
+        if not isinstance(enabled, bool):
+            raise ValueError("enabled must be true or false")
+        _rgb(color)  # raises ValueError before anything changes
+        self._config.lighting.hypershift = enabled
+        self._config.lighting.hypershift_color = color
+        save_config(self._path, self._config)
+        self._refresh_hypershift_lights()
+        self._notify()
 
     def set_lighting_enabled(self, enabled: bool) -> None:
         """The Lighting switch: off keeps the stored settings and sends them at brightness 0."""

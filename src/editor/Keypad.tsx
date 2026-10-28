@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 
 import { ProfileState } from "../api";
 import { LED_COLOURS } from "../StatusLights";
+import { HYPERSHIFT_ACCENT, Layer, layerMm, layerSecondary } from "./layers";
 
 // Our own drawing of the Tartarus Pro (no Razer images), traced from a
 // top-down photo: five key columns with the pinky column dropped half a key,
@@ -97,7 +98,17 @@ const pct = (v: number, of: number) => `${(v / of) * 100}%`;
 
 // Keys look like keycaps; the wheel and thumbpad parts are see-through so the
 // drawing underneath shows.
-function look(control: string, selected: boolean, view: View): CSSProperties {
+function look(control: string, selected: boolean, view: View, layer: Layer, isHypershiftKey: boolean): CSSProperties {
+  if (isHypershiftKey) {
+    return { border: `2px solid ${HYPERSHIFT_ACCENT}`, background: "rgba(255, 96, 0, 0.35)" };
+  }
+  if (selected && layer === "hypershift") {
+    return {
+      border: `2px solid ${HYPERSHIFT_ACCENT}`,
+      background: "rgba(92, 38, 0, 0.92)",
+      boxShadow: `0 0 8px ${HYPERSHIFT_ACCENT}`,
+    };
+  }
   if (selected && view === "actuation") {
     return { border: "2px solid #44b030", background: "rgba(46, 92, 30, 0.92)" };
   }
@@ -249,10 +260,14 @@ export function Keypad(props: {
   profile: ProfileState;
   view: View;
   selected: readonly string[];
+  layer: Layer;
   defaultMm: number;
   onSelect(control: string): void;
 }) {
-  const { profile, view, selected, defaultMm, onSelect } = props;
+  const { profile, view, selected, layer, defaultMm, onSelect } = props;
+  const hypershift = layer === "hypershift";
+  // On the Hypershift layer a control without an entry shows its standard binding, dimmed.
+  const label = (c: string) => (hypershift ? profile.hypershift.bindings[c]?.label : undefined) ?? profile.bindings[c].label;
   const controls = Object.keys(LAYOUT).filter(
     (c) => c in profile.bindings && (profile.dpad_mode === "8way" || !DIAGONALS.has(c)),
   );
@@ -279,9 +294,20 @@ export function Keypad(props: {
             display: "flex",
             flexDirection: "column",
             justifyContent: "space-between",
-            ...look(c, selected.includes(c), view),
+            ...look(c, selected.includes(c), view, layer, hypershift && c === profile.hypershift.key),
           };
-          if (view === "actuation" && !isKey(c)) {
+          if (hypershift && c === profile.hypershift.key) {
+            // The layer's own key: it can't have a Hypershift entry, so it is only shown.
+            return (
+              <div key={c} style={style}>
+                <div style={cornerStyle}>
+                  <span style={{ opacity: 0.6 }}>{CORNER[c] ?? controlName(c)}</span>
+                </div>
+                <div style={labelStyle}>Hypershift</div>
+              </div>
+            );
+          }
+          if (view === "actuation" && (!isKey(c) || (hypershift && !(c in profile.hypershift.bindings)))) {
             return (
               <div key={c} style={{ ...style, opacity: 0.35 }}>
                 <div style={cornerStyle}>
@@ -299,11 +325,19 @@ export function Keypad(props: {
             >
               <div style={cornerStyle}>
                 <span style={{ opacity: 0.6 }}>{CORNER[c] ?? controlName(c)}</span>
-                {view === "bindings" && c in profile.secondary && <span style={{ flexShrink: 0 }}>2×</span>}
+                {view === "bindings" && layerSecondary(profile, c, layer) && <span style={{ flexShrink: 0 }}>2×</span>}
               </div>
-              <div style={labelStyle}>
+              <div
+                style={{
+                  ...labelStyle,
+                  // A Hypershift entry is orange; a fall-through standard binding is dimmed.
+                  ...(hypershift && c in profile.hypershift.bindings
+                    ? { color: HYPERSHIFT_ACCENT }
+                    : { opacity: view === "bindings" && hypershift ? 0.45 : 1 }),
+                }}
+              >
                 {/* A key has about 28 CSS px for its label: "1.5" fits, "1.5 mm" doesn't (the card names the unit). */}
-                {view === "actuation" ? (profile.actuation[c] ?? defaultMm).toFixed(1) : profile.bindings[c].label}
+                {view === "actuation" ? layerMm(profile, c, layer, defaultMm).toFixed(1) : label(c)}
               </div>
             </Focusable>
           );
