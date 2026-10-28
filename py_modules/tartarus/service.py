@@ -545,7 +545,10 @@ class TartarusService:
     def state(self) -> dict:
         lighting = self._config.lighting
         profiles = []
-        for p in self._config.profiles:
+        # Default first, then the rest in status-light order, so changing a profile's lights moves it in the list.
+        ordered = sorted(self._config.profiles,
+                         key=lambda p: -1 if p is self._config.profiles[0] else LED_ORDER.index(p.leds))
+        for p in ordered:
             bindings = {}
             for control in ALL_CONTROLS:
                 b = p.bindings[control]
