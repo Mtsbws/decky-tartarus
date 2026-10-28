@@ -110,7 +110,7 @@ F4 = Y, F6/F7 = L1/R1, F8 = View, F9 = Menu).
 06 Tab          07 F8 (View)      08 F4 (options)   09 E              10 F9 (Menu)
 11 Shift        12 F6 (prev tab)  13 F3 (filter)    14 F7 (next tab)  15 Enter
 16 Shift        17 Z              18 X              19 C
-D-pad: arrows   20 (thumb): Enter   button above the D-pad: Esc
+D-pad: arrows   button above the D-pad: Enter   20 (thumb): Esc
 wheel: volume up / down, click: play / pause
 ```
 
