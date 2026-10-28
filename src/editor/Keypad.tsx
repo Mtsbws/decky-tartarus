@@ -327,7 +327,15 @@ export function Keypad(props: {
                 <span style={{ opacity: 0.6 }}>{CORNER[c] ?? controlName(c)}</span>
                 {view === "bindings" && layerSecondary(profile, c, layer) && <span style={{ flexShrink: 0 }}>2×</span>}
               </div>
-              <div style={{ ...labelStyle, opacity: view === "bindings" && hypershift && !(c in profile.hypershift.bindings) ? 0.45 : 1 }}>
+              <div
+                style={{
+                  ...labelStyle,
+                  // A Hypershift entry is orange; a fall-through standard binding is dimmed.
+                  ...(hypershift && c in profile.hypershift.bindings
+                    ? { color: HYPERSHIFT_ACCENT }
+                    : { opacity: view === "bindings" && hypershift ? 0.45 : 1 }),
+                }}
+              >
                 {/* A key has about 28 CSS px for its label: "1.5" fits, "1.5 mm" doesn't (the card names the unit). */}
                 {view === "actuation" ? layerMm(profile, c, layer, defaultMm).toFixed(1) : label(c)}
               </div>

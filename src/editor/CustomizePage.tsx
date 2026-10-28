@@ -6,7 +6,7 @@ import { Card, Row } from "./Card";
 import { ChoosePage } from "./ChoosePage";
 import { EditingRow } from "./EditingRow";
 import { controlTitle, Keypad } from "./Keypad";
-import { bindingOf, hasEntry, Layer, layerMm, layerSecondary, onLayer } from "./layers";
+import { bindingOf, hasEntry, HYPERSHIFT_ACCENT, Layer, layerMm, layerSecondary, onLayer } from "./layers";
 import { LayerSwitch } from "./LayerSwitch";
 import { actuationNote, BUTTON, ERROR, mmText, PAGE_HEIGHT, tenth } from "./layout";
 import { RecordButton } from "./RecordButton";
@@ -129,7 +129,7 @@ export function CustomizePage(props: {
                         <b>Same as Standard</b> ({binding?.label})
                       </>
                     ) : (
-                      <b>{entryLabel}</b>
+                      <b style={onHypershift ? { color: HYPERSHIFT_ACCENT } : undefined}>{entryLabel}</b>
                     )}
                   </>
                 }
