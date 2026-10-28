@@ -151,6 +151,14 @@ class LedServiceTest(unittest.TestCase):
         self.assertEqual(state["led_patterns"], [list(p) for p in LED_ORDER])
         self.assertEqual([p["leds"] for p in state["profiles"]], [[False, False, False], [True, False, False]])
 
+    def test_state_orders_profiles_by_lights_after_default(self):
+        service = Rig(self.path).service
+        p3 = service.create_profile("FPS", "default")  # gets the next free pattern, green
+        service.set_leds("p2", [False, False, True])  # orange → blue: p2 moves below p3
+        state = service.state()
+        self.assertEqual([p["id"] for p in state["profiles"]], ["default", p3, "p2"])
+        self.assertTrue(state["profiles"][0]["is_default"])
+
 
 if __name__ == "__main__":
     unittest.main()
