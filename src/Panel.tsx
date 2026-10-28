@@ -89,7 +89,7 @@ export function Panel() {
           </div>
         </PanelSectionRow>
       )}
-      {state && state.effects.length > 0 && <LightingControls effects={state.effects} collapsible />}
+      {state && state.effects.length > 0 && <LightingControls effects={state.effects} />}
     </PanelSection>
   );
 }

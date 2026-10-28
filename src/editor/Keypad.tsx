@@ -2,7 +2,7 @@ import { Focusable } from "@decky/ui";
 import type { CSSProperties } from "react";
 
 import { ProfileState } from "../api";
-import { LED_COLOURS } from "../StatusLights";
+import { LED_COLOURS, LED_UNLIT } from "../StatusLights";
 import { HYPERSHIFT_ACCENT, Layer, layerMm, layerSecondary } from "./layers";
 
 // Our own drawing of the Tartarus Pro (no Razer images), traced from a
@@ -127,14 +127,22 @@ function look(control: string, selected: boolean, view: View, layer: Layer, isHy
 
 const rotate = (b: Box) => (b.rot ? `rotate(${b.rot} ${b.x + b.w / 2} ${b.y + b.h / 2})` : undefined);
 
-function glowOf(control: string): string {
+// The default rainbow, one colour per column; the Lighting page shows it for spectrum and wave.
+export function rainbow(control: string): string {
   if (isKey(control) && control !== "k20") return COLUMN_GLOW[(Number(control.slice(1)) - 1) % 5];
   return COLUMN_GLOW[4];
 }
 
-function Picture() {
+// What a control's underglow shows: a colour, or null when its light is off.
+export type Glow = (control: string) => string | null;
+const UNLIT = "#434b57";
+
+// `level` scales the glow, as the backlight's brightness does. `leds` are the status lights; all lit when left out.
+function Picture({ glow, level, leds }: { glow: Glow; level: number; leds?: readonly boolean[] }) {
   const sockets = Object.entries(LAYOUT).filter(([c]) => isKey(c));
   const top = LAYOUT.top_button;
+  // The wheel has one light for its three controls.
+  const wheel = glow("wheel_up") ?? glow("wheel_click") ?? glow("wheel_down");
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
       <defs>
@@ -178,7 +186,7 @@ function Picture() {
       {/* Thumb wing: the stem with the status lights, then the stick module */}
       <rect x={456} y={118} width={70} height={232} rx={26} fill="url(#tt-wing)" stroke="#434b57" strokeWidth={2} />
       {[230, 254, 278].map((y, i) => (
-        <circle key={y} cx={514} cy={y} r={3} fill={LED_COLOURS[i]} />
+        <circle key={y} cx={514} cy={y} r={3} fill={!leds || leds[i] ? LED_COLOURS[i] : LED_UNLIT} />
       ))}
       <rect x={440} y={316} width={158} height={192} rx={44} fill="url(#tt-wing)" stroke="#434b57" strokeWidth={2} />
       {/* Arm that holds the thumb key */}
@@ -192,7 +200,7 @@ function Picture() {
       />
 
       {/* Underglow around every key */}
-      {sockets.map(([c, b]) => (
+      {sockets.map(([c, b]) => glow(c) && (
         <rect
           key={`g${c}`}
           x={b.x - 5}
@@ -201,9 +209,9 @@ function Picture() {
           height={b.h + 10}
           rx={12}
           fill="none"
-          stroke={glowOf(c)}
+          stroke={glow(c)!}
           strokeWidth={3}
-          strokeOpacity={0.75}
+          strokeOpacity={0.75 * level}
           filter="url(#tt-blur)"
           transform={rotate(b)}
         />
@@ -217,14 +225,14 @@ function Picture() {
           height={b.h + 8}
           rx={11}
           fill="#0e1115"
-          stroke={glowOf(c)}
-          strokeOpacity={0.55}
+          stroke={glow(c) ?? UNLIT}
+          strokeOpacity={glow(c) ? 0.55 * level : 0.5}
           transform={rotate(b)}
         />
       ))}
 
       {/* Scroll wheel under key 15 */}
-      <rect x={364} y={258} width={52} height={128} rx={20} fill="#0e1115" stroke={COLUMN_GLOW[4]} strokeOpacity={0.6} strokeWidth={2} />
+      <rect x={364} y={258} width={52} height={128} rx={20} fill="#0e1115" stroke={wheel ?? UNLIT} strokeOpacity={wheel ? 0.6 * level : 0.5} strokeWidth={2} />
       <rect x={378} y={268} width={24} height={108} rx={10} fill="url(#tt-wheel)" />
       {Array.from({ length: 13 }, (_, i) => (
         <line key={i} x1={379} x2={401} y1={274 + i * 8} y2={274 + i * 8} stroke="#0b0d10" strokeWidth={2.5} />
@@ -239,7 +247,7 @@ function Picture() {
   );
 }
 
-type View = "bindings" | "actuation";
+type View = "bindings" | "actuation" | "preview";
 
 // A small gap: a key with a secondary function needs the room for its "2×".
 const cornerStyle: CSSProperties = { display: "flex", justifyContent: "space-between", gap: 2, fontSize: 11, lineHeight: 1 };
@@ -256,15 +264,19 @@ const labelStyle: CSSProperties = {
 
 // "bindings": every control can be selected and shows its binding.
 // "actuation": only keys 01-20 can be selected and each shows its actuation.
+// "preview": shows the bindings, nothing can be selected; the D-pad skips the drawing.
 export function Keypad(props: {
   profile: ProfileState;
   view: View;
-  selected: readonly string[];
+  selected?: readonly string[];
   layer: Layer;
-  defaultMm: number;
-  onSelect(control: string): void;
+  defaultMm?: number;
+  glow?: Glow;
+  glowLevel?: number;
+  leds?: readonly boolean[];
+  onSelect?(control: string): void;
 }) {
-  const { profile, view, selected, layer, defaultMm, onSelect } = props;
+  const { profile, view, selected = [], layer, defaultMm = 0, glow = rainbow, glowLevel = 1, leds, onSelect = () => {} } = props;
   const hypershift = layer === "hypershift";
   // On the Hypershift layer a control without an entry shows its standard binding, dimmed.
   const label = (c: string) => (hypershift ? profile.hypershift.bindings[c]?.label : undefined) ?? profile.bindings[c].label;
@@ -275,7 +287,7 @@ export function Keypad(props: {
   return (
     // Sized by the page height; the width follows the drawing's shape.
     <div style={{ position: "relative", height: "100%", aspectRatio: `${W} / ${H}`, maxWidth: "100%", flexShrink: 0 }}>
-      <Picture />
+      <Picture glow={glow} level={glowLevel} leds={leds} />
       <Focusable style={{ position: "absolute", inset: 0 }} flow-children="grid">
         {controls.map((c) => {
           const box = LAYOUT[c];
@@ -316,16 +328,11 @@ export function Keypad(props: {
               </div>
             );
           }
-          return (
-            <Focusable
-              key={c}
-              onActivate={() => onSelect(c)}
-              onClick={() => onSelect(c)}
-              style={{ ...style, cursor: "pointer" }}
-            >
+          const content = (
+            <>
               <div style={cornerStyle}>
                 <span style={{ opacity: 0.6 }}>{CORNER[c] ?? controlName(c)}</span>
-                {view === "bindings" && layerSecondary(profile, c, layer) && <span style={{ flexShrink: 0 }}>2×</span>}
+                {view !== "actuation" && layerSecondary(profile, c, layer) && <span style={{ flexShrink: 0 }}>2×</span>}
               </div>
               <div
                 style={{
@@ -333,12 +340,24 @@ export function Keypad(props: {
                   // A Hypershift entry is orange; a fall-through standard binding is dimmed.
                   ...(hypershift && c in profile.hypershift.bindings
                     ? { color: HYPERSHIFT_ACCENT }
-                    : { opacity: view === "bindings" && hypershift ? 0.45 : 1 }),
+                    : { opacity: view !== "actuation" && hypershift ? 0.45 : 1 }),
                 }}
               >
                 {/* A key has about 28 CSS px for its label: "1.5" fits, "1.5 mm" doesn't (the card names the unit). */}
                 {view === "actuation" ? layerMm(profile, c, layer, defaultMm).toFixed(1) : label(c)}
               </div>
+            </>
+          );
+          if (view === "preview") {
+            return (
+              <div key={c} style={style}>
+                {content}
+              </div>
+            );
+          }
+          return (
+            <Focusable key={c} onActivate={() => onSelect(c)} onClick={() => onSelect(c)} style={{ ...style, cursor: "pointer" }}>
+              {content}
             </Focusable>
           );
         })}

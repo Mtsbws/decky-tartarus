@@ -1,15 +1,38 @@
-import { ConfirmModal, DialogButton, Focusable, Menu, MenuItem, showContextMenu, showModal } from "@decky/ui";
+import { ConfirmModal, DialogButton, Focusable, showModal } from "@decky/ui";
 import { useState } from "react";
 
 import { activeProfile, createProfile, deleteProfile, errorText, profileById, ProfileState, renameProfile, State } from "../api";
 import { StatusLights } from "../StatusLights";
 import { Card } from "./Card";
+import { useKeypadGlow } from "./glow";
+import { Keypad } from "./Keypad";
 import { BUTTON, ERROR, PAGE_HEIGHT } from "./layout";
 import { LightsModal } from "./LightsModal";
 import { NameModal } from "./NameModal";
 
-// A grey 40×28 button, as CSS Loader's row buttons.
-const MORE = { width: 40, minWidth: 0, height: 28, padding: 0, flexShrink: 0, lineHeight: "28px" };
+// A profile in the list: a slim row, as the Rows on the other pages, that selects the profile.
+const ROW = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  width: "100%",
+  minWidth: 0,
+  minHeight: 36,
+  padding: "4px 12px",
+  margin: 0,
+  textAlign: "left" as const,
+  borderRadius: 4,
+  flexShrink: 0,
+};
+// The row colours live in a stylesheet, not inline, so they give way to Steam's focus style:
+// an inline background stayed put on focus while Steam darkened the text, hiding the name.
+const ROW_CLASS = "Tartarus_ProfileRow";
+const ROW_CSS = `
+.${ROW_CLASS}:not(.gpfocus):not(:focus) { background: rgba(255, 255, 255, 0.06) !important; color: #dfe3e6 !important; }
+.${ROW_CLASS}.Tartarus_Selected:not(.gpfocus):not(:focus) { background: rgba(91, 209, 74, 0.22) !important; }
+.${ROW_CLASS}.Tartarus_Selected { box-shadow: inset 3px 0 0 #5bd14a !important; }
+`;
+const IN_USE = { fontSize: 11, padding: "1px 6px", borderRadius: 8, background: "#5bd14a", color: "#0e141b", flexShrink: 0 };
 
 export function ProfilesPage({ state, viewing, onEdit, onView, onChanged }: {
   state: State;
@@ -72,82 +95,60 @@ export function ProfilesPage({ state, viewing, onEdit, onView, onChanged }: {
     );
   }
 
-  function menu(p: ProfileState, target: EventTarget | null) {
-    showContextMenu(
-      <Menu label={p.name}>
-        <MenuItem onSelected={() => onEdit(p.id)}>Edit keys</MenuItem>
-        {!p.is_default && (
-          <MenuItem onSelected={() => showModal(<LightsModal state={state} profile={p} onChanged={onChanged} />)}>Lights</MenuItem>
-        )}
-        <MenuItem onSelected={() => rename(p)}>Rename</MenuItem>
-        {!p.is_default && (
-          <MenuItem tone="destructive" onSelected={() => remove(p)}>
-            Delete
-          </MenuItem>
-        )}
-      </Menu>,
-      target ?? undefined,
-    );
-  }
+  const selected = profileById(state, viewing) ?? activeProfile(state);
+  const glow = useKeypadGlow(state, selected, "standard");
+  const games = selected.is_default ? "Every game without its own profile" : selected.games.join(", ") || "No games yet";
 
   return (
-    <div style={{ height: PAGE_HEIGHT }}>
-      <Card title="Profiles" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-        {/* Two columns so the maximum of 8 fits; the list may still scroll inside the card (the only scrolling allowed).
-            No flow-children: the D-pad moves through the grid by position. */}
-        <Focusable
-          style={{
-            flex: 1,
-            minHeight: 0,
-            overflowY: "auto",
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 4,
-            alignContent: "start",
-          }}
-        >
-          {state.profiles.map((p) => (
-            <Focusable
-              key={p.id}
-              flow-children="row"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                minHeight: 52,
-                padding: "4px 12px",
-                borderRadius: 4,
-                background: "rgba(255, 255, 255, 0.06)",
-                boxSizing: "border-box",
-              }}
-            >
-              <StatusLights leds={p.leds} size={9} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
-                  {p.id === state.active_profile && (
-                    <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 8, background: "#5bd14a", color: "#0e141b", flexShrink: 0 }}>
-                      in use
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontSize: 12, opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {p.is_default ? "Every game without its own profile" : p.games.join(", ") || "No games"}
-                </div>
-              </div>
-              <DialogButton style={MORE} onClick={(e) => menu(p, e.currentTarget)}>
-                ⋯
+    <Focusable flow-children="row" style={{ height: PAGE_HEIGHT, display: "flex", gap: 16 }}>
+      <Keypad profile={selected} view="preview" layer="standard" {...glow} leds={selected.leds} />
+      <Focusable flow-children="column" style={{ flex: 1, minWidth: 300, display: "flex", flexDirection: "column", gap: 8 }}>
+        {/* The list may scroll inside its card (the only scrolling allowed), so the details stay on screen. */}
+        <Card title="Profiles" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          <style>{ROW_CSS}</style>
+          <Focusable flow-children="column" style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
+            {state.profiles.map((p) => (
+              <DialogButton
+                key={p.id}
+                className={p.id === selected.id ? `${ROW_CLASS} Tartarus_Selected` : ROW_CLASS}
+                onClick={() => onView(p.id)}
+                style={ROW}
+              >
+                <StatusLights leds={p.leds} size={7} />
+                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                {p.id === state.active_profile && <span style={IN_USE}>in use</span>}
               </DialogButton>
-            </Focusable>
-          ))}
-        </Focusable>
-        {error && <div style={{ color: ERROR, marginTop: 4 }}>{error}</div>}
-        <Focusable flow-children="row" style={{ display: "flex", marginTop: 8 }}>
-          <DialogButton style={BUTTON} disabled={state.profiles.length >= state.max_profiles} onClick={create}>
-            New profile
-          </DialogButton>
-        </Focusable>
-      </Card>
-    </div>
+            ))}
+          </Focusable>
+          <Focusable flow-children="row" style={{ display: "flex", marginTop: 8, flexShrink: 0 }}>
+            <DialogButton style={BUTTON} disabled={state.profiles.length >= state.max_profiles} onClick={create}>
+              New profile
+            </DialogButton>
+          </Focusable>
+        </Card>
+        <Card title={selected.name} style={{ flexShrink: 0 }}>
+          <div style={{ fontSize: 13, opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{games}</div>
+          <Focusable flow-children="row" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+            <DialogButton style={BUTTON} onClick={() => onEdit(selected.id)}>
+              Edit keys
+            </DialogButton>
+            {!selected.is_default && (
+              <DialogButton style={BUTTON} onClick={() => showModal(<LightsModal state={state} profile={selected} onChanged={onChanged} />)}>
+                Lights
+              </DialogButton>
+            )}
+            <DialogButton style={BUTTON} onClick={() => rename(selected)}>
+              Rename
+            </DialogButton>
+            {!selected.is_default && (
+              <DialogButton style={BUTTON} onClick={() => remove(selected)}>
+                Delete
+              </DialogButton>
+            )}
+          </Focusable>
+          {error && <div style={{ color: ERROR, marginTop: 4 }}>{error}</div>}
+        </Card>
+      </Focusable>
+    </Focusable>
   );
 }

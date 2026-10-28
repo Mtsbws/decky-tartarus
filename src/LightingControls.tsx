@@ -7,8 +7,6 @@ import { useLighting } from "./lighting";
 // Effects that send no colour to the keypad (spike findings: spectrum and wave).
 export const COLOURLESS = new Set(["spectrum", "wave"]);
 
-const capitalise = (s: string) => s[0].toUpperCase() + s.slice(1);
-
 // A slim full-width bar under the toggle, as CSS Loader's themes have. Steam's
 // ButtonItem nesting differs between client versions, hence the three selectors.
 const COLLAPSE_CLASS = "Tartarus_CollapseButton";
@@ -17,24 +15,26 @@ const COLLAPSE_CSS = [3, 4, 5]
   .join("\n");
 const CARET = { transform: "translate(0, -13px)", fontSize: "1.5em" };
 
-// The lighting rows shared by the Quick Access panel (collapsible) and the editor's Lighting page.
-export function LightingControls({ effects, collapsible }: { effects: string[]; collapsible: boolean }) {
+export const capitalise = (s: string) => s[0].toUpperCase() + s.slice(1);
+
+// The Quick Access panel's lighting rows; the editor's Lighting page has its own compact ones.
+export function LightingControls({ effects }: { effects: string[] }) {
   const { draft, error, expanded, change, setEnabled, setExpanded } = useLighting();
   if (!draft) return null;
-  const open = draft.enabled && (expanded || !collapsible);
+  const open = draft.enabled && expanded;
 
   return (
     <>
       <PanelSectionRow>
         <ToggleField
           label="Lighting"
-          description={draft.enabled && collapsible ? `${capitalise(draft.effect)} · ${draft.brightness}%` : undefined}
-          bottomSeparator={draft.enabled && collapsible ? "none" : "standard"}
+          description={draft.enabled ? `${capitalise(draft.effect)} · ${draft.brightness}%` : undefined}
+          bottomSeparator={draft.enabled ? "none" : "standard"}
           checked={draft.enabled}
           onChange={setEnabled}
         />
       </PanelSectionRow>
-      {draft.enabled && collapsible && (
+      {draft.enabled && (
         <div className={COLLAPSE_CLASS}>
           <style>{COLLAPSE_CSS}</style>
           <PanelSectionRow>
