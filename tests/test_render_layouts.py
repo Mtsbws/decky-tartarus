@@ -21,10 +21,6 @@ def texts(svg: str) -> set:
     return {el.text for el in ET.fromstring(svg).iter() if el.text}
 
 
-def slug(starter_id: str) -> str:
-    return starter_id.split(":", 1)[1]
-
-
 class RenderLayoutsTest(unittest.TestCase):
     def setUp(self):
         self.pictures = render_layouts.all_pictures()
@@ -34,7 +30,7 @@ class RenderLayoutsTest(unittest.TestCase):
             texts(svg)  # parses, or raises
         for s in STARTERS:
             labels = render_layouts.labels_for(profile_from_starter(s, "p9", s.name, (False, False, False)).bindings)
-            found = texts(self.pictures[slug(s.id) + ".svg"])
+            found = texts(self.pictures[s.slug + ".svg"])
             for control in PICTURED:
                 self.assertIn(labels[control], found, f"{s.name} {control}")
 

@@ -8,7 +8,7 @@ from tartarus.bindings import parse_binding_text
 from tartarus.codes import code_for
 from tartarus.config import Hypershift, Secondary, profile_from_starter
 from tartarus.devmap import FACTORY_CODES
-from tartarus.starters import find_starter
+from tartarus.starters import STARTERS
 
 from tartarus.engine import RemapEngine
 from tests.test_engine import FakeEmitter, C, E, W, A, B, F5, profile, down, up, KEY_UP, KEY_RIGHT
@@ -282,7 +282,7 @@ class HypershiftEngineTest(unittest.IsolatedAsyncioTestCase):
     # --- the MMO starter's layer ---
 
     def mmo(self):
-        return profile_from_starter(find_starter("starter:mmo"), "p4", "MMO", (True, False, False))
+        return profile_from_starter(next(s for s in STARTERS if s.slug == "mmo"), "p4", "MMO", (True, False, False))
 
     async def test_mmo_hypershift_layer_sends_ctrl_number(self):
         CTRL, ONE, K02 = code_for("Ctrl"), code_for("1"), PHYS["k02"]

@@ -109,11 +109,10 @@ def all_pictures() -> Dict[str, str]:
     for s in STARTERS:
         profile = profile_from_starter(s, "picture", s.name, NO_LEDS)
         standard = labels_for(profile.bindings)
-        slug = s.id.split(":", 1)[1]
-        pictures[f"{slug}.svg"] = render_svg(s.name, standard)
+        pictures[f"{s.slug}.svg"] = render_svg(s.name, standard)
         if profile.hypershift.bindings:
             layer = labels_for(profile.hypershift.bindings)
-            pictures[f"{slug}-hypershift.svg"] = render_svg(
+            pictures[f"{s.slug}-hypershift.svg"] = render_svg(
                 f"{s.name} – Hypershift layer (hold the Hypershift key)", {**standard, **layer},
                 highlight=frozenset(layer))
     return pictures

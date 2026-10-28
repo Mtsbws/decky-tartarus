@@ -12,7 +12,6 @@ type Props = {
   closeModal?(): void;
 };
 
-const HEADING = { fontSize: 12, opacity: 0.6, textTransform: "uppercase" as const, margin: "8px 0 2px" };
 const NAME = { flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const };
 
 // A name plus the profile to copy. Selecting a row only picks the source; Save creates.
@@ -54,7 +53,7 @@ export function NewProfileModal({ state, initialSourceId, onCreated, closeModal 
       <style>{ROW_CSS}</style>
       <div style={{ fontSize: 18, fontWeight: "bold", marginBottom: 12 }}>New profile</div>
       <TextField value={name} onChange={(e) => setName(e.target.value)} />
-      <div style={{ ...HEADING, marginTop: 12 }}>Copy from</div>
+      <div style={{ fontSize: 12, opacity: 0.6, textTransform: "uppercase", margin: "12px 0 2px" }}>Copy from</div>
       <Focusable flow-children="column" style={{ maxHeight: 260, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
         {state.profiles.map((p) => row(p.id, p.name, p.leds))}
       </Focusable>

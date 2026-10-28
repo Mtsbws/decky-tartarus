@@ -1,8 +1,8 @@
-"""Starter profiles: ready-made layouts a fresh install gets and "New profile" can copy.
+"""Starter profiles: ready-made layouts a fresh install gets as ordinary, editable profiles.
 
 Data only, as binding text like `config.STEAMOS_DEFAULT`; config.py builds profiles from it.
-`bindings` lists only controls that differ from the factory key; `secondary` maps a control to
-(binding text, mm). The tables in docs/starter-profiles.md describe the same layouts.
+`bindings` lists every control the layout sets, even where it equals the factory key; `secondary`
+maps a control to (binding text, mm). `slug` names the starter's pictures in docs/layouts/. The tables in docs/starter-profiles.md describe the same layouts.
 """
 from __future__ import annotations
 
@@ -10,12 +10,9 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Mapping, Optional, Tuple
 
-STARTER_PREFIX = "starter:"
-
-
 @dataclass(frozen=True)
 class Starter:
-    id: str
+    slug: str
     name: str
     bindings: Mapping[str, str]
     actuation: Mapping[str, float]
@@ -25,7 +22,7 @@ class Starter:
 
 def _starter(slug: str, name: str, bindings: dict, actuation: dict,
              secondary: Optional[dict] = None, hypershift: Optional[dict] = None) -> Starter:
-    return Starter(STARTER_PREFIX + slug, name, MappingProxyType(bindings), MappingProxyType(actuation),
+    return Starter(slug, name, MappingProxyType(bindings), MappingProxyType(actuation),
                    MappingProxyType(secondary or {}), MappingProxyType(hypershift or {}))
 
 
@@ -69,9 +66,3 @@ _MMO = _starter("mmo", "MMO", {
 
 STARTERS: Tuple[Starter, ...] = (_FPS_WASD, _FPS_DPAD, _MMO)
 
-
-def find_starter(starter_id: str) -> Optional[Starter]:
-    for s in STARTERS:
-        if s.id == starter_id:
-            return s
-    return None
