@@ -51,6 +51,8 @@ mode, colour and brightness. The gear next to the title opens the editor.
 
 <img src="docs/screenshots/panel.jpg" alt="Quick Access panel" width="640">
 
+![Brotato running with the panel open: Brotato uses MMO, and the keypad lit with MMO's status light](docs/screenshots/keypad-lights.jpg)
+
 ### Editor
 
 The editor has four tabs (L1 / R1 switch between them):
@@ -88,6 +90,8 @@ edit, and it says which profile the keypad uses now. Changes apply at once.
 | **Actuation**: each key shows its depth in mm | **Lighting**: mode, colour and brightness |
 | ![Profiles tab](docs/screenshots/profiles.jpg) | ![Lights picker for a profile](docs/screenshots/lights.jpg) |
 | **Profiles**: games per profile and their status lights | **Lights**: patterns other profiles use are taken |
+| ![Hypershift layer of the MMO profile: Ctrl+1 … Ctrl+Equal on the hotbar keys](docs/screenshots/starter-mmo-hypershift.jpg) | ![The keypad with key 19 held: the Hypershift keys lit orange, the rest dim](docs/screenshots/keypad-hypershift.jpg) |
+| **Hypershift**: the second layer, edited like the first | **Hypershift lights**: hold the Hypershift key and its layer's keys light up |
 
 ## Install
 
