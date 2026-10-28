@@ -135,17 +135,18 @@ Game Mode only reacts to a few keys, and the row above the resting keys holds th
 |---|---|
 | Arrows (D-pad) | move |
 | Enter · Esc | select · back |
-| Backspace | delete in text, otherwise remove |
-| F4 | search, sort, or the page's extra action |
+| Backspace | delete in text, otherwise the page's second action (library: filters) |
+| F4 | the page's extra action (library: sort by) |
 | F6 · F7 | previous · next tab |
-| Shift+F6 · Shift+F7 | page back · on |
 | F8 · F9 | game options · side menu |
 
 Keys 03 and 04 open Quick Access and the on-screen keyboard, and the wheel sets the volume
-(click: play / pause). Letters, Tab and Space do nothing in Steam's menus, so each function is
-on one key only and keys 01, 02, 05, 16-19 and 20 keep their factory keys. **Factory default**
-on a key puts back what the keypad sends on its own. An install that already has settings keeps
-its own Default.
+(click: play / pause). While a text field has focus, Enter and Backspace go to the field, so
+click the on-screen keyboard's keys with a mouse or the touchscreen. Letters, Tab and Space do
+nothing in Steam's menus, so each function is on one key only and keys 01, 02, 05, 15-19 and 20
+keep their factory keys. Key 11 does nothing: its factory CapsLock would stick. **Factory
+default** on a key puts back what the keypad sends on its own. An install that already has
+settings keeps its own Default.
 
 ## Starter profiles
 
