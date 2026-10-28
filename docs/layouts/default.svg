@@ -36,12 +36,10 @@
   <rect x="580" y="114" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="592" y="134" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">05</text>
   <text x="592" y="160" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">5</text>
-  <rect x="28" y="202" width="130" height="84" rx="8" fill="#e9bf4f" stroke="none" stroke-width="1"/>
+  <rect x="28" y="202" width="130" height="84" rx="8" fill="#8d939c" stroke="none" stroke-width="1"/>
   <rect x="28" y="206" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="40" y="226" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">06</text>
-  <rect x="122.8" y="213" width="25.2" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
-  <text x="135.4" y="226" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">F8</text>
-  <text x="40" y="252" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Game options</text>
+  <text x="40" y="252" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Tab</text>
   <rect x="166" y="202" width="130" height="84" rx="8" fill="#e9bf4f" stroke="none" stroke-width="1"/>
   <rect x="166" y="206" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="178" y="226" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">07</text>
@@ -66,7 +64,8 @@
   <text x="592" y="226" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">10</text>
   <rect x="674.8" y="213" width="25.2" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
   <text x="687.4" y="226" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">F9</text>
-  <text x="592" y="252" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Side menu</text>
+  <text x="592" y="252" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Game options</text>
+  <text x="592" y="271" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">on a selected g…</text>
   <rect x="28" y="294" width="130" height="84" rx="8" fill="#8d939c" stroke="none" stroke-width="1"/>
   <rect x="28" y="298" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="40" y="318" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">11</text>

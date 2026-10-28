@@ -136,6 +136,8 @@ class ConfigTest(unittest.TestCase):
         # Steam's menus ignore Shift+F6/F7 (triggers); key 11's factory CapsLock would stick, so it is off.
         self.assertEqual(p.bindings["k11"], Binding("disable"))
         self.assertEqual(text["k15"], "F")  # factory key
+        # F9 opens a game's options; F8 does nothing on the library or a game page, so key 06 keeps Tab.
+        self.assertEqual((text["k06"], text["k10"]), ("Tab", "F9"))
         self.assertFalse([c for c, t in text.items() if t in ("Shift+F6", "Shift+F7")])
         self.assertEqual((text["k03"], text["k04"]), ("Quick Access", "Keyboard"))
         self.assertEqual(text["top_button"], "Steam menu")
