@@ -5,98 +5,105 @@
   <rect x="1042.11" y="40" width="11" height="11" rx="3" fill="#8d939c" stroke="none" stroke-width="1"/>
   <text x="983.84" y="50" font-size="13" fill="#8b93a1" text-anchor="start" font-weight="normal">Media</text>
   <rect x="965.84" y="40" width="11" height="11" rx="3" fill="#ef6a4c" stroke="none" stroke-width="1"/>
-  <text x="836.33" y="50" font-size="13" fill="#8b93a1" text-anchor="start" font-weight="normal">Controller buttons</text>
-  <rect x="818.33" y="40" width="11" height="11" rx="3" fill="#e9bf4f" stroke="none" stroke-width="1"/>
-  <text x="757.33" y="50" font-size="13" fill="#8b93a1" text-anchor="start" font-weight="normal">Steam</text>
-  <rect x="739.33" y="40" width="11" height="11" rx="3" fill="#5b8def" stroke="none" stroke-width="1"/>
-  <text x="664.42" y="50" font-size="13" fill="#8b93a1" text-anchor="start" font-weight="normal">Navigate</text>
-  <rect x="646.42" y="40" width="11" height="11" rx="3" fill="#5cbf7a" stroke="none" stroke-width="1"/>
-  <text x="28" y="96" font-size="12" fill="#8b93a1" text-anchor="start" font-weight="bold" letter-spacing="1.5">KEYPAD</text>
+  <text x="857.65" y="50" font-size="13" fill="#8b93a1" text-anchor="start" font-weight="normal">Tabs &amp; menus</text>
+  <rect x="839.65" y="40" width="11" height="11" rx="3" fill="#e9bf4f" stroke="none" stroke-width="1"/>
+  <text x="778.65" y="50" font-size="13" fill="#8b93a1" text-anchor="start" font-weight="normal">Steam</text>
+  <rect x="760.65" y="40" width="11" height="11" rx="3" fill="#5b8def" stroke="none" stroke-width="1"/>
+  <text x="685.74" y="50" font-size="13" fill="#8b93a1" text-anchor="start" font-weight="normal">Navigate</text>
+  <rect x="667.74" y="40" width="11" height="11" rx="3" fill="#5cbf7a" stroke="none" stroke-width="1"/>
+  <text x="28" y="96" font-size="12" fill="#8b93a1" text-anchor="start" font-weight="bold" letter-spacing="1.5">KEYPAD · FINGERS REST ON THE OUTLINED KEYS</text>
   <text x="750" y="96" font-size="12" fill="#8b93a1" text-anchor="start" font-weight="bold" letter-spacing="1.5">THUMB</text>
   <text x="750" y="414" font-size="12" fill="#8b93a1" text-anchor="start" font-weight="bold" letter-spacing="1.5">WHEEL</text>
-  <rect x="28" y="110" width="130" height="84" rx="8" fill="#5cbf7a" stroke="none" stroke-width="1"/>
+  <rect x="28" y="110" width="130" height="84" rx="8" fill="#8d939c" stroke="none" stroke-width="1"/>
   <rect x="28" y="114" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="40" y="134" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">01</text>
-  <rect x="116.2" y="121" width="31.8" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
-  <text x="132.1" y="134" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">Esc</text>
-  <text x="40" y="160" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Back</text>
-  <text x="40" y="179" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">B button</text>
-  <rect x="166" y="110" width="130" height="84" rx="8" fill="#5b8def" stroke="none" stroke-width="1"/>
+  <text x="40" y="160" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">1</text>
+  <rect x="166" y="110" width="130" height="84" rx="8" fill="#8d939c" stroke="none" stroke-width="1"/>
   <rect x="166" y="114" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="178" y="134" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">02</text>
-  <text x="178" y="160" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Steam menu</text>
+  <text x="178" y="160" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">2</text>
   <rect x="304" y="110" width="130" height="84" rx="8" fill="#5b8def" stroke="none" stroke-width="1"/>
   <rect x="304" y="114" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="316" y="134" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">03</text>
   <text x="316" y="160" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Quick Access</text>
+  <text x="316" y="179" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">toggles</text>
   <rect x="442" y="110" width="130" height="84" rx="8" fill="#5b8def" stroke="none" stroke-width="1"/>
   <rect x="442" y="114" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="454" y="134" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">04</text>
   <text x="454" y="160" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Keyboard</text>
   <text x="454" y="179" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">on-screen</text>
-  <rect x="580" y="110" width="130" height="84" rx="8" fill="#5cbf7a" stroke="none" stroke-width="1"/>
+  <rect x="580" y="110" width="130" height="84" rx="8" fill="#8d939c" stroke="none" stroke-width="1"/>
   <rect x="580" y="114" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="592" y="134" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">05</text>
-  <text x="592" y="160" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Backspace</text>
-  <text x="592" y="179" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">delete text</text>
-  <rect x="28" y="202" width="130" height="84" rx="8" fill="#8d939c" stroke="none" stroke-width="1"/>
+  <text x="592" y="160" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">5</text>
+  <rect x="28" y="202" width="130" height="84" rx="8" fill="#e9bf4f" stroke="none" stroke-width="1"/>
   <rect x="28" y="206" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="40" y="226" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">06</text>
-  <text x="40" y="252" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Tab</text>
+  <rect x="122.8" y="213" width="25.2" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
+  <text x="135.4" y="226" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">F8</text>
+  <text x="40" y="252" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Game options</text>
   <rect x="166" y="202" width="130" height="84" rx="8" fill="#e9bf4f" stroke="none" stroke-width="1"/>
   <rect x="166" y="206" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="178" y="226" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">07</text>
   <rect x="260.8" y="213" width="25.2" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
-  <text x="273.4" y="226" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">F8</text>
-  <text x="178" y="252" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">View</text>
-  <text x="178" y="271" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">View button</text>
+  <text x="273.4" y="226" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">F6</text>
+  <text x="178" y="252" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Previous tab</text>
   <rect x="304" y="202" width="130" height="84" rx="8" fill="#e9bf4f" stroke="none" stroke-width="1"/>
   <rect x="304" y="206" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="316" y="226" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">08</text>
   <rect x="398.8" y="213" width="25.2" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
   <text x="411.4" y="226" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">F4</text>
-  <text x="316" y="252" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Options</text>
-  <text x="316" y="271" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">Y button</text>
-  <rect x="442" y="202" width="130" height="84" rx="8" fill="#8d939c" stroke="none" stroke-width="1"/>
+  <text x="316" y="252" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Search</text>
+  <text x="316" y="271" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">or sort</text>
+  <rect x="442" y="202" width="130" height="84" rx="8" fill="#e9bf4f" stroke="none" stroke-width="1"/>
   <rect x="442" y="206" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="454" y="226" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">09</text>
-  <text x="454" y="252" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">E</text>
+  <rect x="536.8" y="213" width="25.2" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
+  <text x="549.4" y="226" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">F7</text>
+  <text x="454" y="252" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Next tab</text>
   <rect x="580" y="202" width="130" height="84" rx="8" fill="#e9bf4f" stroke="none" stroke-width="1"/>
   <rect x="580" y="206" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="592" y="226" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">10</text>
   <rect x="674.8" y="213" width="25.2" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
   <text x="687.4" y="226" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">F9</text>
-  <text x="592" y="252" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Menu</text>
-  <text x="592" y="271" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">Menu button</text>
-  <rect x="28" y="294" width="130" height="84" rx="8" fill="#8d939c" stroke="none" stroke-width="1"/>
+  <text x="592" y="252" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Side menu</text>
+  <rect x="28" y="294" width="130" height="84" rx="8" fill="#e9bf4f" stroke="none" stroke-width="1"/>
   <rect x="28" y="298" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="40" y="318" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">11</text>
-  <text x="40" y="344" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">CapsLock</text>
-  <rect x="166" y="294" width="130" height="84" rx="8" fill="#e9bf4f" stroke="none" stroke-width="1"/>
+  <rect x="29" y="295" width="128" height="82" rx="8" fill="none" stroke="#5cbf7a" stroke-width="2"/>
+  <rect x="83.2" y="305" width="64.8" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
+  <text x="115.6" y="318" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">Shift+F6</text>
+  <text x="40" y="344" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Page back</text>
+  <rect x="166" y="294" width="130" height="84" rx="8" fill="#5cbf7a" stroke="none" stroke-width="1"/>
   <rect x="166" y="298" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="178" y="318" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">12</text>
-  <rect x="260.8" y="305" width="25.2" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
-  <text x="273.4" y="318" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">F6</text>
-  <text x="178" y="344" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Previous tab</text>
-  <text x="178" y="363" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">L1</text>
-  <rect x="304" y="294" width="130" height="84" rx="8" fill="#e9bf4f" stroke="none" stroke-width="1"/>
+  <rect x="167" y="295" width="128" height="82" rx="8" fill="none" stroke="#5cbf7a" stroke-width="2"/>
+  <rect x="214.6" y="305" width="71.4" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
+  <text x="250.3" y="318" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">Backspace</text>
+  <text x="178" y="344" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Delete</text>
+  <text x="178" y="363" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">or remove</text>
+  <rect x="304" y="294" width="130" height="84" rx="8" fill="#5cbf7a" stroke="none" stroke-width="1"/>
   <rect x="304" y="298" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="316" y="318" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">13</text>
-  <rect x="398.8" y="305" width="25.2" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
-  <text x="411.4" y="318" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">F3</text>
-  <text x="316" y="344" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Filter</text>
-  <text x="316" y="363" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">X button</text>
-  <rect x="442" y="294" width="130" height="84" rx="8" fill="#e9bf4f" stroke="none" stroke-width="1"/>
+  <rect x="305" y="295" width="128" height="82" rx="8" fill="none" stroke="#5cbf7a" stroke-width="2"/>
+  <rect x="379" y="305" width="45" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
+  <text x="401.5" y="318" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">Enter</text>
+  <text x="316" y="344" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Select</text>
+  <text x="316" y="363" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">middle finger</text>
+  <rect x="442" y="294" width="130" height="84" rx="8" fill="#5cbf7a" stroke="none" stroke-width="1"/>
   <rect x="442" y="298" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="454" y="318" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">14</text>
-  <rect x="536.8" y="305" width="25.2" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
-  <text x="549.4" y="318" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">F7</text>
-  <text x="454" y="344" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Next tab</text>
-  <text x="454" y="363" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">R1</text>
-  <rect x="580" y="294" width="130" height="84" rx="8" fill="#8d939c" stroke="none" stroke-width="1"/>
+  <rect x="443" y="295" width="128" height="82" rx="8" fill="none" stroke="#5cbf7a" stroke-width="2"/>
+  <rect x="530.2" y="305" width="31.8" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
+  <text x="546.1" y="318" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">Esc</text>
+  <text x="454" y="344" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Back</text>
+  <text x="454" y="363" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">index finger</text>
+  <rect x="580" y="294" width="130" height="84" rx="8" fill="#e9bf4f" stroke="none" stroke-width="1"/>
   <rect x="580" y="298" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="592" y="318" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">15</text>
-  <text x="592" y="344" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">F</text>
+  <rect x="635.2" y="305" width="64.8" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
+  <text x="667.6" y="318" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">Shift+F7</text>
+  <text x="592" y="344" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Page on</text>
   <rect x="28" y="386" width="130" height="84" rx="8" fill="#8d939c" stroke="none" stroke-width="1"/>
   <rect x="28" y="390" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="40" y="410" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">16</text>
@@ -113,13 +120,11 @@
   <rect x="442" y="390" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="454" y="410" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">19</text>
   <text x="454" y="436" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">C</text>
-  <rect x="750" y="110" width="122" height="84" rx="8" fill="#5cbf7a" stroke="none" stroke-width="1"/>
+  <rect x="750" y="110" width="122" height="84" rx="8" fill="#5b8def" stroke="none" stroke-width="1"/>
   <rect x="750" y="114" width="122" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="762" y="134" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">top</text>
-  <rect x="817" y="121" width="45" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
-  <text x="839.5" y="134" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">Enter</text>
-  <text x="762" y="160" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Select</text>
-  <text x="762" y="179" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">A button</text>
+  <text x="762" y="160" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Steam menu</text>
+  <text x="762" y="179" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">thumb up</text>
   <rect x="880" y="110" width="122" height="84" rx="8" fill="#5cbf7a" stroke="none" stroke-width="1"/>
   <rect x="880" y="114" width="122" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="892" y="134" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">↑ up</text>
