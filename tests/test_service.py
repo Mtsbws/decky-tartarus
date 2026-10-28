@@ -151,7 +151,7 @@ class ServiceTest(unittest.TestCase):
         rig = Rig(self.path)
         state = rig.service.state()
         self.assertEqual(set(state), {"connected", "device", "device_id", "steam_mode", "lighting", "actuation", "effects",
-                                 "active_profile", "running_app", "max_profiles", "profiles", "led_patterns"})
+                                 "active_profile", "running_app", "max_profiles", "profiles", "starters", "led_patterns"})
         self.assertFalse(state["connected"])
         self.assertIsNone(state["device"])
         self.assertIsNone(state["device_id"])
