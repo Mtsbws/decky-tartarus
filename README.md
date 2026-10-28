@@ -55,7 +55,7 @@ mode, colour and brightness. The gear next to the title opens the editor.
 
 ### Editor
 
-The editor has four tabs (L1 / R1 switch between them):
+The editor has four tabs (F6 / F7 switch between them; keys 12 and 14 on the Default profile):
 
 - **Customize:** pick a control on the drawing, then set it on the card beside it:
   - **Choose…** picks from categories (letters, numbers, function keys, navigation,
