@@ -192,11 +192,35 @@ class EngineTest(unittest.IsolatedAsyncioTestCase):
     async def test_wheel_input_and_output(self):
         e = self.engine(profile(wheel_up="F5", k01="WheelDown"))
         e.handle_wheel(1)
+        await self.settle()
         self.assertEqual(self.out.events, [down(F5), up(F5)])
         self.out.events.clear()
         e.handle_key(KEY_1, 1)
         e.handle_key(KEY_1, 0)
         self.assertEqual(self.out.events, [("wheel", -1)])
+
+    async def test_wheel_notch_holds_key_long_enough_for_games(self):
+        e = self.engine(profile(wheel_up="F5"))
+        e.handle_wheel(1)
+        self.assertEqual(self.out.events, [down(F5)])
+        await self.settle()
+        self.assertEqual(self.out.events, [down(F5), up(F5)])
+        self.assertEqual(self.sleeps, [0.03])
+
+    async def test_quick_notches_each_tap_once(self):
+        e = self.engine(profile(wheel_up="F5"))
+        e.handle_wheel(1)
+        e.handle_wheel(2)
+        await self.settle()
+        self.assertEqual(self.out.events, [down(F5), up(F5)] * 3)
+
+    async def test_release_all_drops_pending_notches(self):
+        e = self.engine(profile(wheel_up="F5"))
+        e.handle_wheel(3)
+        await asyncio.sleep(0)
+        e.release_all()
+        await self.settle()
+        self.assertEqual(self.out.events, [down(F5), up(F5)])
 
     async def test_factory_wheel_passes_through(self):
         e = self.engine(profile())

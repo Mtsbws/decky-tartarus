@@ -13,6 +13,7 @@ from .dpad import resolve_dpad
 from .layers import B_SUFFIX, HYPERSHIFT, STANDARD
 
 MACRO_DELAY = 0.015  # seconds between a step's down and up, and between steps
+WHEEL_HOLD = 0.03  # seconds a wheel notch holds its binding, and the gap between notches; games poll once a frame
 
 HOLD_TYPES = ("key", "modifier", "mouse", "media", "combo")
 _STEAM_KEYS = {"menu": ("Ctrl", "1"), "qam": ("Ctrl", "2")}
@@ -46,6 +47,8 @@ class RemapEngine:
         self._dpad_pressed: Set[str] = set()  # physical cardinals down
         self._dpad_active: FrozenSet[str] = frozenset()
         self._macros: Dict[str, asyncio.Task] = {}
+        self._wheel_pending: Dict[str, List[str]] = {}  # wheel control -> layers of the notches not yet played
+        self._wheel_tasks: Dict[str, asyncio.Task] = {}
         self._trackers: Dict[str, KeyTracker] = {}
         self._key_layer: Dict[str, str] = {}  # depth key -> layer its current press belongs to
         self._build_trackers()
@@ -86,11 +89,31 @@ class RemapEngine:
             self._out.sync()
             return
         control = "wheel_up" if value > 0 else "wheel_down"
-        for _ in range(abs(value)):
-            self._trigger(control, True)
-            self._out.sync()
-            self._trigger(control, False)
-            self._out.sync()
+        self._wheel_pending.setdefault(control, []).extend([self._active_layer()] * abs(value))
+        running = self._wheel_tasks.get(control)
+        if running is None or running.done():
+            self._wheel_tasks[control] = asyncio.get_running_loop().create_task(self._wheel(control))
+            self._wheel_notch(control)  # the first notch goes down now, not on the next loop turn
+
+    def _wheel_notch(self, control: str) -> None:
+        self._trigger(control, True, self._wheel_pending[control].pop(0))
+        self._out.sync()
+
+    async def _wheel(self, control: str) -> None:
+        """Plays a wheel control's notches one at a time, each held for WHEEL_HOLD in the layer it was turned in."""
+        try:
+            while True:
+                await self._sleep(WHEEL_HOLD)
+                self._trigger(control, False)
+                self._out.sync()
+                if not self._wheel_pending.get(control):
+                    break
+                await self._sleep(WHEEL_HOLD)
+                self._wheel_notch(control)
+        finally:
+            if self._wheel_tasks.get(control) is asyncio.current_task():
+                del self._wheel_tasks[control]
+                self._wheel_pending.pop(control, None)
 
     def handle_depth(self, depths: bytes) -> None:
         """One driver-mode depth report: byte i is ACTUATION_KEYS[i]."""
@@ -140,6 +163,10 @@ class RemapEngine:
         for task in self._macros.values():
             task.cancel()
         self._macros.clear()
+        for task in self._wheel_tasks.values():
+            task.cancel()
+        self._wheel_tasks.clear()
+        self._wheel_pending.clear()
         for code, count in self._counts.items():
             if count > 0:
                 self._out.key(code, False)
