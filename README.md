@@ -60,7 +60,7 @@ and that profile's status lights. While a game runs, **"&lt;game&gt; uses:"** as
 profile. The Lighting switch turns the backlight on or off, and the bar under it opens the
 mode, colour and brightness. The gear next to the title opens the editor.
 
-<img src="docs/screenshots/panel.jpg" alt="Quick Access panel" width="640">
+![Quick Access panel on the home screen: keypad connected, uses Default, lighting on](docs/screenshots/panel.jpg)
 
 ![Brotato running with the panel open: Brotato uses MMO, and the keypad lit with MMO's status light](docs/screenshots/keypad-lights.jpg)
 
