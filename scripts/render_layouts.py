@@ -40,13 +40,14 @@ HEIGHT = WHEEL_Y + CARD_H + MARGIN
 Doc = Mapping[str, Tuple[Optional[str], str, str]]
 
 _DEFAULT_DOC: Doc = {
-    "k01": ("Back", "B button", "green"), "k02": (None, "", "blue"), "k03": (None, "", "blue"),
-    "k04": (None, "on-screen", "blue"), "k05": (None, "delete text", "green"),
-    "k07": ("View", "View button", "yellow"), "k08": ("Options", "Y button", "yellow"),
-    "k10": ("Menu", "Menu button", "yellow"),
-    "k12": ("Previous tab", "L1", "yellow"), "k13": ("Filter", "X button", "yellow"),
-    "k14": ("Next tab", "R1", "yellow"),
-    "top_button": ("Select", "A button", "green"),
+    "k03": (None, "toggles", "blue"), "k04": (None, "on-screen", "blue"),
+    "k06": ("Game options", "", "yellow"), "k07": ("Previous tab", "", "yellow"),
+    "k08": ("Search", "or sort", "yellow"), "k09": ("Next tab", "", "yellow"),
+    "k10": ("Side menu", "", "yellow"),
+    "k11": ("Page back", "", "yellow"), "k12": ("Delete", "or remove", "green"),
+    "k13": ("Select", "middle finger", "green"), "k14": ("Back", "index finger", "green"),
+    "k15": ("Page on", "", "yellow"),
+    "top_button": (None, "thumb up", "blue"),
     "dpad_up": (None, "", "green"), "dpad_right": (None, "", "green"),
     "dpad_down": (None, "", "green"), "dpad_left": (None, "", "green"),
     "wheel_up": ("Volume up", "", "orange"), "wheel_down": ("Volume down", "", "orange"),
@@ -106,7 +107,7 @@ _MMO_LAYER_DOC: Doc = {
 }
 
 Legend = Sequence[Tuple[str, str]]
-_DEFAULT_LEGEND: Legend = (("green", "Navigate"), ("blue", "Steam"), ("yellow", "Controller buttons"),
+_DEFAULT_LEGEND: Legend = (("green", "Navigate"), ("blue", "Steam"), ("yellow", "Tabs & menus"),
                            ("orange", "Media"), ("grey", "Factory key"))
 _FPS_LEGEND: Legend = (("green", "Move"), ("orange", "Fight"), ("yellow", "Items"), ("blue", "Talk"),
                        ("grey", "Menus & rare"))
@@ -251,8 +252,9 @@ def render_svg(title: str, labels: Mapping[str, str], highlight: frozenset = fro
 
 
 def all_pictures() -> Dict[str, str]:
-    pictures = {"default.svg": render_svg("Default", labels_for(steamos_bindings()), doc=_DEFAULT_DOC,
-                                          legend=_DEFAULT_LEGEND)}
+    pictures = {"default.svg": render_svg("Default", labels_for(steamos_bindings()),
+                                          frozenset({"k11", "k12", "k13", "k14"}), doc=_DEFAULT_DOC,
+                                          legend=_DEFAULT_LEGEND, outline_note="fingers rest on the outlined keys")}
     for s in STARTERS:
         doc, legend, outlined, outline_note = _STARTER_DOCS[s.slug]
         profile = profile_from_starter(s, "picture", s.name, NO_LEDS)

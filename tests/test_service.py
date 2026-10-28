@@ -166,8 +166,8 @@ class ServiceTest(unittest.TestCase):
                           first["leds"]),
                          ("default", "Default", True, [], "4way", [False, False, False]))
         self.assertEqual(list(first["bindings"]), list(ALL_CONTROLS))
-        self.assertEqual(first["bindings"]["k01"],
-                         {"binding": {"type": "key", "keys": ["Esc"]}, "label": "Esc", "factory": "1"})
+        self.assertEqual(first["bindings"]["k14"],
+                         {"binding": {"type": "key", "keys": ["Esc"]}, "label": "Esc", "factory": "D"})
         self.assertEqual(first["bindings"]["dpad_up_right"]["factory"], "hold:Up+Right")
         for control in ALL_CONTROLS:
             self.assertTrue(first["bindings"][control]["factory"])
@@ -419,7 +419,7 @@ class PluginTest(unittest.TestCase):
                 self.assertTrue(ok["ok"])
                 profiles = ok["state"]["profiles"]
                 self.assertEqual(profiles[1]["bindings"]["k01"]["label"], "Esc")
-                self.assertEqual(profiles[0]["bindings"]["k01"]["label"], "Esc")
+                self.assertEqual(profiles[0]["bindings"]["k01"]["label"], "1")
                 await plugin.set_running_app(1343400, "RuneScape")
                 state = await plugin.assign_running_game(p2)
                 self.assertEqual(state["active_profile"], p2)

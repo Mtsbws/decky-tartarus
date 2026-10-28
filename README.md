@@ -66,7 +66,7 @@ mode, colour and brightness. The gear next to the title opens the editor.
 
 ### Editor
 
-The editor has four tabs (F6 / F7 switch between them; keys 12 and 14 on the Default profile):
+The editor has four tabs (F6 / F7 switch between them; keys 07 and 09 on the Default profile):
 
 - **Customize:** pick a control on the drawing, then set it on the card beside it:
   - **Choose…** picks from categories (letters, numbers, function keys, navigation,
@@ -124,16 +124,28 @@ virtual keyboard and mouse through `/dev/uinput`.
 ![Default layout: a card per key, thumb button, D-pad and wheel, each with its action and the key it sends, coloured by category](docs/layouts/default.svg)
 
 A fresh install starts with a Default profile for getting around SteamOS Game Mode, plus the three
-[starter profiles](#starter-profiles). On the Default profile the D-pad
-moves, the button above it selects (Enter), Esc and Backspace sit at the ends of the top row,
-and the keys under your fingers do what a controller's buttons do: Steam reads them as its own
-controller buttons (F3 = X, F4 = Y, F6/F7 = L1/R1, F8 = View, F9 = Menu).
+[starter profiles](#starter-profiles). Every key sends a normal keyboard key. Your thumb moves
+on the D-pad while your resting fingers select (Enter, key 13), go back (Esc, key 14) and
+delete (Backspace, key 12), so you never have to lift the thumb to confirm. The button above
+the D-pad opens the Steam menu.
 
-Each function is on one key only; keys 06, 09, 11, 15, 16-19 and 20 keep their factory keys.
-**Factory default** on a key puts back what the keypad sends on its own. An install that
-already has settings keeps its own Default.
+Game Mode only reacts to a few keys, and the row above the resting keys holds the rest of them:
 
-![Customize tab on the Default profile: every key labelled with its binding](docs/screenshots/default-customize.jpg)
+| Key | In Game Mode |
+|---|---|
+| Arrows (D-pad) | move |
+| Enter · Esc | select · back |
+| Backspace | delete in text, otherwise remove |
+| F4 | search, sort, or the page's extra action |
+| F6 · F7 | previous · next tab |
+| Shift+F6 · Shift+F7 | page back · on |
+| F8 · F9 | game options · side menu |
+
+Keys 03 and 04 open Quick Access and the on-screen keyboard, and the wheel sets the volume
+(click: play / pause). Letters, Tab and Space do nothing in Steam's menus, so each function is
+on one key only and keys 01, 02, 05, 16-19 and 20 keep their factory keys. **Factory default**
+on a key puts back what the keypad sends on its own. An install that already has settings keeps
+its own Default.
 
 ## Starter profiles
 
