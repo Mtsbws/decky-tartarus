@@ -4,8 +4,10 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from tartarus.actuation import DEFAULT_MM, gap_ok
 from tartarus.bindings import parse_binding_text
-from tartarus.config import Config, Game, Profile, Secondary, default_config, factory_bindings, load_config, save_config
+from tartarus.config import (Config, Game, Profile, Secondary, default_config, factory_bindings, find_profile, hypershift_key,
+                             load_config, save_config)
 from tartarus.linux.evdev import EV_KEY, EV_SYN
 
 from tests.test_service import KEY_1, KEY_ESC, TWO_NODES, Rig, until
@@ -385,3 +387,64 @@ class ProfileSwitchTest(unittest.TestCase):
             await rig.service.stop()
 
         self.run_async(go())
+
+
+class CopyStarterTest(unittest.TestCase):
+    """A fresh install's MMO (p4) copied through the service: Review Focus 3 and 4."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.path = Path(self._tmp.name) / "settings.json"  # no file: a fresh install
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_copy_of_mmo_keeps_its_layer_and_shares_nothing(self):
+        async def go():
+            rig = Rig(self.path)
+            await rig.service.start()
+            svc = rig.service
+            new_id = svc.create_profile("My MMO", "p4")
+            c = load_config(self.path)
+            mmo, copy = find_profile(c, "p4"), find_profile(c, new_id)
+            self.assertEqual(mmo.name, "MMO")
+            self.assertEqual(hypershift_key(copy), "k19")
+            self.assertEqual(copy.hypershift, mmo.hypershift)
+            self.assertEqual(len(copy.hypershift.bindings), 12)
+            self.assertEqual(copy.secondary, {"k18": Secondary(parse_binding_text("B"), 3.0)})
+            self.assertTrue(gap_ok(copy.actuation.get("k18", DEFAULT_MM), copy.secondary["k18"].actuation))
+
+            mmo_before = find_profile(c, "p4")
+            svc.set_binding(new_id, "k02", parse_binding_text("F5"))
+            svc.set_binding(new_id, "k02.h", parse_binding_text("F6"))
+            svc.set_actuation(new_id, "k03", 2.0)
+            svc.set_secondary(new_id, "k18", None)
+            self.assertEqual(find_profile(load_config(self.path), "p4"), mmo_before)
+            self.assertEqual(find_profile(svc._config, "p4"), mmo_before)
+            await rig.service.stop()
+
+        self.run_async(go())
+
+    def test_failed_copies_change_nothing(self):
+        async def go():
+            rig = Rig(self.path)
+            await rig.service.start()
+            svc = rig.service
+            svc.create_profile("Spare", "p4")  # writes the file
+            before = self.path.read_bytes()
+            for args in (("MMO", "p4"), ("Fine", "nope")):
+                with self.assertRaises(ValueError):
+                    svc.create_profile(*args)
+            self.assertEqual(self.path.read_bytes(), before)
+            for i in range(8 - len(load_config(self.path).profiles)):
+                svc.create_profile(f"P{i}", "p4")
+            before = self.path.read_bytes()
+            with self.assertRaises(ValueError):
+                svc.create_profile("Ninth", "p4")
+            self.assertEqual(self.path.read_bytes(), before)
+            await rig.service.stop()
+
+        self.run_async(go())
+
+    def run_async(self, coro):
+        return asyncio.run(asyncio.wait_for(coro, 5))
