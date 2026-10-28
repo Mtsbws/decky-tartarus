@@ -73,6 +73,12 @@ class RenderLayoutsTest(unittest.TestCase):
                 row = control.split("_")[0] if control.startswith(("dpad", "wheel")) else control
                 self.assertTrue(row in doc, f"{s.name} {control}")
 
+    def test_readme_links_the_pictures(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        for text in ("docs/layouts/default.svg", "docs/starter-profiles.md",
+                     "Call of Duty", "Battlefield", "Wardogs", "World of Warcraft", "RuneScape 3"):
+            self.assertTrue(text in readme, text)
+
 
 if __name__ == "__main__":
     unittest.main()
