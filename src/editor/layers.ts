@@ -3,6 +3,8 @@ import type { BindingDict, ProfileState, SecondaryState } from "../api";
 export type Layer = "standard" | "hypershift";
 
 export const HYPERSHIFT_ACCENT = "#ff6000";
+// Marks a key with a secondary function.
+export const SECONDARY_ACCENT = "#ffc83d";
 
 // The controls that can be the Hypershift key: keys 01-20 and the top button, never the wheel or thumbpad.
 export const HYPERSHIFT_KEYS: string[] = [

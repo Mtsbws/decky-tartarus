@@ -3,7 +3,7 @@ import { CSSProperties, ReactNode, useLayoutEffect, useRef } from "react";
 
 import { BindingDict, ProfileState } from "../api";
 import { LED_COLOURS, LED_UNLIT } from "../StatusLights";
-import { HYPERSHIFT_ACCENT, Layer, layerMm, layerSecondary } from "./layers";
+import { HYPERSHIFT_ACCENT, Layer, layerMm, layerSecondary, SECONDARY_ACCENT } from "./layers";
 
 // Our own drawing of the Tartarus Pro (no Razer images), traced from a
 // top-down photo: five key columns with the pinky column dropped half a key,
@@ -377,7 +377,7 @@ export function Keypad(props: {
               {corner(c) && (
                 <div style={cornerStyle}>
                   <span style={{ opacity: 0.6 }}>{corner(c)}</span>
-                  {view !== "actuation" && layerSecondary(profile, c, layer) && <span style={{ flexShrink: 0 }}>2×</span>}
+                  {view !== "actuation" && layerSecondary(profile, c, layer) && <span style={{ flexShrink: 0, color: SECONDARY_ACCENT, fontWeight: 700 }}>2×</span>}
                 </div>
               )}
               <FitLabel
