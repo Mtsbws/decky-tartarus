@@ -43,6 +43,8 @@ Movement on the keys; the D-pad holds weapon slots 3-6.
 
 ![FPS – WASD layout](layouts/fps-wasd.svg)
 
+![FPS – WASD in the editor's Customize tab](screenshots/starter-fps-wasd.jpg)
+
 | Control | Binding | Usual use |
 |---|---|---|
 | k01 | Esc (2.5 mm) | menu |
@@ -71,6 +73,8 @@ and interact, so every function of `FPS – WASD` is still on one key, except ch
 has no chat key (Y). Bind one yourself if your game needs it.
 
 ![FPS – D-pad layout](layouts/fps-dpad.svg)
+
+![FPS – D-pad in the editor's Customize tab](screenshots/starter-fps-dpad.jpg)
 
 | Control | Binding | Usual use |
 |---|---|---|
@@ -101,6 +105,8 @@ movement on the D-pad. RuneScape 3's ability bars use the same number keys and m
 
 ![MMO layout](layouts/mmo.svg)
 
+![MMO in the editor's Customize tab](screenshots/starter-mmo.jpg)
+
 | Control | Binding | Usual use |
 |---|---|---|
 | k01 | Esc (2.5 mm) | game menu |
@@ -125,9 +131,13 @@ Every other control keeps its standard binding while key 19 is held.
 
 ![MMO Hypershift layer](layouts/mmo-hypershift.svg)
 
+![MMO's Hypershift layer in the editor](screenshots/starter-mmo-hypershift.jpg)
+
 Notes:
 
 - World of Warcraft has no default for Page Up and Page Down on the camera; bind zoom in and out to
   them in the game, or change the wheel.
 - Key 18's deeper press is the one dual-stage key in the starters, there to show the feature on a
   function that does not matter in a fight. Don't make an ability depend on it.
+
+![MMO key 18 selected: secondary function B at 3.0 mm, the 2× mark on the key](screenshots/starter-mmo-k18.jpg)

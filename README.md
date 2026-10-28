@@ -123,6 +123,8 @@ Each function is on one key only; keys 06, 09, 11, 15, 16-19 and 20 keep their f
 **Factory default** on a key puts back what the keypad sends on its own. An install that
 already has settings keeps its own Default.
 
+![Customize tab on the Default profile: every key labelled with its binding](docs/screenshots/default-customize.jpg)
+
 ## Starter profiles
 
 Next to Default, a fresh install has three starter profiles: `FPS – WASD` (movement on the keys),
@@ -134,6 +136,13 @@ copy and keep the original, choose **New profile**, open **Copy from** and pick 
 Starters are added only when the plugin first creates its settings and are never re-applied: an
 existing install keeps its own profiles, and a deleted starter stays deleted.
 [docs/starter-profiles.md](docs/starter-profiles.md) has a picture and a table for each one.
+
+| | |
+|---|---|
+| ![Profiles tab: Default, FPS – WASD, FPS – D-pad and MMO](docs/screenshots/starters-profiles.jpg) | ![New profile: Copy from lists the profiles, MMO selected](docs/screenshots/starters-copy-from.jpg) |
+| **Profiles**: Default and the three starters on a fresh install | **New profile**: copy any profile, starters included |
+| ![Quick Access panel while Brotato runs: Brotato uses MMO](docs/screenshots/starters-panel-game.jpg) | ![Profiles tab: Brotato listed under MMO](docs/screenshots/starters-profiles-game.jpg) |
+| **In a game**: "Brotato uses:" assigns it a profile | **Profiles**: the game is listed under its profile |
 
 ## Binding text
 
