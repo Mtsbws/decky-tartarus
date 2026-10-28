@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 from tartarus.bindings import parse_binding_text
-from tartarus.config import default_profile, load_config
+from tartarus.config import default_config, default_profile, load_config, save_config
 from tartarus.devmap import ALL_CONTROLS
 from tartarus.linux.discovery import TartarusNodes
 from tartarus.linux.evdev import EV_KEY, EV_REL, EV_SYN, REL_WHEEL, REL_WHEEL_HI_RES
@@ -160,7 +160,7 @@ class ServiceTest(unittest.TestCase):
         self.assertIsNone(state["running_app"])
         self.assertEqual(state["max_profiles"], 8)
         self.assertEqual(state["led_patterns"][0], [True, False, False])
-        self.assertEqual(len(state["profiles"]), 1)
+        self.assertEqual(len(state["profiles"]), 4)  # a fresh install: Default and the three starters
         first = state["profiles"][0]
         self.assertEqual((first["id"], first["name"], first["is_default"], first["games"], first["dpad_mode"],
                           first["leds"]),
@@ -407,6 +407,7 @@ class PluginTest(unittest.TestCase):
                                           DECKY_PLUGIN_SETTINGS_DIR=tmp, emit=emit)
             main = load_main(decky)
             plugin = main.Plugin()
+            save_config(Path(tmp) / "settings.json", default_config())  # no starters: the test makes its own "MMO"
             plugin.service = main.TartarusService(Path(tmp) / "settings.json", emit)
 
             async def go():
