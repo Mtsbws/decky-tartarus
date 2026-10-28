@@ -4,7 +4,7 @@ import unittest
 
 from tartarus.bindings import parse_binding_text
 from tartarus.codes import code_for
-from tartarus.config import Secondary, default_profile, default_config
+from tartarus.config import Secondary, default_profile, default_config, factory_bindings
 from tartarus.engine import RemapEngine
 
 KEY_1 = 2  # factory code of k01
@@ -38,7 +38,7 @@ class FakeEmitter:
 
 def profile(dpad_mode="4way", **texts):
     base = default_profile(default_config())
-    bindings = dict(base.bindings)
+    bindings = factory_bindings()  # the tests press factory keys
     bindings.update({control: parse_binding_text(text) for control, text in texts.items()})
     return dataclasses.replace(base, dpad_mode=dpad_mode, bindings=bindings)
 
@@ -176,6 +176,16 @@ class EngineTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.out.events, [down(CTRL), down(one), up(one), up(CTRL)])
         self.out.events.clear()
         e = self.engine(profile(k01="steam:qam"), steam_mode="disabled")
+        e.handle_key(KEY_1, 1)
+        self.assertEqual(self.out.events, [])
+
+    async def test_steam_keyboard(self):
+        e = self.engine(profile(k01="steam:keyboard"))
+        e.handle_key(KEY_1, 1)
+        self.assertEqual(self.out.events, [("steam", "keyboard")])
+        self.out.events.clear()
+        # No key opens Steam's on-screen keyboard, so "keys" mode sends nothing.
+        e = self.engine(profile(k01="steam:keyboard"), steam_mode="keys")
         e.handle_key(KEY_1, 1)
         self.assertEqual(self.out.events, [])
 

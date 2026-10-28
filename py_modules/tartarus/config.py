@@ -107,8 +107,26 @@ class _Corrupt(Exception):
     pass
 
 
+# What a fresh install's Default profile changes from the factory keys: getting around SteamOS
+# Game Mode with one hand. The D-pad moves; Steam reads these keys as its controller buttons
+# (F3 = X, F4 = Y, F6/F7 = L1/R1, F8 = View, F9 = Menu). Unlisted controls keep their factory key.
+STEAMOS_DEFAULT = {
+    "k01": "steam:menu", "k02": "steam:qam", "k03": "steam:keyboard", "k04": "F8", "k05": "F9",
+    "k07": "F6", "k08": "F4", "k09": "F7",
+    "k11": "Shift", "k12": "F3", "k13": "Enter", "k14": "Esc", "k15": "Backspace",
+    "k20": "Enter", "top_button": "Esc",
+    "wheel_up": "Vol+", "wheel_down": "Vol-", "wheel_click": "Play",
+}
+
+
 def factory_bindings() -> Dict[str, Binding]:
     return {control: parse_binding_text(FACTORY_OUTPUT[control]) for control in ALL_CONTROLS}
+
+
+def steamos_bindings() -> Dict[str, Binding]:
+    bindings = factory_bindings()
+    bindings.update({control: parse_binding_text(text) for control, text in STEAMOS_DEFAULT.items()})
+    return bindings
 
 
 def default_config() -> Config:
@@ -116,7 +134,7 @@ def default_config() -> Config:
 
 
 def _factory_default() -> Profile:
-    return Profile(id=DEFAULT_ID, name="Default", dpad_mode="4way", bindings=factory_bindings(), leds=NO_LEDS)
+    return Profile(id=DEFAULT_ID, name="Default", dpad_mode="4way", bindings=steamos_bindings(), leds=NO_LEDS)
 
 
 def default_profile(c: Config) -> Profile:
@@ -282,7 +300,7 @@ def _parse_profiles(raw_profiles: list) -> List[Profile]:
     # Default first, wherever the file lists it; the rest in file order.
     raw_default = next((r for r in raw_profiles if isinstance(r, dict) and r.get("id") == DEFAULT_ID), None)
     if raw_default is None:
-        log.warning("no default profile; recreating it from the factory keys")
+        log.warning("no default profile; recreating it")
         default = _factory_default()
     else:
         default = _parse_profile(raw_default, DEFAULT_ID)

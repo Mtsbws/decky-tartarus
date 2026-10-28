@@ -7,10 +7,10 @@ from typing import Iterable, Tuple
 from .codes import canonical, category
 
 BINDING_TYPES = ("key", "shortcut", "combo", "modifier", "macro", "mouse", "media", "disable", "steam", "hypershift")
-STEAM_ACTIONS = ("menu", "qam")
+STEAM_ACTIONS = ("menu", "qam", "keyboard")
 SINGLE_TYPES = ("key", "modifier", "mouse", "media")
 
-_STEAM_LABELS = {"menu": "Steam menu", "qam": "Quick Access"}
+_STEAM_LABELS = {"menu": "Steam menu", "qam": "Quick Access", "keyboard": "Keyboard"}
 
 
 class BindingError(ValueError):

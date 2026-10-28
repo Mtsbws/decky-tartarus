@@ -293,11 +293,12 @@ function FitLabel({ style, children }: { style?: CSSProperties; children: ReactN
 }
 
 const tagStyle: CSSProperties = { padding: "0 3px", borderRadius: 3, color: "#111" };
+const STEAM_TAGS: Record<string, string> = { menu: "Steam", qam: "QAM", keyboard: "Kbd" };
 
 // Steam actions and Hypershift get a short tag; a shortcut may wrap after each "+".
 function shortLabel(binding: BindingDict, label: string): ReactNode {
   if (binding.type === "hypershift") return <span style={{ ...tagStyle, background: HYPERSHIFT_ACCENT }}>HS</span>;
-  if (binding.type === "steam") return <span style={{ ...tagStyle, background: "#1a9fff" }}>{binding.action === "qam" ? "QAM" : "Steam"}</span>;
+  if (binding.type === "steam") return <span style={{ ...tagStyle, background: "#1a9fff" }}>{STEAM_TAGS[binding.action ?? ""] ?? "Steam"}</span>;
   return label.replace(/\+/g, "+\u200b");
 }
 

@@ -217,7 +217,7 @@ class RemapEngine:
         elif b.type == "steam":
             if self.steam_mode == "api":
                 self._out.steam_action(b.action)
-            elif self.steam_mode == "keys":
+            elif self.steam_mode == "keys" and b.action in _STEAM_KEYS:
                 self._tap(_STEAM_KEYS[b.action])
         # "disable" does nothing
 

@@ -55,6 +55,7 @@ class BindingTextTest(unittest.TestCase):
     def test_parse_steam_disable(self):
         self.assertEqual(parse_binding_text("steam:qam"), Binding("steam", action="qam"))
         self.assertEqual(parse_binding_text("disable"), Binding("disable"))
+        self.assertEqual(parse_binding_text("Steam:Keyboard"), Binding("steam", action="keyboard"))
 
     def test_parse_errors(self):
         for bad in ["", "Ctrl+", "Foo", "steam:x", "hold:"]:
@@ -73,6 +74,7 @@ class BindingTextTest(unittest.TestCase):
     def test_labels(self):
         self.assertEqual(binding_label(parse_binding_text("hold:W+A")), "W+A (hold)")
         self.assertEqual(binding_label(Binding("steam", action="menu")), "Steam menu")
+        self.assertEqual(binding_label(Binding("steam", action="keyboard")), "Keyboard")
 
     def test_hypershift_binding(self):
         b = parse_binding_text(" HyperShift ")
