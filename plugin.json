@@ -11,7 +11,7 @@
       "remap",
       "root"
     ],
-    "description": "Remap a Razer Tartarus Pro, open the Steam menus from it and set its lighting.",
-    "image": "https://opengraph.githubassets.com/1/SteamDeckHomebrew/PluginLoader"
+    "description": "Remap a Razer Tartarus Pro with adjustable actuation, a secondary function per key, Hypershift, per-game profiles and lighting.",
+    "image": "https://raw.githubusercontent.com/Mtsbws/decky-tartarus/master/docs/screenshots/customize.jpg"
   }
 }
