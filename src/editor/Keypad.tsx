@@ -1,7 +1,7 @@
 import { Focusable } from "@decky/ui";
-import type { CSSProperties } from "react";
+import { CSSProperties, ReactNode, useLayoutEffect, useRef } from "react";
 
-import { ProfileState } from "../api";
+import { BindingDict, ProfileState } from "../api";
 import { LED_COLOURS, LED_UNLIT } from "../StatusLights";
 import { HYPERSHIFT_ACCENT, Layer, layerMm, layerSecondary } from "./layers";
 
@@ -44,10 +44,11 @@ const PY = 432;
 
 const LAYOUT: Record<string, Box> = {
   ...keys(),
-  wheel_up: { x: 370, y: 266, w: 40, h: 36 },
-  wheel_click: { x: 370, y: 304, w: 40, h: 36 },
-  wheel_down: { x: 370, y: 342, w: 40, h: 36 },
-  top_button: { x: 456, y: 334, w: 52, h: 28 },
+  wheel_up: { x: 366, y: 262, w: 48, h: 40 },
+  wheel_click: { x: 366, y: 304, w: 48, h: 40 },
+  wheel_down: { x: 366, y: 346, w: 48, h: 40 },
+  // Big enough to show its binding.
+  top_button: { x: 448, y: 320, w: 78, h: 42 },
   dpad_up: { x: PX - 18, y: PY - 58, w: 36, h: 36 },
   dpad_right: { x: PX + 22, y: PY - 18, w: 36, h: 36 },
   dpad_down: { x: PX - 18, y: PY + 22, w: 36, h: 36 },
@@ -91,8 +92,9 @@ export function controlTitle(control: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-// The wheel is too narrow for its full names.
-const CORNER: Record<string, string> = { wheel_up: "▲", wheel_click: "●", wheel_down: "▼" };
+// Only keys 01-20 show their name in the corner: the wheel, thumbpad and top button explain themselves
+// and need the room for their binding.
+const corner = (c: string) => (isKey(c) ? controlName(c) : null);
 
 const pct = (v: number, of: number) => `${(v / of) * 100}%`;
 
@@ -239,7 +241,7 @@ function Picture({ glow, level, leds }: { glow: Glow; level: number; leds?: read
       ))}
 
       {/* Top button and thumbstick */}
-      <circle cx={top.x + top.w / 2} cy={top.y + top.h / 2} r={22} fill="#0e1115" />
+      <rect x={top.x - 4} y={top.y - 4} width={top.w + 8} height={top.h + 8} rx={18} fill="#0e1115" />
       <circle cx={PX} cy={PY} r={66} fill="#0e1115" stroke="#434b57" />
       <circle cx={PX} cy={PY} r={56} fill="url(#tt-stick)" />
       <circle cx={PX} cy={PY} r={18} fill="#1c2127" stroke="#4b5361" />
@@ -252,15 +254,52 @@ type View = "bindings" | "actuation" | "preview";
 // A small gap: a key with a secondary function needs the room for its "2×".
 const cornerStyle: CSSProperties = { display: "flex", justifyContent: "space-between", gap: 2, fontSize: 11, lineHeight: 1 };
 // Steam's line height is taller than a key has room for, so labels set their own.
-const labelStyle: CSSProperties = {
-  fontSize: 13,
-  lineHeight: 1.15,
-  fontWeight: 600,
-  whiteSpace: "nowrap",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  textAlign: "center",
-};
+const labelStyle: CSSProperties = { fontSize: 13, lineHeight: 1.1, fontWeight: 600, textAlign: "center" };
+const MAX_FONT = 13;
+const MIN_FONT = 9;
+
+// A label wraps onto a second line first, then shrinks until it fits its control (9px at the least);
+// past that it is cut off with "…", and the card shows it in full.
+function FitLabel({ style, children }: { style?: CSSProperties; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current!;
+    const box = el.parentElement!;
+    const fit = () => {
+      Object.assign(el.style, { display: "", WebkitLineClamp: "", WebkitBoxOrient: "", overflowWrap: "", overflow: "" });
+      const fits = (size: number) =>
+        el.scrollWidth <= el.clientWidth + 0.5 && el.scrollHeight <= 2 * 1.1 * size + 0.5 && box.scrollHeight <= box.clientHeight + 0.5;
+      let size = MAX_FONT;
+      el.style.fontSize = `${size}px`;
+      while (size > MIN_FONT && !fits(size)) {
+        size -= 0.5;
+        el.style.fontSize = `${size}px`;
+      }
+      if (!fits(size)) {
+        Object.assign(el.style, { display: "-webkit-box", WebkitLineClamp: "2", WebkitBoxOrient: "vertical", overflowWrap: "anywhere", overflow: "hidden" });
+      }
+    };
+    fit();
+    // The keypad is sized by the page, so the controls can change size.
+    const watch = new ResizeObserver(fit);
+    watch.observe(box);
+    return () => watch.disconnect();
+  });
+  return (
+    <div ref={ref} style={{ ...labelStyle, ...style }}>
+      {children}
+    </div>
+  );
+}
+
+const tagStyle: CSSProperties = { padding: "0 3px", borderRadius: 3, color: "#111" };
+
+// Steam actions and Hypershift get a short tag; a shortcut may wrap after each "+".
+function shortLabel(binding: BindingDict, label: string): ReactNode {
+  if (binding.type === "hypershift") return <span style={{ ...tagStyle, background: HYPERSHIFT_ACCENT }}>HS</span>;
+  if (binding.type === "steam") return <span style={{ ...tagStyle, background: "#1a9fff" }}>{binding.action === "qam" ? "QAM" : "Steam"}</span>;
+  return label.replace(/\+/g, "+\u200b");
+}
 
 // "bindings": every control can be selected and shows its binding.
 // "actuation": only keys 01-20 can be selected and each shows its actuation.
@@ -279,7 +318,8 @@ export function Keypad(props: {
   const { profile, view, selected = [], layer, defaultMm = 0, glow = rainbow, glowLevel = 1, leds, onSelect = () => {} } = props;
   const hypershift = layer === "hypershift";
   // On the Hypershift layer a control without an entry shows its standard binding, dimmed.
-  const label = (c: string) => (hypershift ? profile.hypershift.bindings[c]?.label : undefined) ?? profile.bindings[c].label;
+  const shown = (c: string) => (hypershift ? profile.hypershift.bindings[c] : undefined) ?? profile.bindings[c];
+  const label = (c: string) => shortLabel(shown(c).binding, shown(c).label);
   const controls = Object.keys(LAYOUT).filter(
     (c) => c in profile.bindings && (profile.dpad_mode === "8way" || !DIAGONALS.has(c)),
   );
@@ -305,38 +345,43 @@ export function Keypad(props: {
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
-            justifyContent: "space-between",
+            justifyContent: corner(c) ? "space-between" : "center",
             ...look(c, selected.includes(c), view, layer, hypershift && c === profile.hypershift.key),
           };
           if (hypershift && c === profile.hypershift.key) {
             // The layer's own key: it can't have a Hypershift entry, so it is only shown.
             return (
               <div key={c} style={style}>
-                <div style={cornerStyle}>
-                  <span style={{ opacity: 0.6 }}>{CORNER[c] ?? controlName(c)}</span>
-                </div>
-                <div style={labelStyle}>Hypershift</div>
+                {corner(c) && (
+                  <div style={cornerStyle}>
+                    <span style={{ opacity: 0.6 }}>{corner(c)}</span>
+                  </div>
+                )}
+                <FitLabel>{shortLabel({ type: "hypershift" }, "Hypershift")}</FitLabel>
               </div>
             );
           }
           if (view === "actuation" && (!isKey(c) || (hypershift && !(c in profile.hypershift.bindings)))) {
             return (
               <div key={c} style={{ ...style, opacity: 0.35 }}>
-                <div style={cornerStyle}>
-                  <span style={{ opacity: 0.6 }}>{CORNER[c] ?? controlName(c)}</span>
-                </div>
+                {corner(c) && (
+                  <div style={cornerStyle}>
+                    <span style={{ opacity: 0.6 }}>{corner(c)}</span>
+                  </div>
+                )}
               </div>
             );
           }
           const content = (
             <>
-              <div style={cornerStyle}>
-                <span style={{ opacity: 0.6 }}>{CORNER[c] ?? controlName(c)}</span>
-                {view !== "actuation" && layerSecondary(profile, c, layer) && <span style={{ flexShrink: 0 }}>2×</span>}
-              </div>
-              <div
+              {corner(c) && (
+                <div style={cornerStyle}>
+                  <span style={{ opacity: 0.6 }}>{corner(c)}</span>
+                  {view !== "actuation" && layerSecondary(profile, c, layer) && <span style={{ flexShrink: 0 }}>2×</span>}
+                </div>
+              )}
+              <FitLabel
                 style={{
-                  ...labelStyle,
                   // A Hypershift entry is orange; a fall-through standard binding is dimmed.
                   ...(hypershift && c in profile.hypershift.bindings
                     ? { color: HYPERSHIFT_ACCENT }
@@ -345,7 +390,7 @@ export function Keypad(props: {
               >
                 {/* A key has about 28 CSS px for its label: "1.5" fits, "1.5 mm" doesn't (the card names the unit). */}
                 {view === "actuation" ? layerMm(profile, c, layer, defaultMm).toFixed(1) : label(c)}
-              </div>
+              </FitLabel>
             </>
           );
           if (view === "preview") {
