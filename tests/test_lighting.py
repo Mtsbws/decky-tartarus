@@ -4,9 +4,13 @@ from functools import reduce
 from tartarus.lighting import (
     BREATHING_TRANSACTION_ID,
     EFFECTS,
+    FAINT,
+    FRAME_INDEX,
     TRANSACTION_ID,
     build_report,
+    custom_frame_reports,
     effect_reports,
+    hypershift_frame,
     leds_report,
 )
 
@@ -94,3 +98,29 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(len(r), 90)
         self.assertEqual(r[88], reduce(lambda a, b: a ^ b, r[2:88]))
         self.assertEqual(leds_report((False, False, False))[14:17], b"\x00\x00\x00")
+
+    def test_custom_frame_reports(self):
+        select, frame = custom_frame_reports(["#ff6000"] * 21)
+        self.assertEqual(select[6:14], bytes([0x0F, 0x02, 0, 0, 8, 0, 0, 0]))
+        self.assertEqual(frame[5], 68)
+        self.assertEqual(frame[6:13], bytes([0x0F, 0x03, 0, 0, 0, 0, 0x14]))
+        self.assertEqual(frame[13:16], bytes([0xFF, 0x60, 0x00]))
+        self.assertEqual(frame[13 + 60:13 + 63], bytes([0xFF, 0x60, 0x00]))
+
+    def test_custom_frame_needs_21_colours(self):
+        for bad in (["#ff6000"] * 20, ["#ff6000"] * 20 + ["red"], ["#ff6000"] * 22):
+            with self.assertRaises(ValueError):
+                custom_frame_reports(bad)
+
+    def test_hypershift_frame(self):
+        colors = hypershift_frame({"k19", "k07"}, "#ff6000")
+        self.assertEqual(len(colors), 21)
+        self.assertEqual({i for i, c in enumerate(colors) if c == "#ff6000"}, {18, 6})
+        self.assertEqual(colors.count(FAINT), 19)
+
+    def test_hypershift_frame_wheel_and_unlit_controls(self):
+        self.assertEqual(FRAME_INDEX["k01"], 0)
+        self.assertEqual(FRAME_INDEX["k20"], 20)
+        self.assertEqual({FRAME_INDEX[c] for c in ("wheel_up", "wheel_down", "wheel_click")}, {19})
+        colors = hypershift_frame({"wheel_down", "top_button", "dpad_up"}, "#ff6000")
+        self.assertEqual([i for i, c in enumerate(colors) if c != FAINT], [19])

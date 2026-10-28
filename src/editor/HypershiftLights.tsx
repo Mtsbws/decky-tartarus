@@ -4,7 +4,7 @@ import { useState } from "react";
 import { errorText, setHypershiftLights, State } from "../api";
 import { SWATCHES } from "../LightingControls";
 
-// Backlight colour while the Hypershift key is held. Writes go straight through, no debounce.
+// Colour of the keys with a Hypershift binding while the Hypershift key is held. Writes go straight through, no debounce.
 export function HypershiftLights({ state, onChanged }: { state: State; onChanged: (s: State) => void }) {
   const [error, setError] = useState<string | null>(null);
   const { enabled, color } = state.lighting.hypershift;
@@ -21,7 +21,7 @@ export function HypershiftLights({ state, onChanged }: { state: State; onChanged
       <PanelSectionRow>
         <ToggleField
           label="Hypershift lights"
-          description="Light the keypad in this colour while the Hypershift key is held."
+          description="Light the keys with a Hypershift binding while the Hypershift key is held."
           checked={enabled}
           onChange={(v) => write(v, color)}
         />

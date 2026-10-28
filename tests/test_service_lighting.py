@@ -10,7 +10,7 @@ from unittest import mock
 from tartarus.bindings import parse_binding_text
 from tartarus.config import NO_LEDS, SCHEMA_VERSION, load_config
 from tartarus.devmap import FACTORY_CODES
-from tartarus.lighting import EFFECTS, effect_reports, leds_report
+from tartarus.lighting import EFFECTS, custom_frame_reports, effect_reports, hypershift_frame, leds_report
 from tartarus.linux import hidraw, ioctl
 from tartarus.linux.discovery import TartarusNodes
 
@@ -18,6 +18,10 @@ from tests.test_service import TWO_NODES, Rig, until
 
 HID = "/dev/hidraw8"
 K19 = next(code for code, control in FACTORY_CODES.items() if control == "k19")
+
+
+def frame(color, lit=("k07", "k19")):
+    return custom_frame_reports(hypershift_frame(lit, color))
 
 
 class FakeSender:
@@ -117,6 +121,7 @@ class LightingServiceTest(unittest.TestCase):
         async def make():
             rig = await self.connected(sender)
             rig.service.set_binding("default", "k19", parse_binding_text("hypershift"))
+            rig.service.set_binding("default", "k07.h", parse_binding_text("F1"))
             return rig
         return make
 
@@ -128,10 +133,24 @@ class LightingServiceTest(unittest.TestCase):
             rig.service.set_hypershift_lights(True, "#12ab34")
             sender.sent.clear()
             rig.service._engine.handle_key(K19, 1)
-            self.assertEqual(sender.sent, [(HID, r) for r in effect_reports("static", "#12ab34", 70)])
+            self.assertEqual(sender.sent, [(HID, r) for r in frame("#12ab34")])
             sender.sent.clear()
             rig.service._engine.handle_key(K19, 0)
             self.assertEqual(sender.sent, [(HID, r) for r in effect_reports("wave", "#00ff00", 70)])
+            await rig.service.stop()
+
+        self.run_async(go())
+
+    def test_hypershift_lights_ignore_controls_without_an_led(self):
+        async def go():
+            sender = FakeSender()
+            rig = await self.hypershift_rig(sender)()
+            for control in ("top_button.h", "dpad_up.h", "wheel_down.h"):
+                rig.service.set_binding("default", control, parse_binding_text("F2"))
+            rig.service.set_hypershift_lights(True, "#12ab34")
+            sender.sent.clear()
+            rig.service._engine.handle_key(K19, 1)
+            self.assertEqual(sender.sent, [(HID, r) for r in frame("#12ab34", ("k07", "k19", "wheel_down"))])
             await rig.service.stop()
 
         self.run_async(go())
@@ -188,11 +207,11 @@ class LightingServiceTest(unittest.TestCase):
             rig.service._engine.handle_key(K19, 1)
             sender.sent.clear()
             rig.service.set_hypershift_lights(True, "#aa0000")
-            self.assertEqual(sender.sent, [(HID, r) for r in effect_reports("static", "#aa0000", 70)])
+            self.assertEqual(sender.sent, [(HID, r) for r in frame("#aa0000")])
             sender.sent.clear()
             rig.service.set_lighting("static", "#0000ff", 40)  # shown lights stay Hypershift
-            self.assertEqual(sender.sent[-1 - len(effect_reports("static", "#aa0000", 40)):-1],
-                             [(HID, r) for r in effect_reports("static", "#aa0000", 40)])  # then the LEDs
+            self.assertEqual(sender.sent[-1 - len(frame("#aa0000")):-1],
+                             [(HID, r) for r in frame("#aa0000")])  # then the LEDs
             sender.sent.clear()
             rig.service.set_hypershift_lights(False, "#aa0000")  # turned off: standard lights back
             self.assertEqual(sender.sent, [(HID, r) for r in effect_reports("static", "#0000ff", 40)])

@@ -21,7 +21,7 @@ from .devmap import ALL_CONTROLS, ACTUATION_KEYS, FACTORY_CODES, FACTORY_OUTPUT,
 from .devmode import DRIVER_MODE, NORMAL_MODE, set_mode_report
 from .engine import RemapEngine
 from .layers import HYPERSHIFT, STANDARD, parse_control
-from .lighting import EFFECTS, _rgb, effect_reports, leds_report
+from .lighting import EFFECTS, _rgb, custom_frame_reports, effect_reports, hypershift_frame, leds_report
 from .linux.discovery import PRODUCT, VENDOR, TartarusNodes, find_tartarus, list_keyboards
 from .linux.evdev import EV_KEY, EV_REL, REL_WHEEL, InputDevice
 from .linux.hidraw import HidrawReader, send_feature
@@ -366,7 +366,12 @@ class TartarusService:
     def _show_hypershift_lights(self) -> None:
         lighting = self._config.lighting
         if lighting.enabled and lighting.hypershift:
-            reports = effect_reports("static", lighting.hypershift_color, lighting.brightness)
+            profile = self._profile()
+            lit = set(profile.hypershift.bindings)  # plain control names
+            key = hypershift_key(profile)
+            if key is not None:
+                lit.add(key)
+            reports = custom_frame_reports(hypershift_frame(lit, lighting.hypershift_color))
             self._hypershift_lit = True
             for report in reports:
                 self._send_command(report, "Hypershift lighting", quiet=True)
