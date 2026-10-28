@@ -41,6 +41,17 @@ any starter; the repo has a reference table for each starter that a user can rea
 6. **Reference tables in the repo**, one per starter, in `docs/starter-profiles.md`, linked from the
    README. Same style as the README's Default layout block. (User's decision.)
 
+7. **A screenshot task at the end of the plan.** The last task of the plan does not take screenshots
+   itself; it gives the user a short, numbered shot list of what to capture on the Deck (one line each:
+   page, what must be visible, file name under `docs/screenshots/`), and says where in the README each
+   one goes. Suggested list, for the plan to refine: (a) the Profiles page on a fresh install showing
+   Default plus the three starters; (b) New profile with the "copy from" list open on the
+   `Starter profiles` group; (c) Customize on `FPS – WASD`; (d) Customize on `FPS – D-pad`; (e) Customize
+   on `MMO`, standard layer; (f) the same with the Hypershift layer showing; (g) the Actuation page on
+   `MMO` showing k18's secondary function; (h) the Default profile's Customize page. After the user
+   captures them, a short follow-up step wires the files into the README and `docs/starter-profiles.md`
+   and removes any placeholder.
+
 ## Non-goals
 
 - Game-specific profiles. The user's ARC Raiders profile stays on their Deck only and is not
