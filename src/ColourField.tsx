@@ -1,4 +1,4 @@
-import { DialogButton, DropdownItem, ModalRoot, showModal, TextField } from "@decky/ui";
+import { DialogButton, Dropdown, DropdownItem, ModalRoot, showModal, TextField } from "@decky/ui";
 import { useState } from "react";
 
 const COLOURS = [
@@ -102,36 +102,35 @@ function ColourModal({
   );
 }
 
-// The colour picker shared by the lighting rows: named colours, then any #rrggbb through a modal.
+// The choices shared by both colour pickers: named colours, then any #rrggbb through a modal.
 // `exclude` is a colour that can't be picked (Hypershift lights leave out the backlight's colour).
-export function ColourField({
-  color,
-  exclude,
-  onChange,
-}: {
-  color: string;
-  exclude?: string;
-  onChange: (hex: string) => void;
-}) {
+function colourChoices(color: string, exclude: string | undefined, onChange: (hex: string) => void) {
   const current = color.toLowerCase();
   const blocked = exclude?.toLowerCase();
   const listed = COLOURS.filter((c) => c.hex !== blocked);
   const named = listed.some((c) => c.hex === current);
-  const options = [
-    ...(named ? [] : [{ data: current, label: withDot(current, current) }]),
-    ...listed.map((c) => ({ data: c.hex, label: withDot(c.hex, c.name) })),
-    { data: CUSTOM, label: "Custom colour…" },
-  ];
+  return {
+    rgOptions: [
+      ...(named ? [] : [{ data: current, label: withDot(current, current) }]),
+      ...listed.map((c) => ({ data: c.hex, label: withDot(c.hex, c.name) })),
+      { data: CUSTOM, label: "Custom colour…" },
+    ],
+    selectedOption: current,
+    onChange: (o: { data: string }) => {
+      if (o.data === CUSTOM) showModal(<ColourModal initial={current} exclude={blocked} onApply={onChange} />);
+      else onChange(o.data);
+    },
+  };
+}
 
-  return (
-    <DropdownItem
-      label="Colour"
-      rgOptions={options}
-      selectedOption={current}
-      onChange={(o) => {
-        if (o.data === CUSTOM) showModal(<ColourModal initial={current} exclude={blocked} onApply={onChange} />);
-        else onChange(o.data);
-      }}
-    />
-  );
+type Props = { color: string; exclude?: string; onChange: (hex: string) => void };
+
+// A full Steam field with its own "Colour" label, for the Quick Access panel.
+export function ColourField({ color, exclude, onChange }: Props) {
+  return <DropdownItem label="Colour" {...colourChoices(color, exclude, onChange)} />;
+}
+
+// The bare dropdown, for the editor's compact rows.
+export function ColourDropdown({ color, exclude, onChange }: Props) {
+  return <Dropdown {...colourChoices(color, exclude, onChange)} />;
 }

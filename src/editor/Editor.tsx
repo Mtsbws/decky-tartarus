@@ -3,14 +3,11 @@ import { addEventListener, removeEventListener } from "@decky/api";
 import { useEffect, useState } from "react";
 
 import { EV_STATE, activeProfile, errorText, getState, profileById, setDpadMode, State } from "../api";
-import { LightingControls } from "../LightingControls";
-import { HypershiftLights } from "./HypershiftLights";
 import { syncLighting } from "../lighting";
 import { ActuationPage } from "./ActuationPage";
 import { Layer } from "./layers";
-import { Card } from "./Card";
 import { CustomizePage } from "./CustomizePage";
-import { PAGE_HEIGHT } from "./layout";
+import { LightingPage } from "./LightingPage";
 import { ProfilesPage } from "./ProfilesPage";
 
 type Page = "customize" | "actuation" | "lighting" | "profiles";
@@ -21,7 +18,7 @@ export function Editor() {
   const [error, setError] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
   const [page, setPage] = useState<Page>("customize");
-  // Which layer Customize and Actuation show; not stored anywhere, so it is Standard each time the editor opens.
+  // Which layer Customize, Actuation and Lighting show; not stored anywhere, so it is Standard each time the editor opens.
   const [layer, setLayer] = useState<Layer>("standard");
 
   useEffect(() => {
@@ -104,15 +101,7 @@ export function Editor() {
           {
             id: "lighting",
             title: "Lighting",
-            // As wide as the Quick Access panel's rows plus margins, so the swatches stay together.
-            content: (
-              <div style={{ height: PAGE_HEIGHT, maxWidth: 560 }}>
-                <Card title="Lighting">
-                  <LightingControls effects={state.effects} collapsible={false} />
-                  <HypershiftLights state={state} onChanged={setState} />
-                </Card>
-              </div>
-            ),
+            content: <LightingPage state={state} layer={layer} onLayer={setLayer} onChanged={setState} />,
           },
           {
             id: "profiles",
