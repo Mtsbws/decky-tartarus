@@ -1,7 +1,7 @@
 import { ConfirmModal, DialogButton, Focusable, showModal } from "@decky/ui";
 import { useState } from "react";
 
-import { activeProfile, createProfile, deleteProfile, errorText, profileById, ProfileState, renameProfile, State } from "../api";
+import { activeProfile, deleteProfile, errorText, profileById, ProfileState, renameProfile, State } from "../api";
 import { StatusLights } from "../StatusLights";
 import { Card } from "./Card";
 import { useKeypadGlow } from "./glow";
@@ -9,6 +9,7 @@ import { Keypad } from "./Keypad";
 import { BUTTON, ERROR, PAGE_HEIGHT } from "./layout";
 import { LightsModal } from "./LightsModal";
 import { NameModal } from "./NameModal";
+import { NewProfileModal } from "./NewProfileModal";
 import { IN_USE, ROW, ROW_CLASS, ROW_CSS } from "./profileRows";
 
 export function ProfilesPage({ state, viewing, onEdit, onView, onChanged }: {
@@ -21,14 +22,13 @@ export function ProfilesPage({ state, viewing, onEdit, onView, onChanged }: {
   const [error, setError] = useState<string | null>(null);
 
   function create() {
-    // A new profile copies the one being edited, as before.
+    // The copy source starts on the profile being viewed, as before.
     const source = profileById(state, viewing) ?? activeProfile(state);
     showModal(
-      <NameModal
-        title="New profile"
-        initial=""
-        onSubmit={async (name) => {
-          const s = await createProfile(name, source.id);
+      <NewProfileModal
+        state={state}
+        initialSourceId={source.id}
+        onCreated={(s, name) => {
           const made = s.profiles.find((p) => p.name.toLowerCase() === name.trim().toLowerCase());
           setError(null);
           onChanged(s);
