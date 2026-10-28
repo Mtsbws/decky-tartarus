@@ -111,11 +111,11 @@ class _Corrupt(Exception):
 # What a fresh install's Default profile changes from the factory keys: getting around SteamOS
 # Game Mode with one hand. The thumb moves on the D-pad while the resting fingers select (Enter),
 # delete (Backspace) and go back (Esc). Game Mode only reacts to a few keys: F4 the page's extra
-# action, F6/F7 tabs, F8 game options, F9 side menu. Its menus ignore Shift+F6/F7, so key 11 (factory
+# action, F6/F7 tabs, F9 a game's options. Its menus ignore F8 and Shift+F6/F7, so key 11 (factory
 # CapsLock, which would stick) is off. Unlisted controls keep their factory key.
 STEAMOS_DEFAULT = {
     "k03": "steam:qam", "k04": "steam:keyboard",
-    "k06": "F8", "k07": "F6", "k08": "F4", "k09": "F7", "k10": "F9",
+    "k07": "F6", "k08": "F4", "k09": "F7", "k10": "F9",
     "k11": "disable", "k12": "Backspace", "k13": "Enter", "k14": "Esc",
     "top_button": "steam:menu",
     "wheel_up": "Vol+", "wheel_down": "Vol-", "wheel_click": "Play",
