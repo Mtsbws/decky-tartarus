@@ -113,8 +113,8 @@ class _Corrupt(Exception):
 STEAMOS_DEFAULT = {
     "k01": "Esc", "k02": "steam:menu", "k03": "steam:qam", "k04": "steam:keyboard", "k05": "Backspace",
     "k07": "F8", "k08": "F4", "k10": "F9",
-    "k11": "Shift", "k12": "F6", "k13": "F3", "k14": "F7", "k15": "Enter",
-    "k20": "Esc", "top_button": "Enter",
+    "k12": "F6", "k13": "F3", "k14": "F7",
+    "top_button": "Enter",
     "wheel_up": "Vol+", "wheel_down": "Vol-", "wheel_click": "Play",
 }
 

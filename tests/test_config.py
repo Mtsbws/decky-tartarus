@@ -102,7 +102,9 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual((text["k01"], text["k05"]), ("Esc", "Backspace"))
         self.assertEqual((text["k02"], text["k04"]), ("Steam menu", "Keyboard"))
         self.assertEqual((text["k12"], text["k14"]), ("F6", "F7"))
-        self.assertEqual((text["k15"], text["top_button"], text["k20"]), ("Enter", "Enter", "Esc"))
+        self.assertEqual(text["top_button"], "Enter")
+        # One key per function: Enter and Esc nowhere else.
+        self.assertEqual([c for c, t in text.items() if t in ("Enter", "Esc")], ["k01", "top_button"])
         self.assertEqual(p.bindings["wheel_up"], Binding("media", ("Vol+",)))
         self.assertEqual(p.bindings["dpad_up"], Binding("key", ("Up",)))  # unlisted: factory key
         self.assertEqual(p.bindings["k17"], Binding("key", ("Z",)))
