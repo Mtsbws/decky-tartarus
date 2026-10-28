@@ -134,6 +134,7 @@ class HypershiftEngineTest(unittest.IsolatedAsyncioTestCase):
         e.handle_wheel(1)
         e.handle_key(K19, 0)
         e.handle_wheel(1)
+        await self.settle()
         self.assertEqual(self.out.events, [("wheel", 1), down(F5), up(F5), ("wheel", 1)])
         self.check_clean(e)
 
