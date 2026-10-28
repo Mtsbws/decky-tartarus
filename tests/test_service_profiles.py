@@ -15,6 +15,7 @@ RUNESCAPE = 1343400
 
 def write_settings(path):
     c = default_config()
+    c.profiles[0].bindings = factory_bindings()  # the tests press factory keys on Default too
     mmo = factory_bindings()
     mmo["k01"] = parse_binding_text("Esc")
     c.profiles.append(Profile(id="p2", name="MMO", dpad_mode="4way", bindings=mmo,

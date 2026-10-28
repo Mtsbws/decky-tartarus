@@ -8,6 +8,8 @@ Razer Synapse does on Windows, without Synapse or OpenRazer.
 
 ## Features
 
+- **Ready for SteamOS out of the box:** the Default profile gets you around Game Mode with one
+  hand and no mouse (see [Default layout](#default-layout)). Give games their own profiles.
 - **Remap every control:** keys 01-20 (20 is the big thumb key), the button above the D-pad,
   scroll up/down, wheel click and the D-pad (4-way or 8-way). Keys, shortcuts, held combos,
   macros, mouse buttons, media keys, or nothing.
@@ -28,8 +30,8 @@ Razer Synapse does on Windows, without Synapse or OpenRazer.
 - **Profile lights:** the three status lights above the D-pad show which profile is active.
 - **Lighting:** static, breathing, spectrum, wave, reactive and starlight, with colour and
   brightness, and an on/off switch that stays off through sleep, replugging and restarts.
-- **Steam menus from a key:** open the Steam menu or Quick Access, also while Moonlight is
-  fullscreen.
+- **Steam menus from a key:** open the Steam menu, Quick Access or the on-screen keyboard,
+  also while Moonlight is fullscreen.
 - **Works with streaming:** remapped input goes out through a virtual keyboard and mouse
   (`Decky Tartarus Keyboard`, `Decky Tartarus Mouse`), so Moonlight forwards it like any
   keyboard.
@@ -96,6 +98,26 @@ backend runs as root (`/dev/input`, `/dev/uinput`, `/dev/hidraw*`).
 - **By hand:** copy the plugin folder to `~/homebrew/plugins/decky-tartarus/`
   (needs `sudo`), then reload Decky or reboot.
 
+## Default layout
+
+A fresh install starts with a Default profile for getting around SteamOS Game Mode. The D-pad
+moves, the button above it selects (Enter), Esc and Backspace sit at the ends of the top row,
+and the keys under your fingers do what a controller's buttons do: Steam reads them as its own
+controller buttons (F3 = X, F4 = Y, F6/F7 = L1/R1, F8 = View, F9 = Menu).
+
+```
+01 Esc          02 Steam menu     03 Quick Access   04 Keyboard       05 Backspace
+06 Tab          07 F8 (View)      08 F4 (options)   09 E              10 F9 (Menu)
+11 CapsLock     12 F6 (prev tab)  13 F3 (filter)    14 F7 (next tab)  15 F
+16 Shift        17 Z              18 X              19 C
+D-pad: arrows   button above the D-pad: Enter   20 (thumb): Space
+wheel: volume up / down, click: play / pause
+```
+
+Each function is on one key only; keys 06, 09, 11, 15, 16-19 and 20 keep their factory keys.
+**Factory default** on a key puts back what the keypad sends on its own. An install that
+already has settings keeps its own Default.
+
 ## Binding text
 
 **Choose… → Type a binding** takes text:
@@ -109,7 +131,7 @@ backend runs as root (`/dev/input`, `/dev/uinput`, `/dev/hidraw*`).
 | `A, B, Ctrl+C` | macro: the steps in order |
 | `LMB`, `RMB`, `MMB`, `Mouse4`, `Mouse5`, `WheelUp`, `WheelDown` | mouse |
 | `Vol+`, `Vol-`, `Mute`, `Play`, `Next`, `Prev` | media keys |
-| `steam:menu`, `steam:qam` | open or close the Steam menu / Quick Access |
+| `steam:menu`, `steam:qam`, `steam:keyboard` | open or close the Steam menu / Quick Access / on-screen keyboard |
 | `disable` | the key does nothing |
 
 Names are not case-sensitive. In 4-way mode a diagonal on the D-pad holds both

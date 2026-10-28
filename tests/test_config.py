@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tartarus.bindings import Binding, binding_to_dict, parse_binding_text
+from tartarus.bindings import Binding, binding_label, binding_to_dict, parse_binding_text
 from tartarus.config import (
     LED_ORDER,
     NO_LEDS,
@@ -17,6 +17,7 @@ from tartarus.config import (
     default_config,
     default_profile,
     factory_bindings,
+    steamos_bindings,
     hypershift_key,
     load_config,
     new_profile_id,
@@ -94,6 +95,19 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(set(p.bindings), set(ALL_CONTROLS))
         self.assertEqual(p.dpad_mode, "4way")
         self.assertEqual(c, default_config())
+
+    def test_default_profile_is_made_for_steamos(self):
+        p = default_profile(default_config())
+        text = {control: binding_label(b) for control, b in p.bindings.items()}
+        self.assertEqual((text["k01"], text["k05"]), ("Esc", "Backspace"))
+        self.assertEqual((text["k02"], text["k04"]), ("Steam menu", "Keyboard"))
+        self.assertEqual((text["k12"], text["k14"]), ("F6", "F7"))
+        self.assertEqual(text["top_button"], "Enter")
+        # One key per function: Enter and Esc nowhere else.
+        self.assertEqual([c for c, t in text.items() if t in ("Enter", "Esc")], ["k01", "top_button"])
+        self.assertEqual(p.bindings["wheel_up"], Binding("media", ("Vol+",)))
+        self.assertEqual(p.bindings["dpad_up"], Binding("key", ("Up",)))  # unlisted: factory key
+        self.assertEqual(p.bindings["k17"], Binding("key", ("Z",)))
 
     def test_round_trip(self):
         c = default_config()
@@ -420,7 +434,7 @@ class ConfigTest(unittest.TestCase):
 
     def test_default_config_shape(self):
         c = default_config()
-        self.assertEqual(c.profiles, [Profile("default", "Default", "4way", factory_bindings(), NO_LEDS)])
+        self.assertEqual(c.profiles, [Profile("default", "Default", "4way", steamos_bindings(), NO_LEDS)])
         self.assertEqual(c.games, {})
         self.assertEqual(c.version, 2)
 
@@ -431,7 +445,7 @@ class ConfigTest(unittest.TestCase):
         self._write(_stored([_entry("p2", "MMO", [True, False, False])]))
         with self.assertLogs("tartarus", "WARNING"):
             c = load_config(self.path)
-        self.assertEqual(c.profiles[0], Profile("default", "Default", "4way", factory_bindings(), NO_LEDS))
+        self.assertEqual(c.profiles[0], Profile("default", "Default", "4way", steamos_bindings(), NO_LEDS))
         self.assertEqual([p.id for p in c.profiles], ["default", "p2"])
 
     def test_profiles_beyond_eight_skipped(self):
@@ -551,7 +565,7 @@ class ConfigTest(unittest.TestCase):
         self.assertTrue(self.path.exists())
         self.assertEqual(list(self.dir.glob("*.tmp")), [])
         stored = json.loads(self.path.read_text())
-        self.assertEqual(stored["profiles"][0]["bindings"]["k01"], binding_to_dict(parse_binding_text("1")))
+        self.assertEqual(stored["profiles"][0]["bindings"]["k01"], binding_to_dict(parse_binding_text("Esc")))
 
 
 if __name__ == "__main__":
