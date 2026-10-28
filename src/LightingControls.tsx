@@ -1,13 +1,11 @@
-import { ButtonItem, DropdownItem, Focusable, PanelSectionRow, SliderField, ToggleField } from "@decky/ui";
+import { ButtonItem, DropdownItem, PanelSectionRow, SliderField, ToggleField } from "@decky/ui";
 import { RiArrowDownSFill, RiArrowUpSFill } from "react-icons/ri";
 
+import { ColourField } from "./ColourField";
 import { useLighting } from "./lighting";
 
 // Effects that send no colour to the keypad (spike findings: spectrum and wave).
 const COLOURLESS = new Set(["spectrum", "wave"]);
-export const SWATCHES = [
-  "#ff0000", "#ff6000", "#ffff00", "#00ff00", "#00ffff", "#0000ff", "#8000ff", "#ff00ff", "#ffffff",
-];
 
 const capitalise = (s: string) => s[0].toUpperCase() + s.slice(1);
 
@@ -62,26 +60,7 @@ export function LightingControls({ effects, collapsible }: { effects: string[]; 
       )}
       {open && !COLOURLESS.has(draft.effect) && (
         <PanelSectionRow>
-          <Focusable flow-children="horizontal" style={{ display: "flex", justifyContent: "space-between" }}>
-            {SWATCHES.map((c) => (
-              <Focusable
-                key={c}
-                onActivate={() => change({ color: c })}
-                onClick={() => change({ color: c })}
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 4,
-                  background: c,
-                  cursor: "pointer",
-                  outline: draft.color.toLowerCase() === c ? "2px solid #dfe3e6" : "none",
-                  outlineOffset: 2,
-                }}
-              >
-                {null}
-              </Focusable>
-            ))}
-          </Focusable>
+          <ColourField color={draft.color} onChange={(color) => change({ color })} />
         </PanelSectionRow>
       )}
       {open && (

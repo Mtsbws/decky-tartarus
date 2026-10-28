@@ -1,8 +1,8 @@
-import { Focusable, PanelSectionRow, ToggleField } from "@decky/ui";
+import { PanelSectionRow, ToggleField } from "@decky/ui";
 import { useState } from "react";
 
 import { errorText, setHypershiftLights, State } from "../api";
-import { SWATCHES } from "../LightingControls";
+import { ColourField } from "../ColourField";
 
 // Colour of the keys with a Hypershift binding while the Hypershift key is held. Writes go straight through, no debounce.
 export function HypershiftLights({ state, onChanged }: { state: State; onChanged: (s: State) => void }) {
@@ -28,26 +28,7 @@ export function HypershiftLights({ state, onChanged }: { state: State; onChanged
       </PanelSectionRow>
       {enabled && (
         <PanelSectionRow>
-          <Focusable flow-children="horizontal" style={{ display: "flex", justifyContent: "space-between" }}>
-            {SWATCHES.map((c) => (
-              <Focusable
-                key={c}
-                onActivate={() => write(enabled, c)}
-                onClick={() => write(enabled, c)}
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 4,
-                  background: c,
-                  cursor: "pointer",
-                  outline: color.toLowerCase() === c ? "2px solid #dfe3e6" : "none",
-                  outlineOffset: 2,
-                }}
-              >
-                {null}
-              </Focusable>
-            ))}
-          </Focusable>
+          <ColourField color={color} onChange={(c) => write(enabled, c)} />
         </PanelSectionRow>
       )}
       {error && (
