@@ -4,7 +4,7 @@ A fresh install starts with four profiles: Default (see the README's
 [Default layout](../README.md#default-layout)) and three starter profiles, `FPS – WASD`,
 `FPS – D-pad` and `MMO`. They are ordinary profiles: edit them, rename them, assign games to them
 or delete them. To keep a starter as it is and change a copy, choose **New profile**, open
-**Copy from** and pick the starter.
+**Copy from** and pick that profile.
 
 **Made for:**
 
