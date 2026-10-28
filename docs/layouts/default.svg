@@ -53,8 +53,8 @@
   <text x="316" y="226" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">08</text>
   <rect x="398.8" y="213" width="25.2" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
   <text x="411.4" y="226" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">F4</text>
-  <text x="316" y="252" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Search</text>
-  <text x="316" y="271" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">or sort</text>
+  <text x="316" y="252" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Extra action</text>
+  <text x="316" y="271" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">e.g. sort</text>
   <rect x="442" y="202" width="130" height="84" rx="8" fill="#e9bf4f" stroke="none" stroke-width="1"/>
   <rect x="442" y="206" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="454" y="226" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">09</text>
@@ -67,13 +67,11 @@
   <rect x="674.8" y="213" width="25.2" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
   <text x="687.4" y="226" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">F9</text>
   <text x="592" y="252" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Side menu</text>
-  <rect x="28" y="294" width="130" height="84" rx="8" fill="#e9bf4f" stroke="none" stroke-width="1"/>
+  <rect x="28" y="294" width="130" height="84" rx="8" fill="#8d939c" stroke="none" stroke-width="1"/>
   <rect x="28" y="298" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="40" y="318" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">11</text>
   <rect x="29" y="295" width="128" height="82" rx="8" fill="none" stroke="#5cbf7a" stroke-width="2"/>
-  <rect x="83.2" y="305" width="64.8" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
-  <text x="115.6" y="318" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">Shift+F6</text>
-  <text x="40" y="344" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Page back</text>
+  <text x="40" y="344" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">—</text>
   <rect x="166" y="294" width="130" height="84" rx="8" fill="#5cbf7a" stroke="none" stroke-width="1"/>
   <rect x="166" y="298" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="178" y="318" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">12</text>
@@ -81,7 +79,7 @@
   <rect x="214.6" y="305" width="71.4" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
   <text x="250.3" y="318" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">Backspace</text>
   <text x="178" y="344" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Delete</text>
-  <text x="178" y="363" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">or remove</text>
+  <text x="178" y="363" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">or filter</text>
   <rect x="304" y="294" width="130" height="84" rx="8" fill="#5cbf7a" stroke="none" stroke-width="1"/>
   <rect x="304" y="298" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="316" y="318" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">13</text>
@@ -98,12 +96,10 @@
   <text x="546.1" y="318" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">Esc</text>
   <text x="454" y="344" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Back</text>
   <text x="454" y="363" font-size="11.5" fill="#8b93a1" text-anchor="start" font-weight="normal">index finger</text>
-  <rect x="580" y="294" width="130" height="84" rx="8" fill="#e9bf4f" stroke="none" stroke-width="1"/>
+  <rect x="580" y="294" width="130" height="84" rx="8" fill="#8d939c" stroke="none" stroke-width="1"/>
   <rect x="580" y="298" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="592" y="318" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">15</text>
-  <rect x="635.2" y="305" width="64.8" height="18" rx="4" fill="#33373f" stroke="none" stroke-width="1"/>
-  <text x="667.6" y="318" font-size="11" fill="#eef0f3" text-anchor="middle" font-weight="bold" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">Shift+F7</text>
-  <text x="592" y="344" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">Page on</text>
+  <text x="592" y="344" font-size="16" fill="#eef0f3" text-anchor="start" font-weight="bold">F</text>
   <rect x="28" y="386" width="130" height="84" rx="8" fill="#8d939c" stroke="none" stroke-width="1"/>
   <rect x="28" y="390" width="130" height="80" rx="8" fill="#212429" stroke="#2e3238" stroke-width="1"/>
   <text x="40" y="410" font-size="11" fill="#8b93a1" text-anchor="start" font-weight="normal" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">16</text>

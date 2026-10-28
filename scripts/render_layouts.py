@@ -42,11 +42,10 @@ Doc = Mapping[str, Tuple[Optional[str], str, str]]
 _DEFAULT_DOC: Doc = {
     "k03": (None, "toggles", "blue"), "k04": (None, "on-screen", "blue"),
     "k06": ("Game options", "", "yellow"), "k07": ("Previous tab", "", "yellow"),
-    "k08": ("Search", "or sort", "yellow"), "k09": ("Next tab", "", "yellow"),
+    "k08": ("Extra action", "e.g. sort", "yellow"), "k09": ("Next tab", "", "yellow"),
     "k10": ("Side menu", "", "yellow"),
-    "k11": ("Page back", "", "yellow"), "k12": ("Delete", "or remove", "green"),
+    "k11": (None, "", "grey"), "k12": ("Delete", "or filter", "green"),
     "k13": ("Select", "middle finger", "green"), "k14": ("Back", "index finger", "green"),
-    "k15": ("Page on", "", "yellow"),
     "top_button": (None, "thumb up", "blue"),
     "dpad_up": (None, "", "green"), "dpad_right": (None, "", "green"),
     "dpad_down": (None, "", "green"), "dpad_left": (None, "", "green"),
