@@ -2,7 +2,7 @@ import { Focusable } from "@decky/ui";
 import type { CSSProperties } from "react";
 
 import { ProfileState } from "../api";
-import { LED_COLOURS } from "../StatusLights";
+import { LED_COLOURS, LED_UNLIT } from "../StatusLights";
 import { HYPERSHIFT_ACCENT, Layer, layerMm, layerSecondary } from "./layers";
 
 // Our own drawing of the Tartarus Pro (no Razer images), traced from a
@@ -137,8 +137,8 @@ export function rainbow(control: string): string {
 export type Glow = (control: string) => string | null;
 const UNLIT = "#434b57";
 
-// `level` scales the glow, as the backlight's brightness does.
-function Picture({ glow, level }: { glow: Glow; level: number }) {
+// `level` scales the glow, as the backlight's brightness does. `leds` are the status lights; all lit when left out.
+function Picture({ glow, level, leds }: { glow: Glow; level: number; leds?: readonly boolean[] }) {
   const sockets = Object.entries(LAYOUT).filter(([c]) => isKey(c));
   const top = LAYOUT.top_button;
   // The wheel has one light for its three controls.
@@ -186,7 +186,7 @@ function Picture({ glow, level }: { glow: Glow; level: number }) {
       {/* Thumb wing: the stem with the status lights, then the stick module */}
       <rect x={456} y={118} width={70} height={232} rx={26} fill="url(#tt-wing)" stroke="#434b57" strokeWidth={2} />
       {[230, 254, 278].map((y, i) => (
-        <circle key={y} cx={514} cy={y} r={3} fill={LED_COLOURS[i]} />
+        <circle key={y} cx={514} cy={y} r={3} fill={!leds || leds[i] ? LED_COLOURS[i] : LED_UNLIT} />
       ))}
       <rect x={440} y={316} width={158} height={192} rx={44} fill="url(#tt-wing)" stroke="#434b57" strokeWidth={2} />
       {/* Arm that holds the thumb key */}
@@ -273,9 +273,10 @@ export function Keypad(props: {
   defaultMm?: number;
   glow?: Glow;
   glowLevel?: number;
+  leds?: readonly boolean[];
   onSelect?(control: string): void;
 }) {
-  const { profile, view, selected = [], layer, defaultMm = 0, glow = rainbow, glowLevel = 1, onSelect = () => {} } = props;
+  const { profile, view, selected = [], layer, defaultMm = 0, glow = rainbow, glowLevel = 1, leds, onSelect = () => {} } = props;
   const hypershift = layer === "hypershift";
   // On the Hypershift layer a control without an entry shows its standard binding, dimmed.
   const label = (c: string) => (hypershift ? profile.hypershift.bindings[c]?.label : undefined) ?? profile.bindings[c].label;
@@ -286,7 +287,7 @@ export function Keypad(props: {
   return (
     // Sized by the page height; the width follows the drawing's shape.
     <div style={{ position: "relative", height: "100%", aspectRatio: `${W} / ${H}`, maxWidth: "100%", flexShrink: 0 }}>
-      <Picture glow={glow} level={glowLevel} />
+      <Picture glow={glow} level={glowLevel} leds={leds} />
       <Focusable style={{ position: "absolute", inset: 0 }} flow-children="grid">
         {controls.map((c) => {
           const box = LAYOUT[c];

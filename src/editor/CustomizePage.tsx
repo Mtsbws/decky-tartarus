@@ -5,6 +5,7 @@ import { clearHypershiftEntry, errorText, ProfileState, setActuation, setBinding
 import { Card, Row } from "./Card";
 import { ChoosePage } from "./ChoosePage";
 import { EditingRow } from "./EditingRow";
+import { useKeypadGlow } from "./glow";
 import { controlTitle, Keypad } from "./Keypad";
 import { bindingOf, hasEntry, HYPERSHIFT_ACCENT, Layer, layerMm, layerSecondary, onLayer } from "./layers";
 import { LayerSwitch } from "./LayerSwitch";
@@ -31,6 +32,7 @@ export function CustomizePage(props: {
   const [cardError, setCardError] = useState<string | null>(null);
   const [draft, setDraft] = useState<number | null>(null);
   const debounce = useDebounce(300);
+  const glow = useKeypadGlow(state, profile, layer);
 
   // A sub-page, a card error and a slider draft belong to the control and profile they came from.
   useEffect(() => {
@@ -106,7 +108,7 @@ export function CustomizePage(props: {
   return (
     // The drawing takes the full page height; the Editing row sits above the card.
     <Focusable flow-children="row" style={{ height: PAGE_HEIGHT, display: "flex", gap: 16 }}>
-      <Keypad profile={profile} view="bindings" layer={layer} selected={[selected]} defaultMm={default_mm} onSelect={onSelect} />
+      <Keypad profile={profile} view="bindings" layer={layer} selected={[selected]} defaultMm={default_mm} {...glow} leds={profile.leds} onSelect={onSelect} />
       <Focusable flow-children="column" style={{ flex: 1, minWidth: 300, display: "flex", flexDirection: "column", gap: 8 }}>
         <EditingRow state={state} profile={profile} onView={onView} />
         <LayerSwitch layer={layer} onChange={onLayerChange} />

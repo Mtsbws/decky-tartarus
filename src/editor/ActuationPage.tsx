@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { errorText, ProfileState, setActuationKeys, State } from "../api";
 import { Card, Row } from "./Card";
 import { EditingRow } from "./EditingRow";
+import { useKeypadGlow } from "./glow";
 import { Keypad } from "./Keypad";
 import { hasEntry, Layer, layerMm, onLayer as onLayerName } from "./layers";
 import { LayerSwitch } from "./LayerSwitch";
@@ -23,6 +24,7 @@ export function ActuationPage({ state, profile, layer, onLayer, onView, onChange
   const [selection, setSelection] = useState<string[]>([]);
   const [value, setValue] = useState(default_mm);
   const [error, setError] = useState<string | null>(null);
+  const glow = useKeypadGlow(state, profile, layer);
 
   const onHypershift = layer === "hypershift";
   // On the Hypershift layer only keys with an entry can be edited; a depth never creates an entry.
@@ -72,7 +74,7 @@ export function ActuationPage({ state, profile, layer, onLayer, onView, onChange
 
   return (
     <Focusable flow-children="row" style={{ height: PAGE_HEIGHT, display: "flex", gap: 16 }}>
-      <Keypad profile={profile} view="actuation" layer={layer} selected={selection} defaultMm={default_mm} onSelect={toggle} />
+      <Keypad profile={profile} view="actuation" layer={layer} selected={selection} defaultMm={default_mm} {...glow} leds={profile.leds} onSelect={toggle} />
       <Focusable flow-children="column" style={{ flex: 1, minWidth: 300, display: "flex", flexDirection: "column", gap: 8 }}>
         <EditingRow state={state} profile={profile} onView={onView} />
         <LayerSwitch layer={layer} onChange={changeLayer} />

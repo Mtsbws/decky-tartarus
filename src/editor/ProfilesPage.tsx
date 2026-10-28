@@ -4,6 +4,7 @@ import { useState } from "react";
 import { activeProfile, createProfile, deleteProfile, errorText, profileById, ProfileState, renameProfile, State } from "../api";
 import { StatusLights } from "../StatusLights";
 import { Card } from "./Card";
+import { useKeypadGlow } from "./glow";
 import { Keypad } from "./Keypad";
 import { BUTTON, ERROR, PAGE_HEIGHT } from "./layout";
 import { LightsModal } from "./LightsModal";
@@ -21,9 +22,16 @@ const ROW = {
   margin: 0,
   textAlign: "left" as const,
   borderRadius: 4,
-  background: "rgba(255, 255, 255, 0.06)",
   flexShrink: 0,
 };
+// The row colours live in a stylesheet, not inline, so they give way to Steam's focus style:
+// an inline background stayed put on focus while Steam darkened the text, hiding the name.
+const ROW_CLASS = "Tartarus_ProfileRow";
+const ROW_CSS = `
+.${ROW_CLASS}:not(.gpfocus):not(:focus) { background: rgba(255, 255, 255, 0.06) !important; color: #dfe3e6 !important; }
+.${ROW_CLASS}.Tartarus_Selected:not(.gpfocus):not(:focus) { background: rgba(91, 209, 74, 0.22) !important; }
+.${ROW_CLASS}.Tartarus_Selected { box-shadow: inset 3px 0 0 #5bd14a !important; }
+`;
 const IN_USE = { fontSize: 11, padding: "1px 6px", borderRadius: 8, background: "#5bd14a", color: "#0e141b", flexShrink: 0 };
 
 export function ProfilesPage({ state, viewing, onEdit, onView, onChanged }: {
@@ -88,23 +96,23 @@ export function ProfilesPage({ state, viewing, onEdit, onView, onChanged }: {
   }
 
   const selected = profileById(state, viewing) ?? activeProfile(state);
+  const glow = useKeypadGlow(state, selected, "standard");
   const games = selected.is_default ? "Every game without its own profile" : selected.games.join(", ") || "No games yet";
 
   return (
     <Focusable flow-children="row" style={{ height: PAGE_HEIGHT, display: "flex", gap: 16 }}>
-      <Keypad profile={selected} view="preview" layer="standard" />
+      <Keypad profile={selected} view="preview" layer="standard" {...glow} leds={selected.leds} />
       <Focusable flow-children="column" style={{ flex: 1, minWidth: 300, display: "flex", flexDirection: "column", gap: 8 }}>
         {/* The list may scroll inside its card (the only scrolling allowed), so the details stay on screen. */}
         <Card title="Profiles" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          <style>{ROW_CSS}</style>
           <Focusable flow-children="column" style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
             {state.profiles.map((p) => (
               <DialogButton
                 key={p.id}
+                className={p.id === selected.id ? `${ROW_CLASS} Tartarus_Selected` : ROW_CLASS}
                 onClick={() => onView(p.id)}
-                style={{
-                  ...ROW,
-                  ...(p.id === selected.id ? { background: "rgba(91, 209, 74, 0.22)", boxShadow: "inset 3px 0 0 #5bd14a" } : {}),
-                }}
+                style={ROW}
               >
                 <StatusLights leds={p.leds} size={7} />
                 <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>

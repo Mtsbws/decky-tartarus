@@ -6,7 +6,8 @@ import { ColourDropdown } from "../ColourField";
 import { useLighting } from "../lighting";
 import { capitalise, COLOURLESS } from "../LightingControls";
 import { Card, Row } from "./Card";
-import { Glow, Keypad, rainbow } from "./Keypad";
+import { useKeypadGlow } from "./glow";
+import { Keypad } from "./Keypad";
 import { Layer } from "./layers";
 import { LayerSwitch } from "./LayerSwitch";
 import { ERROR, PAGE_HEIGHT } from "./layout";
@@ -39,23 +40,12 @@ export function LightingPage({ state, layer, onLayer, onChanged }: {
       .catch((e) => setHsError(errorText(e)));
   }
 
-  const lit = new Set(Object.keys(profile.hypershift.bindings));
-  if (profile.hypershift.key) lit.add(profile.hypershift.key);
-  let glow: Glow;
-  if (!backlight.enabled) glow = () => null;
-  else if (onHypershift) glow = (c) => (hsEnabled && lit.has(c) ? hsColor : null);
-  else if (COLOURLESS.has(backlight.effect)) glow = rainbow;
-  else glow = () => backlight.color;
+  const glow = useKeypadGlow(state, profile, layer);
 
   return (
     <Focusable flow-children="row" style={{ height: PAGE_HEIGHT, display: "flex", gap: 16 }}>
-      <Keypad
-        profile={profile}
-        view="preview"
-        layer={layer}
-        glow={glow}
-        glowLevel={0.2 + (0.8 * backlight.brightness) / 100}
-      />
+      {/* No status lights: lighting isn't a profile's. */}
+      <Keypad profile={profile} view="preview" layer={layer} {...glow} />
       <Focusable flow-children="column" style={{ flex: 1, minWidth: 300, display: "flex", flexDirection: "column", gap: 8 }}>
         <LayerSwitch layer={layer} onChange={onLayer} />
         {!onHypershift ? (
